@@ -176,8 +176,8 @@ function FluoroImportSection() {
     setError(null);
     try {
       const r = await apiFetch<{ added: number; skipped: number; matched: number }>(
-        '/api/migrate/fluorography-bulk',
-        { method: 'POST', json: { rows: parse.rows } },
+        '/api/migrate',
+        { method: 'POST', json: { action: 'fluorography-bulk', rows: parse.rows } },
       );
       setDone(r);
       setParse(null);
@@ -288,8 +288,8 @@ function RiskImportSection() {
     setError(null);
     try {
       const r = await apiFetch<{ patientsUpdated: number; fluoroAdded: number }>(
-        '/api/migrate/risk-groups-bulk',
-        { method: 'POST', json: { updates: parse.updates } },
+        '/api/migrate',
+        { method: 'POST', json: { action: 'risk-groups-bulk', updates: parse.updates } },
       );
       setDone(r);
       setParse(null);
@@ -414,8 +414,8 @@ function StatusImportSection() {
     setError(null);
     try {
       const r = await apiFetch<{ statusChanged: number; fluoroAdded: number; sputumAdded: number }>(
-        '/api/migrate/status-bulk',
-        { method: 'POST', json: { updates: parse.updates } },
+        '/api/migrate',
+        { method: 'POST', json: { action: 'status-bulk', updates: parse.updates } },
       );
       setDone(r);
       setParse(null);
