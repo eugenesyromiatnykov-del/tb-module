@@ -1,0 +1,47 @@
+# deps
+node_modules
+.pnp
+.pnp.js
+
+# build
+dist
+build
+.vite
+*.local
+*.tsbuildinfo
+
+# editor / agent
+.claude/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs
+*.log
+
+# editors
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# vercel
+.vercel
+
+# supabase
+supabase/.temp
+supabase/.branches
