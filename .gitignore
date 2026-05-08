@@ -45,3 +45,6 @@ logs
 # supabase
 supabase/.temp
 supabase/.branches
+
+# real patient data (PII) — never commit
+sample-data/

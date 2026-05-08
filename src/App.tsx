@@ -5,6 +5,7 @@ import { PatientsPage } from '@/routes/patients';
 import { QuestionnairesPage } from '@/routes/questionnaires';
 import { OrdersPage } from '@/routes/orders';
 import { SettingsPage } from '@/routes/settings';
+import { ImportDeclarantsPage } from '@/routes/settings/import-declarants';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 
@@ -25,6 +26,7 @@ export function App() {
         <Route path="/questionnaires" element={<QuestionnairesPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/import-declarants" element={<ImportDeclarantsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
