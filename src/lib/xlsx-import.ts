@@ -6,27 +6,38 @@ export type ParseResult = {
   rows: IncomingPatient[];
   totalInFile: number;
   warnings: string[];
+  /** Per-location row counts after auto-detection, for the preview. */
+  byLocation: Record<LocationId, number>;
 };
 
 const SHEET_CANDIDATES = ['Активні', 'активні', 'Active'];
 
+function detectLocation(department: string | null, fallback: LocationId): LocationId {
+  if (!department) return fallback;
+  const s = department.toLowerCase();
+  if (s.includes('білогір') || s.includes('biloh')) return 'bilohirska';
+  if (s.includes('залуж') || s.includes('zaluzh')) return 'zaluzhe';
+  return fallback;
+}
+
 export async function parseDeclarantsXlsx(
   file: File,
-  locationId: LocationId,
+  fallbackLocation: LocationId,
 ): Promise<ParseResult> {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: 'array', cellDates: true });
 
+  const empty = { bilohirska: 0, zaluzhe: 0 } as Record<LocationId, number>;
   const sheetName =
     wb.SheetNames.find((n) => SHEET_CANDIDATES.includes(n)) ?? wb.SheetNames[0];
   if (!sheetName) {
-    return { rows: [], totalInFile: 0, warnings: ['Файл не містить листів'] };
+    return { rows: [], totalInFile: 0, warnings: ['Файл не містить листів'], byLocation: { ...empty } };
   }
   const ws = wb.Sheets[sheetName];
-  if (!ws) return { rows: [], totalInFile: 0, warnings: [`Лист "${sheetName}" не знайдено`] };
+  if (!ws) return { rows: [], totalInFile: 0, warnings: [`Лист "${sheetName}" не знайдено`], byLocation: { ...empty } };
 
   const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false, defval: null });
-  if (aoa.length < 2) return { rows: [], totalInFile: 0, warnings: ['У листі немає даних'] };
+  if (aoa.length < 2) return { rows: [], totalInFile: 0, warnings: ['У листі немає даних'], byLocation: { ...empty } };
 
   const headers = (aoa[0] ?? []).map((h) => String(h ?? '').trim());
   const idx = (...names: string[]) => {
@@ -46,6 +57,7 @@ export async function parseDeclarantsXlsx(
   const iPhone = idx('Телефон');
   const iAddress = idx('Адреса');
   const iCity = idx('Місто');
+  const iDept = idx('Відділення');
 
   const warnings: string[] = [];
   const required = [
@@ -58,9 +70,10 @@ export async function parseDeclarantsXlsx(
   for (const [name, i] of required) {
     if (i < 0) warnings.push(`Не знайдено колонку "${name}"`);
   }
-  if (warnings.length > 0) return { rows: [], totalInFile: 0, warnings };
+  if (warnings.length > 0) return { rows: [], totalInFile: 0, warnings, byLocation: { ...empty } };
 
   const rows: IncomingPatient[] = [];
+  const byLocation: Record<LocationId, number> = { ...empty };
   let totalInFile = 0;
   for (let r = 1; r < aoa.length; r++) {
     const row = aoa[r];
@@ -86,6 +99,9 @@ export async function parseDeclarantsXlsx(
     }
 
     const address = joinAddress(clean(row[iAddress]), clean(row[iCity]));
+    const dept = iDept >= 0 ? clean(row[iDept]) : null;
+    const location_id = detectLocation(dept, fallbackLocation);
+    byLocation[location_id] += 1;
 
     rows.push({
       medics_id: medics,
@@ -96,7 +112,7 @@ export async function parseDeclarantsXlsx(
       gender: iGender >= 0 ? mapGender(clean(row[iGender])) : null,
       phone: iPhone >= 0 ? normalizePhone(clean(row[iPhone])) : null,
       address,
-      location_id: locationId,
+      location_id,
     });
   }
 
@@ -112,7 +128,7 @@ export async function parseDeclarantsXlsx(
     deduped.push(r);
   }
 
-  return { rows: deduped, totalInFile, warnings };
+  return { rows: deduped, totalInFile, warnings, byLocation };
 }
 
 function clean(v: unknown): string | null {

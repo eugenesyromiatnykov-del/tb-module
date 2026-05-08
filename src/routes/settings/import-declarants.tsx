@@ -104,7 +104,7 @@ export function ImportDeclarantsPage() {
     <div className="max-w-4xl">
       <PageHeader
         title="Імпорт декларантів"
-        subtitle="Завантажте свіжу xlsx-виписку з МІС. Лист «Активні» буде використано як джерело правди."
+        subtitle="Завантажте свіжу xlsx-виписку з МІС. Локація визначається автоматично за колонкою «Відділення» у кожному рядку."
         actions={
           <Button variant="secondary" onClick={() => navigate('/settings')}>
             ← Налаштування
@@ -117,7 +117,9 @@ export function ImportDeclarantsPage() {
           <CardBody>
             <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">Локація</label>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Резервна локація
+                </label>
                 <Select
                   value={locationId}
                   onChange={(e) => setLocationId(e.target.value as LocationId)}
@@ -130,7 +132,7 @@ export function ImportDeclarantsPage() {
                   ))}
                 </Select>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Усі пацієнти з файлу будуть прив'язані до цієї локації.
+                  Використовується тільки для рядків, де «Відділення» не вдалось розпізнати.
                 </p>
               </div>
             </div>
@@ -240,7 +242,6 @@ function PreviewView({
   diff,
   parse,
   file,
-  locationId,
   applying,
   error,
   onCancel,
@@ -266,8 +267,20 @@ function PreviewView({
         </CardHeader>
         <CardBody>
           <div className="mb-4 text-sm text-slate-600">
-            Файл: <span className="font-medium text-slate-900">{file?.name}</span> →{' '}
-            <span className="font-medium text-slate-900">{LOCATION_LABELS[locationId]}</span>
+            Файл: <span className="font-medium text-slate-900">{file?.name}</span>
+          </div>
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+            <div className="mb-1 font-medium text-slate-600">За локаціями (автодетект з «Відділення»):</div>
+            <div className="flex gap-4">
+              <span>
+                Білогірська:{' '}
+                <span className="font-medium text-slate-900">{parse.byLocation.bilohirska}</span>
+              </span>
+              <span>
+                Залужжя:{' '}
+                <span className="font-medium text-slate-900">{parse.byLocation.zaluzhe}</span>
+              </span>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Усього в файлі" value={diff.totalInFile} tone="slate" />
