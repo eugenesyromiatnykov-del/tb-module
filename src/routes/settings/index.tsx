@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Upload, Mail, Lock, ScrollText, ChevronRight } from 'lucide-react';
+import { Upload, Database, Mail, Lock, ScrollText, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card } from '@/components/ui/Card';
 
@@ -18,6 +18,13 @@ const items: Item[] = [
     icon: Upload,
     title: 'Імпорт декларантів',
     subtitle: 'Завантаження свіжої xlsx-виписки з МІС',
+    available: true,
+  },
+  {
+    to: '/settings/import-historical',
+    icon: Database,
+    title: 'Імпорт історичних даних',
+    subtitle: 'Перенесення зі старих xlsx: флюоро, групи ризику, виявлені/контактні',
     available: true,
   },
   {

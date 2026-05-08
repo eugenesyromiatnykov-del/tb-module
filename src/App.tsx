@@ -7,6 +7,7 @@ import { QuestionnairesPage } from '@/routes/questionnaires';
 import { OrdersPage } from '@/routes/orders';
 import { SettingsPage } from '@/routes/settings';
 import { ImportDeclarantsPage } from '@/routes/settings/import-declarants';
+import { ImportHistoricalPage } from '@/routes/settings/import-historical';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 
@@ -29,6 +30,7 @@ export function App() {
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/import-declarants" element={<ImportDeclarantsPage />} />
+        <Route path="/settings/import-historical" element={<ImportHistoricalPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
