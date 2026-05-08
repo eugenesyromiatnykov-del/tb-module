@@ -72,3 +72,40 @@ export const TB_STATUS_LABELS: Record<TbStatus, string> = {
   external: 'Не декларант',
   archived: 'Архівний',
 };
+
+export type FluoroRecord = {
+  id: string;
+  patient_id: string;
+  date: string;
+  result: string | null;
+  result_code: FluoroResultCode;
+  next_planned_date: string | null;
+  source: DataSource;
+  notes: string | null;
+  created_at: string;
+};
+
+export type SputumTest = {
+  id: string;
+  patient_id: string;
+  date: string;
+  result: string | null;
+  test_type: SputumTestType;
+  notes: string | null;
+  created_at: string;
+};
+
+export const FLUORO_RESULT_LABELS: Record<FluoroResultCode, string> = {
+  normal: 'Без патології',
+  pathology: 'Патологія',
+  pending: 'Очікує результат',
+  refused: 'Відмова',
+  unknown: 'Невідомо',
+};
+
+export const SPUTUM_TEST_LABELS: Record<SputumTestType, string> = {
+  xpert: 'GeneXpert',
+  microscopy: 'Мікроскопія',
+  culture: 'Посів',
+  pcr: 'ПЛР',
+};

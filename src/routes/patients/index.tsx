@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   flexRender,
   getCoreRowModel,
@@ -39,6 +40,7 @@ export function PatientsPage() {
   const [archived, setArchived] = useState(false);
   const search = useDebounced(searchInput, 300);
 
+  const navigate = useNavigate();
   const filters: PatientFilters = useMemo(
     () => ({
       location: location || undefined,
@@ -239,9 +241,11 @@ export function PatientsPage() {
                   table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
+                      onClick={() => navigate(`/patients/${row.original.id}`)}
                       className={cn(
-                        'border-t border-slate-100 hover:bg-slate-50',
+                        'cursor-pointer border-t border-slate-100 hover:bg-slate-50',
                         row.original.archived && 'opacity-60',
+                        rowAccent(row.original),
                       )}
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -259,6 +263,14 @@ export function PatientsPage() {
       )}
     </div>
   );
+}
+
+function rowAccent(p: Patient): string {
+  // Yellow border-left for detected, blue for contact. Overdue-fluoro accents
+  // come in Phase 1.B-3 once last_fluoro_date is exposed in the list payload.
+  if (p.tb_status === 'detected') return 'border-l-4 border-l-yellow-400';
+  if (p.tb_status === 'contact') return 'border-l-4 border-l-blue-400';
+  return '';
 }
 
 function StatusBadge({ status }: { status: TbStatus }) {
