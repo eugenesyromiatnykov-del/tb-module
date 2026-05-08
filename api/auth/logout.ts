@@ -1,4 +1,4 @@
-import { clearSessionCookie } from '../_lib/jwt';
+import { clearSessionCookie } from '../_lib/jwt.js';
 
 type VercelRequest = { method?: string };
 type VercelResponse = {

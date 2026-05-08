@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
-import { issueSessionCookie } from '../_lib/jwt';
-import { checkAndRecordFailure, clearFailures, recordFailure } from '../_lib/rate-limit';
+import { issueSessionCookie } from '../_lib/jwt.js';
+import { checkAndRecordFailure, clearFailures, recordFailure } from '../_lib/rate-limit.js';
 
 type VercelRequest = {
   method?: string;

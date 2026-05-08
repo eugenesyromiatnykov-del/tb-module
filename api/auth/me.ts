@@ -1,4 +1,4 @@
-import { verifySessionFromHeader } from '../_lib/jwt';
+import { verifySessionFromHeader } from '../_lib/jwt.js';
 
 type VercelRequest = { headers: Record<string, string | string[] | undefined> };
 type VercelResponse = {
