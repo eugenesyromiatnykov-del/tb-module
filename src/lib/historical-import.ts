@@ -180,9 +180,20 @@ export type RiskUpdate = {
   add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null; next_planned_date: string | null }[];
 };
 
+export type RiskExternalCandidate = {
+  surname: string;
+  first_name: string;
+  patronymic: string | null;
+  birth_date: string;
+  add_social: string[];
+  add_fluoro: { date: string; result_code: FluoroResultCode; result: string | null; next_planned_date: string | null }[];
+};
+
 export type RiskParseResult = {
   updates: RiskUpdate[];
-  unmatched: { fullName: string; birth: string; group: string }[];
+  externalCandidates: RiskExternalCandidate[];
+  /** Rows where ПІБ/ДН couldn't even be parsed (corrupt input). */
+  invalid: { fullName: string; birth: string; group: string }[];
   warnings: string[];
   totalRows: number;
 };
@@ -192,7 +203,8 @@ export async function parseRiskGroupsXlsx(file: File, index: MatchIndex): Promis
   const wb = XLSX.read(buf, { type: 'array', cellDates: true });
 
   const byPatient = new Map<string, RiskUpdate>();
-  const unmatched: RiskParseResult['unmatched'] = [];
+  const externalByKey = new Map<string, RiskExternalCandidate>();
+  const invalid: RiskParseResult['invalid'] = [];
   const warnings: string[] = [];
   let totalRows = 0;
 
@@ -207,8 +219,6 @@ export async function parseRiskGroupsXlsx(file: File, index: MatchIndex): Promis
     const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false, defval: null });
     if (aoa.length < 3) continue;
 
-    // Layout: row 0 has merged header "Флюорографія", row 1 has "Дата|Результат|Заплановано".
-    // ПІБ + Дата народження are in column 0 and 1.
     for (let r = 2; r < aoa.length; r++) {
       const row = aoa[r];
       if (!row) continue;
@@ -216,40 +226,59 @@ export async function parseRiskGroupsXlsx(file: File, index: MatchIndex): Promis
       if (!fullName) continue;
       totalRows += 1;
       const split = splitFullName(fullName);
-      if (!split) continue;
-
-      const birthIso = parseDateLoose(row[1]);
-      const m = matchPatient(index, split.surname, split.first, birthIso);
-      if (!m || 'multiple' in m) {
-        unmatched.push({ fullName, birth: String(row[1] ?? ''), group: groupKey });
+      if (!split) {
+        invalid.push({ fullName, birth: String(row[1] ?? ''), group: groupKey });
         continue;
       }
 
+      const birthIso = parseDateLoose(row[1]);
       const dateIso = parseDateLoose(row[2]);
       const resultRaw = clean(row[3]);
       const nextIso = parseDateLoose(row[4]);
       const { code, text } = mapResultCode(resultRaw);
+      const fluoroRecord = dateIso
+        ? { date: dateIso, result_code: code, result: text, next_planned_date: nextIso }
+        : null;
 
-      let entry = byPatient.get(m.id);
-      if (!entry) {
-        entry = { id: m.id, add_social: [], add_fluoro: [] };
-        byPatient.set(m.id, entry);
+      const m = matchPatient(index, split.surname, split.first, birthIso);
+      if (m && !('multiple' in m)) {
+        let entry = byPatient.get(m.id);
+        if (!entry) {
+          entry = { id: m.id, add_social: [], add_fluoro: [] };
+          byPatient.set(m.id, entry);
+        }
+        if (!entry.add_social.includes(groupKey)) entry.add_social.push(groupKey);
+        if (fluoroRecord) entry.add_fluoro!.push(fluoroRecord);
+        continue;
       }
-      if (!entry.add_social.includes(groupKey)) entry.add_social.push(groupKey);
-      if (dateIso) {
-        entry.add_fluoro!.push({
-          date: dateIso,
-          result_code: code,
-          result: text,
-          next_planned_date: nextIso,
-        });
+
+      // Unmatched → external candidate (de-duplicated by ПІБ+ДН).
+      if (!birthIso) {
+        invalid.push({ fullName, birth: String(row[1] ?? ''), group: groupKey });
+        continue;
       }
+      const key = `${normName(split.surname)}|${normName(split.first)}|${normName(split.patronymic)}|${birthIso}`;
+      let ext = externalByKey.get(key);
+      if (!ext) {
+        ext = {
+          surname: split.surname,
+          first_name: split.first,
+          patronymic: split.patronymic,
+          birth_date: birthIso,
+          add_social: [],
+          add_fluoro: [],
+        };
+        externalByKey.set(key, ext);
+      }
+      if (!ext.add_social.includes(groupKey)) ext.add_social.push(groupKey);
+      if (fluoroRecord) ext.add_fluoro.push(fluoroRecord);
     }
   }
 
   return {
     updates: Array.from(byPatient.values()),
-    unmatched,
+    externalCandidates: Array.from(externalByKey.values()),
+    invalid,
     warnings,
     totalRows,
   };
@@ -264,9 +293,20 @@ export type StatusUpdate = {
   add_sputum?: { date: string; test_type: 'xpert'; result: string | null }[];
 };
 
+export type StatusExternalCandidate = {
+  surname: string;
+  first_name: string;
+  patronymic: string | null;
+  birth_date: string;
+  tb_status: 'detected' | 'contact';
+  add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null }[];
+  add_sputum?: { date: string; test_type: 'xpert'; result: string | null }[];
+};
+
 export type StatusParseResult = {
   updates: StatusUpdate[];
-  unmatched: { fullName: string; birth: string; sheet: string }[];
+  externalCandidates: StatusExternalCandidate[];
+  invalid: { fullName: string; birth: string; sheet: string }[];
   warnings: string[];
   totalRows: number;
 };
@@ -279,7 +319,9 @@ export async function parseDetectedContactsXlsx(
   const wb = XLSX.read(buf, { type: 'array', cellDates: true });
 
   const updates: StatusUpdate[] = [];
-  const unmatched: StatusParseResult['unmatched'] = [];
+  // 'detected' wins over 'contact' if same person appears in both sheets.
+  const externalByKey = new Map<string, StatusExternalCandidate>();
+  const invalid: StatusParseResult['invalid'] = [];
   const warnings: string[] = [];
   let totalRows = 0;
 
@@ -294,7 +336,6 @@ export async function parseDetectedContactsXlsx(
     const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false, defval: null });
     if (aoa.length < 3) continue;
 
-    // row 0 has merged "Флюорографія" / "Мокротиння"; row 1 is sub-headers.
     for (let r = 2; r < aoa.length; r++) {
       const row = aoa[r];
       if (!row) continue;
@@ -302,33 +343,64 @@ export async function parseDetectedContactsXlsx(
       if (!fullName) continue;
       totalRows += 1;
       const split = splitFullName(fullName);
-      if (!split) continue;
-
-      const birthIso = parseDateLoose(row[1]);
-      const m = matchPatient(index, split.surname, split.first, birthIso);
-      if (!m || 'multiple' in m) {
-        unmatched.push({ fullName, birth: String(row[1] ?? ''), sheet: sheetName });
+      if (!split) {
+        invalid.push({ fullName, birth: String(row[1] ?? ''), sheet: sheetName });
         continue;
       }
 
+      const birthIso = parseDateLoose(row[1]);
       const fluoroDate = parseDateLoose(row[2]);
       const fluoroResultRaw = clean(row[3]);
       const sputumDate = parseDateLoose(row[4]);
       const sputumResultRaw = clean(row[5]);
 
-      const u: StatusUpdate = { id: m.id, tb_status: status };
-      if (fluoroDate) {
-        const { code, text } = mapResultCode(fluoroResultRaw);
-        u.add_fluoro = [{ date: fluoroDate, result_code: code, result: text }];
+      const fluoros = fluoroDate
+        ? [{ date: fluoroDate, result_code: mapResultCode(fluoroResultRaw).code, result: mapResultCode(fluoroResultRaw).text }]
+        : undefined;
+      const sputums = sputumDate
+        ? [{ date: sputumDate, test_type: 'xpert' as const, result: sputumResultRaw }]
+        : undefined;
+
+      const m = matchPatient(index, split.surname, split.first, birthIso);
+      if (m && !('multiple' in m)) {
+        const u: StatusUpdate = { id: m.id, tb_status: status };
+        if (fluoros) u.add_fluoro = fluoros;
+        if (sputums) u.add_sputum = sputums;
+        updates.push(u);
+        continue;
       }
-      if (sputumDate) {
-        u.add_sputum = [{ date: sputumDate, test_type: 'xpert', result: sputumResultRaw }];
+
+      if (!birthIso) {
+        invalid.push({ fullName, birth: String(row[1] ?? ''), sheet: sheetName });
+        continue;
       }
-      updates.push(u);
+      const key = `${normName(split.surname)}|${normName(split.first)}|${normName(split.patronymic)}|${birthIso}`;
+      const existing = externalByKey.get(key);
+      // 'detected' overrides 'contact'.
+      const newStatus: 'detected' | 'contact' =
+        existing?.tb_status === 'detected' || status === 'detected' ? 'detected' : 'contact';
+      const merged: StatusExternalCandidate = {
+        surname: split.surname,
+        first_name: split.first,
+        patronymic: split.patronymic,
+        birth_date: birthIso,
+        tb_status: newStatus,
+        add_fluoro: [...(existing?.add_fluoro ?? []), ...(fluoros ?? [])],
+        add_sputum: [...(existing?.add_sputum ?? []), ...(sputums ?? [])],
+      };
+      if (merged.add_fluoro!.length === 0) delete merged.add_fluoro;
+      if (merged.add_sputum!.length === 0) delete merged.add_sputum;
+      externalByKey.set(key, merged);
     }
   }
 
-  return { updates, unmatched, warnings, totalRows };
+  return {
+    updates,
+    externalCandidates: Array.from(externalByKey.values()),
+    invalid,
+    warnings,
+    totalRows,
+  };
 }
 
 function clean(v: unknown): string | null {

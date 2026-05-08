@@ -20,23 +20,50 @@ type FluoroBulkBody = {
   rows: { medics_id: string; date: string; result?: string | null; result_code?: FluoroResultCode; next_planned_date?: string | null; notes?: string | null }[];
 };
 
+type RiskUpdate = {
+  id: string;
+  add_social: string[];
+  add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null; next_planned_date: string | null }[];
+};
+
+type RiskExternal = {
+  surname: string;
+  first_name: string;
+  patronymic: string | null;
+  birth_date: string;
+  location_id: string;
+  add_social: string[];
+  add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null; next_planned_date: string | null }[];
+};
+
 type RiskBulkBody = {
   action: 'risk-groups-bulk';
-  updates: {
-    id: string;
-    add_social: string[];
-    add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null; next_planned_date: string | null }[];
-  }[];
+  updates: RiskUpdate[];
+  create_external?: RiskExternal[];
+};
+
+type StatusUpdate = {
+  id: string;
+  tb_status: 'detected' | 'contact';
+  add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null }[];
+  add_sputum?: { date: string; test_type: string; result: string | null }[];
+};
+
+type StatusExternal = {
+  surname: string;
+  first_name: string;
+  patronymic: string | null;
+  birth_date: string;
+  location_id: string;
+  tb_status: 'detected' | 'contact';
+  add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null }[];
+  add_sputum?: { date: string; test_type: string; result: string | null }[];
 };
 
 type StatusBulkBody = {
   action: 'status-bulk';
-  updates: {
-    id: string;
-    tb_status: 'detected' | 'contact';
-    add_fluoro?: { date: string; result_code: FluoroResultCode; result: string | null }[];
-    add_sputum?: { date: string; test_type: string; result: string | null }[];
-  }[];
+  updates: StatusUpdate[];
+  create_external?: StatusExternal[];
 };
 
 export default async function handler(req: Req, res: Res) {
@@ -128,7 +155,42 @@ async function handleRiskBulk(body: RiskBulkBody, res: Res) {
   const supabase = getSupabaseAdmin();
   let patientsUpdated = 0;
   let fluoroAdded = 0;
+  let externalCreated = 0;
 
+  // 1) Create external patients first → get their ids → fold into updates list.
+  const externalUpdates: RiskUpdate[] = [];
+  const ext = body.create_external ?? [];
+  if (ext.length > 0) {
+    const rows = ext.map((e) => ({
+      surname: e.surname,
+      first_name: e.first_name,
+      patronymic: e.patronymic,
+      birth_date: e.birth_date,
+      location_id: e.location_id,
+      tb_status: 'external' as const,
+      social_risk_groups: e.add_social,
+      medical_risk_groups: [],
+      diagnoses_codes: [],
+    }));
+    for (const chunk of chunked(rows, 500)) {
+      const { data, error } = await supabase.from('patients').insert(chunk).select('id, surname, first_name, birth_date');
+      if (error) {
+        res.status(500).json({ error: `external insert: ${error.message}` });
+        return;
+      }
+      for (const created of data ?? []) {
+        const match = ext.find(
+          (e) => e.surname === created.surname && e.first_name === created.first_name && e.birth_date === created.birth_date,
+        );
+        if (match && match.add_fluoro && match.add_fluoro.length > 0) {
+          externalUpdates.push({ id: created.id as string, add_social: [], add_fluoro: match.add_fluoro });
+        }
+        externalCreated += 1;
+      }
+    }
+  }
+
+  // 2) Merge social_risk_groups for existing patients.
   const ids = body.updates.map((u) => u.id);
   const currentMap = new Map<string, string[]>();
   if (ids.length > 0) {
@@ -174,6 +236,20 @@ async function handleRiskBulk(body: RiskBulkBody, res: Res) {
     }
   }
 
+  // Fluoro for newly created external patients.
+  for (const u of externalUpdates) {
+    for (const f of u.add_fluoro ?? []) {
+      fluoroInserts.push({
+        patient_id: u.id,
+        date: f.date,
+        result: f.result,
+        result_code: f.result_code,
+        next_planned_date: f.next_planned_date,
+        source: 'imported_xlsx',
+      });
+    }
+  }
+
   for (const chunk of chunked(fluoroInserts, 500)) {
     const { error, count } = await supabase
       .from('fluorography')
@@ -185,7 +261,7 @@ async function handleRiskBulk(body: RiskBulkBody, res: Res) {
     fluoroAdded += count ?? chunk.length;
   }
 
-  res.status(200).json({ patientsUpdated, fluoroAdded });
+  res.status(200).json({ patientsUpdated, fluoroAdded, externalCreated });
 }
 
 // ── Status bulk (set detected/contact + fluoro/sputum) ─────────────────────
@@ -199,9 +275,57 @@ async function handleStatusBulk(body: StatusBulkBody, res: Res) {
   let statusChanged = 0;
   let fluoroAdded = 0;
   let sputumAdded = 0;
+  let externalCreated = 0;
 
   const fluoroInserts: Record<string, unknown>[] = [];
   const sputumInserts: Record<string, unknown>[] = [];
+
+  // 1) Create external patients with their tb_status; remember their ids for fluoro/sputum.
+  const ext = body.create_external ?? [];
+  if (ext.length > 0) {
+    const rows = ext.map((e) => ({
+      surname: e.surname,
+      first_name: e.first_name,
+      patronymic: e.patronymic,
+      birth_date: e.birth_date,
+      location_id: e.location_id,
+      tb_status: e.tb_status,
+      medical_risk_groups: [],
+      social_risk_groups: [],
+      diagnoses_codes: [],
+    }));
+    for (const chunk of chunked(rows, 500)) {
+      const { data, error } = await supabase.from('patients').insert(chunk).select('id, surname, first_name, birth_date');
+      if (error) {
+        res.status(500).json({ error: `external insert: ${error.message}` });
+        return;
+      }
+      for (const created of data ?? []) {
+        const match = ext.find(
+          (e) => e.surname === created.surname && e.first_name === created.first_name && e.birth_date === created.birth_date,
+        );
+        if (!match) continue;
+        externalCreated += 1;
+        for (const f of match.add_fluoro ?? []) {
+          fluoroInserts.push({
+            patient_id: created.id as string,
+            date: f.date,
+            result: f.result,
+            result_code: f.result_code,
+            source: 'imported_xlsx',
+          });
+        }
+        for (const s of match.add_sputum ?? []) {
+          sputumInserts.push({
+            patient_id: created.id as string,
+            date: s.date,
+            test_type: s.test_type,
+            result: s.result,
+          });
+        }
+      }
+    }
+  }
 
   for (const u of body.updates) {
     const { error } = await supabase
@@ -251,7 +375,7 @@ async function handleStatusBulk(body: StatusBulkBody, res: Res) {
     sputumAdded += count ?? chunk.length;
   }
 
-  res.status(200).json({ statusChanged, fluoroAdded, sputumAdded });
+  res.status(200).json({ statusChanged, fluoroAdded, sputumAdded, externalCreated });
 }
 
 function* chunked<T>(arr: T[], size: number): Generator<T[]> {
