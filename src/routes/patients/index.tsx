@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   flexRender,
   getCoreRowModel,
@@ -7,14 +7,14 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Download, Search, Loader2 } from 'lucide-react';
+import { Download, Search, Loader2, X } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { usePatients, type PatientFilters } from '@/hooks/usePatients';
+import { usePatients, FILTER_LABELS, type PatientFilters, type PatientFilter } from '@/hooks/usePatients';
 import { exportPatientsXlsx } from '@/lib/xlsx-export';
-import { calcAge, formatDateUk } from '@/lib/date-utils';
+import { calcAge, formatDateUk, fluoroBucket, daysSince } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import {
   LOCATION_LABELS,
@@ -33,26 +33,40 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
+const VALID_FILTERS: PatientFilter[] = ['overdue', 'this_week', 'next_30', 'no_fluoro', 'contacts_no_fluoro', 'detected'];
+
 export function PatientsPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlFilter = searchParams.get('filter') as PatientFilter | null;
+  const filter: PatientFilter | undefined =
+    urlFilter && VALID_FILTERS.includes(urlFilter) ? urlFilter : undefined;
+
   const [location, setLocation] = useState<'' | LocationId>('');
   const [status, setStatus] = useState<'' | TbStatus>('');
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
   const search = useDebounced(searchInput, 300);
 
-  const navigate = useNavigate();
   const filters: PatientFilters = useMemo(
     () => ({
       location: location || undefined,
       status: status || undefined,
       search: search || undefined,
       archived,
+      filter,
     }),
-    [location, status, search, archived],
+    [location, status, search, archived, filter],
   );
 
   const { data, isLoading, isFetching, error } = usePatients(filters);
   const patients = data?.patients ?? [];
+
+  const clearUrlFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('filter');
+    setSearchParams(next, { replace: true });
+  };
 
   const columns = useMemo<ColumnDef<Patient>[]>(
     () => [
@@ -82,20 +96,17 @@ export function PatientsPage() {
       {
         header: 'Статус',
         accessorKey: 'tb_status',
-        cell: (info) => {
-          const s = info.getValue<TbStatus>();
-          return <StatusBadge status={s} />;
-        },
+        cell: (info) => <StatusBadge status={info.getValue<TbStatus>()} />,
       },
       {
-        header: 'Групи ризику',
+        header: 'Групи',
         accessorFn: (p) => [...p.medical_risk_groups, ...p.social_risk_groups],
         cell: (info) => {
           const groups = info.getValue<string[]>();
           if (groups.length === 0) return <span className="text-slate-400">—</span>;
           return (
             <div className="flex flex-wrap gap-1">
-              {groups.slice(0, 3).map((g) => (
+              {groups.slice(0, 2).map((g) => (
                 <span
                   key={g}
                   className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
@@ -103,21 +114,49 @@ export function PatientsPage() {
                   {g}
                 </span>
               ))}
-              {groups.length > 3 && (
-                <span className="text-xs text-slate-400">+{groups.length - 3}</span>
+              {groups.length > 2 && (
+                <span className="text-xs text-slate-400">+{groups.length - 2}</span>
               )}
             </div>
           );
         },
       },
       {
-        header: 'Телефон',
-        accessorKey: 'phone',
-        cell: (info) => (
-          <span className="font-mono text-xs text-slate-600">
-            {info.getValue<string | null>() ?? '—'}
-          </span>
-        ),
+        header: 'Остання флюоро',
+        accessorKey: 'last_fluoro_date',
+        cell: (info) => {
+          const v = info.getValue<string | null>();
+          return <span className="text-slate-600">{v ? formatDateUk(v) : <span className="text-slate-400">—</span>}</span>;
+        },
+      },
+      {
+        header: 'Наступна',
+        accessorKey: 'next_planned_date',
+        cell: ({ row }) => {
+          const v = row.original.next_planned_date;
+          if (!v) return <span className="text-slate-400">—</span>;
+          const bucket = fluoroBucket(v);
+          const days = daysSince(v);
+          const tone =
+            bucket === 'overdue'
+              ? 'text-red-700'
+              : bucket === 'this_week'
+                ? 'text-orange-700'
+                : bucket === 'next_30'
+                  ? 'text-cyan-700'
+                  : 'text-slate-600';
+          return (
+            <div className={cn('text-sm', tone)}>
+              {formatDateUk(v)}
+              {bucket === 'overdue' && days != null && (
+                <div className="text-xs">просрочено {days} дн.</div>
+              )}
+              {bucket === 'this_week' && days != null && (
+                <div className="text-xs">через {-days} дн.</div>
+              )}
+            </div>
+          );
+        },
       },
     ],
     [],
@@ -134,6 +173,7 @@ export function PatientsPage() {
     if (patients.length === 0) return;
     const today = new Date().toISOString().slice(0, 10);
     const parts = ['pacienti'];
+    if (filter) parts.push(filter);
     if (location) parts.push(location);
     if (status) parts.push(status);
     parts.push(today);
@@ -155,6 +195,21 @@ export function PatientsPage() {
           </Button>
         }
       />
+
+      {filter && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
+          <span className="text-blue-700">Активний фільтр:</span>
+          <span className="font-medium text-blue-900">{FILTER_LABELS[filter]}</span>
+          <button
+            type="button"
+            onClick={clearUrlFilter}
+            className="ml-auto rounded p-1 text-blue-700 hover:bg-blue-100"
+            aria-label="Зняти фільтр"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <div className="min-w-[220px] flex-1">
@@ -266,8 +321,12 @@ export function PatientsPage() {
 }
 
 function rowAccent(p: Patient): string {
-  // Yellow border-left for detected, blue for contact. Overdue-fluoro accents
-  // come in Phase 1.B-3 once last_fluoro_date is exposed in the list payload.
+  // Priority: overdue (red) > this_week (orange) > next_30 (cyan) >
+  // detected (yellow) > contact (blue).
+  const bucket = fluoroBucket(p.next_planned_date);
+  if (bucket === 'overdue') return 'border-l-4 border-l-red-500';
+  if (bucket === 'this_week') return 'border-l-4 border-l-orange-400';
+  if (bucket === 'next_30') return 'border-l-4 border-l-cyan-400';
   if (p.tb_status === 'detected') return 'border-l-4 border-l-yellow-400';
   if (p.tb_status === 'contact') return 'border-l-4 border-l-blue-400';
   return '';

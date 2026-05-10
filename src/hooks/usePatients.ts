@@ -2,11 +2,29 @@ import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import type { Patient, PatientForDiff } from '@/types/database';
 
+export type PatientFilter =
+  | 'overdue'
+  | 'this_week'
+  | 'next_30'
+  | 'no_fluoro'
+  | 'contacts_no_fluoro'
+  | 'detected';
+
 export type PatientFilters = {
   location?: string;
   status?: string;
   search?: string;
   archived?: boolean;
+  filter?: PatientFilter;
+};
+
+export const FILTER_LABELS: Record<PatientFilter, string> = {
+  overdue: 'Прострочено',
+  this_week: 'На цьому тижні',
+  next_30: 'Найближчі 30 днів',
+  no_fluoro: 'Без флюоро',
+  contacts_no_fluoro: 'Контактні без флюоро',
+  detected: 'Виявлені',
 };
 
 function buildQuery(filters: PatientFilters): string {
@@ -15,6 +33,7 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.status) params.set('status', filters.status);
   if (filters.search) params.set('search', filters.search);
   if (filters.archived) params.set('archived', '1');
+  if (filters.filter) params.set('filter', filters.filter);
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }

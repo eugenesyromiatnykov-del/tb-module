@@ -81,6 +81,30 @@ export function formatDateUk(iso: string | null | undefined): string {
   return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
+/** Returns whole days from `iso` to today. Negative = future, positive = past. */
+export function daysSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return Math.round((today.getTime() - d.getTime()) / 86400_000);
+}
+
+/** Classifies a planned-fluoro date relative to today. */
+export type FluoroBucket = 'overdue' | 'this_week' | 'next_30' | 'later' | 'none';
+export function fluoroBucket(plannedIso: string | null | undefined): FluoroBucket {
+  if (!plannedIso) return 'none';
+  const d = daysSince(plannedIso);
+  if (d == null) return 'none';
+  if (d > 0) return 'overdue';
+  if (d >= -7) return 'this_week';
+  if (d >= -30) return 'next_30';
+  return 'later';
+}
+
 export function calcAge(birthIso: string | null | undefined, refIso?: string): number | null {
   if (!birthIso) return null;
   const m = birthIso.match(/^(\d{4})-(\d{2})-(\d{2})/);

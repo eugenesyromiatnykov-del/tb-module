@@ -31,6 +31,11 @@ export type Patient = {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+
+  // Derived from latest fluoro record (via patient_dashboard view).
+  last_fluoro_date: string | null;
+  next_planned_date: string | null;
+  last_result_code: FluoroResultCode | null;
 };
 
 export type PatientForDiff = Pick<
