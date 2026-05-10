@@ -130,8 +130,10 @@ async function handleFluoroBulk(body: FluoroBulkBody, res: Res) {
     });
   }
 
+  const dedupedInserts = await dedupeFluoro(supabase, inserts as FluoroInsert[]);
+  const skippedDupe = inserts.length - dedupedInserts.length;
   let added = 0;
-  for (const chunk of chunked(inserts, 500)) {
+  for (const chunk of chunked(dedupedInserts, 500)) {
     const { error, count } = await supabase
       .from('fluorography')
       .insert(chunk, { count: 'exact' });
@@ -142,7 +144,7 @@ async function handleFluoroBulk(body: FluoroBulkBody, res: Res) {
     added += count ?? chunk.length;
   }
 
-  res.status(200).json({ added, skipped, matched: inserts.length });
+  res.status(200).json({ added, skipped, skippedDupe, matched: inserts.length });
 }
 
 // ── Risk groups bulk (merge social_risk_groups + insert fluoro) ────────────
@@ -250,7 +252,8 @@ async function handleRiskBulk(body: RiskBulkBody, res: Res) {
     }
   }
 
-  for (const chunk of chunked(fluoroInserts, 500)) {
+  const dedupedFluoro = await dedupeFluoro(supabase, fluoroInserts as FluoroInsert[]);
+  for (const chunk of chunked(dedupedFluoro, 500)) {
     const { error, count } = await supabase
       .from('fluorography')
       .insert(chunk, { count: 'exact' });
@@ -357,7 +360,8 @@ async function handleStatusBulk(body: StatusBulkBody, res: Res) {
     }
   }
 
-  for (const chunk of chunked(fluoroInserts, 500)) {
+  const dedupedFluoroStatus = await dedupeFluoro(supabase, fluoroInserts as FluoroInsert[]);
+  for (const chunk of chunked(dedupedFluoroStatus, 500)) {
     const { error, count } = await supabase.from('fluorography').insert(chunk, { count: 'exact' });
     if (error) {
       res.status(500).json({ error: `fluoro: ${error.message}` });
@@ -366,7 +370,8 @@ async function handleStatusBulk(body: StatusBulkBody, res: Res) {
     fluoroAdded += count ?? chunk.length;
   }
 
-  for (const chunk of chunked(sputumInserts, 500)) {
+  const dedupedSputum = await dedupeSputum(supabase, sputumInserts as SputumInsert[]);
+  for (const chunk of chunked(dedupedSputum, 500)) {
     const { error, count } = await supabase.from('sputum_tests').insert(chunk, { count: 'exact' });
     if (error) {
       res.status(500).json({ error: `sputum: ${error.message}` });
@@ -380,4 +385,55 @@ async function handleStatusBulk(body: StatusBulkBody, res: Res) {
 
 function* chunked<T>(arr: T[], size: number): Generator<T[]> {
   for (let i = 0; i < arr.length; i += size) yield arr.slice(i, i + size);
+}
+
+// ── Idempotency helpers — skip rows that already exist in the DB ───────────
+
+type FluoroInsert = { patient_id: string; date: string; result_code: string; [k: string]: unknown };
+type SputumInsert = { patient_id: string; date: string; test_type: string; [k: string]: unknown };
+
+async function dedupeFluoro(supabase: ReturnType<typeof getSupabaseAdmin>, rows: FluoroInsert[]): Promise<FluoroInsert[]> {
+  if (rows.length === 0) return rows;
+  const patientIds = Array.from(new Set(rows.map((r) => r.patient_id)));
+  const existing = new Set<string>();
+  for (const chunk of chunked(patientIds, 500)) {
+    const { data, error } = await supabase
+      .from('fluorography')
+      .select('patient_id, date, result_code')
+      .in('patient_id', chunk);
+    if (error) throw new Error(`fluoro dedupe lookup: ${error.message}`);
+    for (const r of data ?? []) existing.add(`${r.patient_id}|${r.date}|${r.result_code}`);
+  }
+  const seen = new Set<string>();
+  const out: FluoroInsert[] = [];
+  for (const r of rows) {
+    const k = `${r.patient_id}|${r.date}|${r.result_code}`;
+    if (existing.has(k) || seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out;
+}
+
+async function dedupeSputum(supabase: ReturnType<typeof getSupabaseAdmin>, rows: SputumInsert[]): Promise<SputumInsert[]> {
+  if (rows.length === 0) return rows;
+  const patientIds = Array.from(new Set(rows.map((r) => r.patient_id)));
+  const existing = new Set<string>();
+  for (const chunk of chunked(patientIds, 500)) {
+    const { data, error } = await supabase
+      .from('sputum_tests')
+      .select('patient_id, date, test_type')
+      .in('patient_id', chunk);
+    if (error) throw new Error(`sputum dedupe lookup: ${error.message}`);
+    for (const r of data ?? []) existing.add(`${r.patient_id}|${r.date}|${r.test_type}`);
+  }
+  const seen = new Set<string>();
+  const out: SputumInsert[] = [];
+  for (const r of rows) {
+    const k = `${r.patient_id}|${r.date}|${r.test_type}`;
+    if (existing.has(k) || seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out;
 }

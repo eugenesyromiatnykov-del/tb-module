@@ -49,23 +49,93 @@ export default async function handler(req: Req, res: Res) {
 
   const supabase = getSupabaseAdmin();
 
-  // 1) INSERT new patients (chunked).
+  // 1) Resolve incoming rows into INSERT (truly new) vs PROMOTE (already
+  // exists as a no-medics_id "external"/"contact"/"detected" with same
+  // surname+first+birth → assign medics_id, switch to risk, update fields).
   let added = 0;
+  let promoted = 0;
   if (body.add.length > 0) {
-    const rows = body.add.map((p) => ({
-      ...p,
-      tb_status: 'risk' as const,
-      medical_risk_groups: [],
-      social_risk_groups: [],
-      diagnoses_codes: [],
-    }));
-    for (const chunk of chunked(rows, 500)) {
-      const { error, count } = await supabase.from('patients').insert(chunk, { count: 'exact' });
+    // Pull all non-declarant patients (medics_id IS NULL) so we can match by ПІБ+ДН.
+    const { data: candidates, error: candErr } = await supabase
+      .from('patients')
+      .select('id, surname, first_name, patronymic, birth_date')
+      .is('medics_id', null);
+    if (candErr) {
+      res.status(500).json({ error: `lookup external: ${candErr.message}` });
+      return;
+    }
+    const norm = (s: string | null | undefined) =>
+      (s ?? '').toString().toLowerCase().replace(/[ʼ'`]/g, "'").trim();
+    const byKey = new Map<string, string>(); // key → patient.id
+    for (const c of candidates ?? []) {
+      const k = `${norm(c.surname)}|${norm(c.first_name)}|${c.birth_date}`;
+      if (!byKey.has(k)) byKey.set(k, c.id as string);
+    }
+
+    const trulyNew: typeof body.add = [];
+    const toPromote: { id: string; row: typeof body.add[number] }[] = [];
+    for (const p of body.add) {
+      const k = `${norm(p.surname)}|${norm(p.first_name)}|${p.birth_date}`;
+      const existingId = byKey.get(k);
+      if (existingId) toPromote.push({ id: existingId, row: p });
+      else trulyNew.push(p);
+    }
+
+    // INSERT truly new.
+    if (trulyNew.length > 0) {
+      const rows = trulyNew.map((p) => ({
+        ...p,
+        tb_status: 'risk' as const,
+        medical_risk_groups: [],
+        social_risk_groups: [],
+        diagnoses_codes: [],
+      }));
+      for (const chunk of chunked(rows, 500)) {
+        const { error, count } = await supabase.from('patients').insert(chunk, { count: 'exact' });
+        if (error) {
+          res.status(500).json({ error: `insert: ${error.message}` });
+          return;
+        }
+        added += count ?? chunk.length;
+      }
+    }
+
+    // PROMOTE: keep social_risk_groups, fluoro/sputum (already linked), but assign
+    // medics_id, set tb_status='risk' (or keep detected/contact if it was), and
+    // overwrite identity fields from the xlsx.
+    for (const { id, row } of toPromote) {
+      const patch = {
+        medics_id: row.medics_id,
+        surname: row.surname,
+        first_name: row.first_name,
+        patronymic: row.patronymic,
+        birth_date: row.birth_date,
+        gender: row.gender,
+        phone: row.phone,
+        address: row.address,
+        location_id: row.location_id,
+        // tb_status: don't downgrade detected/contact; otherwise → 'risk'
+        // (handled via SQL CASE). Simplest: read current, decide here.
+      };
+      // Fetch current status to decide.
+      const { data: cur } = await supabase
+        .from('patients')
+        .select('tb_status')
+        .eq('id', id)
+        .maybeSingle();
+      const finalStatus =
+        cur?.tb_status === 'detected' || cur?.tb_status === 'contact'
+          ? cur.tb_status
+          : 'risk';
+      const { error } = await supabase
+        .from('patients')
+        .update({ ...patch, tb_status: finalStatus })
+        .eq('id', id);
       if (error) {
-        res.status(500).json({ error: `insert: ${error.message}` });
+        res.status(500).json({ error: `promote ${id}: ${error.message}` });
         return;
       }
-      added += count ?? chunk.length;
+      promoted += 1;
     }
   }
 
@@ -103,17 +173,18 @@ export default async function handler(req: Req, res: Res) {
     filename: body.filename ?? null,
     total_in_file: body.totalInFile ?? body.add.length + body.update.length,
     patients_added: added,
-    patients_updated: updated,
+    patients_updated: updated + promoted,
     patients_archived: archived,
     diff_summary: {
       locationId: body.locationId,
       add: body.add.length,
       update: body.update.length,
       archive: body.archive.length,
+      promoted,
     },
   });
 
-  res.status(200).json({ added, updated, archived });
+  res.status(200).json({ added, updated, archived, promoted });
 }
 
 function* chunked<T>(arr: T[], size: number): Generator<T[]> {
