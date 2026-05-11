@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Модуль ТБ — bridge",
+  "version": "0.1.0",
+  "description": "Інтеграція medics.ua з модулем управління туберкульозом",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://medics.ua/*"
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Модуль ТБ — налаштування",
+    "default_popup": "options.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://medics.ua/*"],
+      "js": ["tb-module-bridge.js"],
+      "css": ["tb-module-bridge.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

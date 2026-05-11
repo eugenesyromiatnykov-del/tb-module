@@ -28,6 +28,13 @@ const items: Item[] = [
     available: true,
   },
   {
+    to: '/orders',
+    icon: Database,
+    title: 'Накази МОЗ',
+    subtitle: 'Завантаження та перегляд PDF/DOCX',
+    available: true,
+  },
+  {
     to: '/settings/email-digest',
     icon: Mail,
     title: 'Email-дайджести',

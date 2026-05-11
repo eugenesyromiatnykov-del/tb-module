@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Модуль ТБ — налаштування</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+        margin: 0;
+        padding: 20px;
+        width: 340px;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 16px;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        color: #334155;
+        margin-bottom: 4px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        font-size: 13px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        margin-bottom: 12px;
+      }
+      input:focus {
+        outline: 2px solid #2563eb;
+        outline-offset: -1px;
+        border-color: transparent;
+      }
+      button {
+        width: 100%;
+        padding: 9px 12px;
+        background: #2563eb;
+        color: #fff;
+        border: 0;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      button:hover { background: #1d4ed8; }
+      .hint {
+        font-size: 11px;
+        color: #64748b;
+        margin: 0 0 12px;
+      }
+      #status {
+        margin-top: 12px;
+        font-size: 12px;
+        min-height: 16px;
+      }
+      .status-ok { color: #059669; }
+      .status-err { color: #dc2626; }
+    </style>
+  </head>
+  <body>
+    <h1>Модуль ТБ — налаштування</h1>
+
+    <label for="moduleUrl">URL модуля</label>
+    <input id="moduleUrl" type="url" placeholder="https://tb-module.vercel.app" />
+
+    <label for="pin">PIN практики</label>
+    <input id="pin" type="password" inputmode="numeric" placeholder="••••••••" />
+    <p class="hint">Той самий PIN, що ви вводите при вході в модуль. Зберігається у захищеному сховищі браузера, не передається на сторонні сервери.</p>
+
+    <button id="save">Зберегти і перевірити</button>
+    <div id="status"></div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
