@@ -419,29 +419,18 @@
   }
 
   function renderEmpty(medicsId, source) {
-    const ctx = extractContext();
-    const missing = [];
-    if (!ctx.surname) missing.push('ПІБ');
-    if (!ctx.birth_date) missing.push('ДН');
-    const canCreate = missing.length === 0;
     const srcLbl = source === 'manual' ? '(введено вручну)' : '';
     setSection('info', `
       <div>
         <div class="tb-section__name">Пацієнта немає в реєстрі ТБ</div>
         <div class="tb-section__meta">Medics ID: ${escHtml(medicsId)} ${srcLbl}</div>
       </div>
-      ${canCreate
-        ? `<div class="tb-section__row"><span>Зчитано:</span><strong>${escHtml([ctx.surname, ctx.first_name, ctx.patronymic].filter(Boolean).join(' '))} · ${escHtml(ctx.birth_date || '')}</strong></div>`
-        : `<div class="tb-section__row" style="color:#92400e;"><span>Не зчитано:</span><strong>${missing.join(', ')}</strong></div>`}
+      <div class="tb-section__hint">Натисніть «Проаналізувати» — пацієнт додасться автоматично разом з діагнозами та R-ОГК.</div>
       <div class="tb-section__actions">
-        <button class="tb-btn" id="tb-sync" type="button"${canCreate ? '' : ' disabled'}>
-          ${canCreate ? 'Створити в модулі' : 'Не вистачає даних'}
-        </button>
         ${source === 'manual' ? '<button class="tb-btn tb-btn--ghost" id="tb-forget" type="button">Забути ID</button>' : ''}
         <button class="tb-btn tb-btn--ghost" id="tb-change-medics" type="button">Інший Medics ID</button>
       </div>
     `);
-    document.getElementById('tb-sync')?.addEventListener('click', () => doSync(true));
     document.getElementById('tb-forget')?.addEventListener('click', async () => {
       await deleteManualMapping(pageKey()); STATE.currentMedicsId = null; await refresh();
     });
@@ -476,14 +465,14 @@
       <div class="tb-section__row"><span>Остання флюоро:</span><strong>${p.last_fluoro_date ? formatDate(p.last_fluoro_date) : '—'}</strong></div>
       ${nextRow}
       ${groups.length > 0 ? `<div class="tb-section__groups">${groups.map((g) => `<span class="tb-section__group">${escHtml(g)}</span>`).join('')}</div>` : ''}
-      ${STATE.lastSyncedAt ? `<div class="tb-section__hint">Синхронізовано ${new Date(STATE.lastSyncedAt).toLocaleTimeString('uk-UA')}</div>` : ''}
+      ${STATE.lastSyncedAt
+        ? `<div class="tb-section__hint">Синхронізовано ${new Date(STATE.lastSyncedAt).toLocaleTimeString('uk-UA')}</div>`
+        : `<div class="tb-section__hint">Оновлюється автоматично після «Проаналізувати».</div>`}
       <div class="tb-section__actions">
-        <button class="tb-btn" id="tb-sync" type="button">Оновити з МІС</button>
         <a class="tb-btn tb-btn--ghost" href="${STATE.config.url}/patients/${p.id}" target="_blank">Картка ↗</a>
         ${source === 'manual' ? '<button class="tb-btn tb-btn--ghost" id="tb-forget" type="button">Забути ID</button>' : ''}
       </div>
     `);
-    document.getElementById('tb-sync')?.addEventListener('click', () => doSync(true));
     document.getElementById('tb-forget')?.addEventListener('click', async () => {
       await deleteManualMapping(pageKey()); STATE.currentMedicsId = null; await refresh();
     });
