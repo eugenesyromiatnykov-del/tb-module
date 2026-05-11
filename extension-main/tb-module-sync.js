@@ -203,11 +203,10 @@
   }
 
   // ─── R-ОГК: pull last diagnostic report + its conclusion text ────────
-  // Codes from indicator 10 requiredActions / sample data:
-  //   58500-00 Рентгенографія грудної клітки
-  //   56301-00 КТ грудної клітки
-  //   A34030   (alias used in the rendered DOM)
-  const RX_CHEST_CODES = ['58500-00', '56301-00', 'A34030'];
+  // Only codes that unambiguously identify chest imaging (per indicator 10
+  // requiredActions). A34030 was removed: in medics.ua it's also used
+  // for "Аналіз; біохімія" and other non-imaging reports — too generic.
+  const RX_CHEST_CODES = ['58500-00', '56301-00'];
 
   function classifyResult(text) {
     if (!text) return 'unknown';
