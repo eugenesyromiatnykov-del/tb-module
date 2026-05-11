@@ -27,6 +27,7 @@ import {
   TB_STATUS_LABELS,
   type FluoroRecord,
   type FluoroResultCode,
+  type LocationId,
   type SputumTest,
   type SputumTestType,
   type TbStatus,
@@ -230,6 +231,21 @@ function OverviewTab({
           <Field label="Телефон" value={patient.phone ?? '—'} />
           <Field label="Адреса" value={patient.address ?? '—'} />
           <Field label="Стать" value={patient.gender === 'M' ? 'Чоловіча' : patient.gender === 'F' ? 'Жіноча' : '—'} />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Локація</label>
+            <Select
+              value={patient.location_id ?? ''}
+              onChange={(e) => update.mutate({ location_id: (e.target.value || null) as LocationId | null })}
+              disabled={update.isPending}
+            >
+              <option value="">— не вказано —</option>
+              {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
+                <option key={id} value={id}>
+                  {LOCATION_LABELS[id]}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Статус ТБ</label>
             <Select

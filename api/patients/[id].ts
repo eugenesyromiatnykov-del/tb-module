@@ -24,6 +24,7 @@ const PATIENT_FIELDS = `
 const ALLOWED_PATCH_FIELDS = new Set([
   'phone',
   'address',
+  'location_id',
   'tb_status',
   'social_risk_groups',
   'medical_risk_groups',

@@ -96,7 +96,7 @@ export default async function handler(req: Req, res: Res) {
       .from('patients')
       .select(SELECT_FOR_DIFF)
       .order('medics_id', { ascending: true })
-      .limit(20000);
+      .range(0, 19999);
     if (error) {
       res.status(500).json({ error: error.message });
       return;
@@ -175,7 +175,9 @@ export default async function handler(req: Req, res: Res) {
       `surname.ilike.${like},first_name.ilike.${like},patronymic.ilike.${like},medics_id.ilike.${like}`,
     );
   }
-  query = query.order('surname', { ascending: true }).limit(5000);
+  // Supabase REST API caps replies at 1000 rows by default — use range
+  // to actually return everything that matches.
+  query = query.order('surname', { ascending: true }).range(0, 9999);
 
   const { data, error } = await query;
   if (error) {
