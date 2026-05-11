@@ -32,10 +32,11 @@ export function useAddFluoro(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<FluoroRecord, 'id' | 'created_at' | 'source'>) =>
-      apiFetch<{ fluorography: FluoroRecord }>(`/api/fluorography`, { method: 'POST', json: input }),
+      apiFetch<{ record: FluoroRecord }>(`/api/records?kind=fluoro`, { method: 'POST', json: input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 }
@@ -44,10 +45,11 @@ export function useDeleteFluoro(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch<void>(`/api/fluorography/${id}`, { method: 'DELETE' }),
+      apiFetch<void>(`/api/records?kind=fluoro&id=${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 }
@@ -56,7 +58,7 @@ export function useAddSputum(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<SputumTest, 'id' | 'created_at'>) =>
-      apiFetch<{ sputum_test: SputumTest }>(`/api/sputum`, { method: 'POST', json: input }),
+      apiFetch<{ record: SputumTest }>(`/api/records?kind=sputum`, { method: 'POST', json: input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
     },
@@ -66,7 +68,7 @@ export function useAddSputum(patientId: string) {
 export function useDeleteSputum(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => apiFetch<void>(`/api/sputum/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => apiFetch<void>(`/api/records?kind=sputum&id=${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
     },

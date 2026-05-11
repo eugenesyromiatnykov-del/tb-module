@@ -114,3 +114,15 @@ export const SPUTUM_TEST_LABELS: Record<SputumTestType, string> = {
   culture: 'Посів',
   pcr: 'ПЛР',
 };
+
+import type { QuestionnaireResult } from '@/lib/questionnaire';
+
+export type Questionnaire = {
+  id: string;
+  patient_id: string | null;
+  filled_at: string;
+  answers: Record<string, unknown>;
+  result: QuestionnaireResult;
+  filled_by: string | null;
+  notes: string | null;
+};

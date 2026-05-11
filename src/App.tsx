@@ -4,6 +4,9 @@ import { DashboardPage } from '@/routes/dashboard';
 import { PatientsPage } from '@/routes/patients';
 import { PatientDetailPage } from '@/routes/patients/$id';
 import { QuestionnairesPage } from '@/routes/questionnaires';
+import { NewQuestionnairePage } from '@/routes/questionnaires/new';
+import { QuestionnaireDetailPage } from '@/routes/questionnaires/$id';
+import { ReferralPage } from '@/routes/referral';
 import { OrdersPage } from '@/routes/orders';
 import { SettingsPage } from '@/routes/settings';
 import { ImportDeclarantsPage } from '@/routes/settings/import-declarants';
@@ -27,6 +30,9 @@ export function App() {
         <Route path="/patients" element={<PatientsPage />} />
         <Route path="/patients/:id" element={<PatientDetailPage />} />
         <Route path="/questionnaires" element={<QuestionnairesPage />} />
+        <Route path="/questionnaires/new" element={<NewQuestionnairePage />} />
+        <Route path="/questionnaires/:id" element={<QuestionnaireDetailPage />} />
+        <Route path="/referral/:id" element={<ReferralPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/import-declarants" element={<ImportDeclarantsPage />} />

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle, FileText } from 'lucide-react';
+import { useQuestionnaires } from '@/hooks/useQuestionnaires';
+import { RESULT_LABELS, type QuestionnaireResult } from '@/lib/questionnaire';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -30,7 +32,7 @@ import {
   type TbStatus,
 } from '@/types/database';
 
-type Tab = 'overview' | 'fluoro' | 'sputum';
+type Tab = 'overview' | 'fluoro' | 'sputum' | 'questionnaires';
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -86,14 +88,91 @@ export function PatientDetailPage() {
         <TabButton active={tab === 'sputum'} onClick={() => setTab('sputum')}>
           Мокротиння ({sputum_tests.length})
         </TabButton>
+        <TabButton active={tab === 'questionnaires'} onClick={() => setTab('questionnaires')}>
+          Опросники
+        </TabButton>
       </div>
 
       {tab === 'overview' && <OverviewTab data={data} />}
       {tab === 'fluoro' && <FluoroTab patientId={patient.id} records={fluorography} />}
       {tab === 'sputum' && <SputumTab patientId={patient.id} records={sputum_tests} />}
+      {tab === 'questionnaires' && <QuestionnairesTab patientId={patient.id} />}
     </div>
   );
 }
+
+function QuestionnairesTab({ patientId }: { patientId: string }) {
+  const { data, isLoading } = useQuestionnaires({ patient_id: patientId });
+  const rows = data?.questionnaires ?? [];
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Опросники (додаток 9)</CardTitle>
+          <Link to={`/questionnaires/new?patient_id=${patientId}`}>
+            <Button size="sm">
+              <Plus className="h-4 w-4" /> Новий
+            </Button>
+          </Link>
+        </div>
+      </CardHeader>
+      <CardBody className="p-0">
+        {isLoading ? (
+          <div className="flex h-32 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-slate-500">Опросників ще немає</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Дата</th>
+                <th className="px-4 py-2 font-medium">Заповнив</th>
+                <th className="px-4 py-2 font-medium">Результат</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((q) => (
+                <tr key={q.id} className="border-t border-slate-100">
+                  <td className="px-4 py-2 text-slate-700">
+                    {new Date(q.filled_at).toLocaleString('uk-UA', { dateStyle: 'short', timeStyle: 'short' })}
+                  </td>
+                  <td className="px-4 py-2 text-slate-600">{q.filled_by ?? '—'}</td>
+                  <td className="px-4 py-2">
+                    <QResultBadge result={q.result} />
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <Link to={`/questionnaires/${q.id}`} className="text-xs text-blue-700 hover:underline">
+                      Деталі →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function QResultBadge({ result }: { result: QuestionnaireResult }) {
+  const tone: Record<QuestionnaireResult, string> = {
+    low_risk: 'bg-green-100 text-green-800',
+    needs_xray: 'bg-orange-100 text-orange-800',
+    needs_referral: 'bg-red-100 text-red-800',
+  };
+  return (
+    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', tone[result])}>
+      {RESULT_LABELS[result]}
+    </span>
+  );
+}
+
+// avoid "FileText not used" lint warning if no symptom path uses it
+void FileText;
 
 function TabButton({
   active,
