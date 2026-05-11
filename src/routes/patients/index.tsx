@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   flexRender,
   getCoreRowModel,
@@ -37,7 +37,6 @@ function useDebounced<T>(value: T, ms: number): T {
 const VALID_FILTERS: PatientFilter[] = ['overdue', 'this_week', 'next_30', 'no_fluoro', 'contacts_no_fluoro', 'detected'];
 
 export function PatientsPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlFilter = searchParams.get('filter') as PatientFilter | null;
   const filter: PatientFilter | undefined =
