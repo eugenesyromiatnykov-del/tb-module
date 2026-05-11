@@ -325,7 +325,7 @@ export function PatientsPage() {
                   table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
-                      onClick={() => navigate(`/patients/${row.original.id}`)}
+                      onClick={() => window.open(`/patients/${row.original.id}`, '_blank', 'noopener')}
                       className={cn(
                         'cursor-pointer border-t border-slate-100 hover:bg-slate-50',
                         row.original.archived && 'opacity-60',
