@@ -220,50 +220,68 @@
     return 'unknown';
   }
 
-  // Pull last R-ОГК from analyzer.diagnosticReports + DOM conclusion.
-  function extractLastFluoro(collectedData) {
-    // 1) Date from analyzer.diagnosticReports (it parsed Ukrainian-text dates already)
-    let best = null; // { code, date: Date }
-    const reports = collectedData?.diagnosticReports || {};
-    for (const code of RX_CHEST_CODES) {
-      const r = reports[code];
-      if (r?.date) {
-        if (!best || r.date > best.date) best = { code, date: r.date };
-      }
-    }
+  // Pull last R-ОГК from the DOM. Walks each .c-collapse--item, matches
+  // its .c-collapse--item-name against the chest-RX codes, then reads the
+  // sibling date + conclusion from THAT SAME item — avoids leaking the
+  // conclusion of an unrelated (more recent) diagnostic report.
+  function extractLastFluoro(_collectedData) {
+    const RX_NAME_RX = new RegExp(`\\b(${RX_CHEST_CODES.map((c) => c.replace(/[-/]/g, '\\$&')).join('|')})\\b`);
 
-    // 2) Conclusion text — scan DOM for output-item titled "Висновок" that's
-    //    physically associated with one of the chest-RX codes.
-    let conclusion = null;
-    document.querySelectorAll('.c-collapse--output-item').forEach((item) => {
-      const title = item.querySelector('.c-collapse--output-title');
-      if (!title || !/висновок/i.test(title.textContent || '')) return;
-      const txtEl = item.querySelector('.c-collapse--output-text');
-      const text = (txtEl?.textContent || '').trim();
-      if (!text) return;
+    let best = null; // { iso, result }
+    document.querySelectorAll('.c-collapse--item').forEach((item) => {
+      const name = item.querySelector('.c-collapse--item-name');
+      if (!name) return;
+      const nameText = (name.textContent || '').trim();
+      if (!RX_NAME_RX.test(nameText)) return;
 
-      // Walk up looking for a container that mentions a chest-RX code.
-      let parent = item.parentElement;
-      for (let i = 0; i < 8 && parent; i++) {
-        const pText = parent.textContent || '';
-        if (RX_CHEST_CODES.some((c) => pText.includes(c))) {
-          // First match wins (closest enclosing container with a code).
-          if (!conclusion) conclusion = text;
-          break;
-        }
-        parent = parent.parentElement;
+      // Date is in .c-collapse--item-info: "Дата: 25 груд. 2025 р. 16:54"
+      const info = item.querySelector('.c-collapse--item-info');
+      const infoText = (info?.textContent || '').trim();
+      const parsed = parseLooseDate(infoText);
+      if (!parsed) return;
+      const iso = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+
+      // Conclusion lives inside this item's body — local query, not document-wide.
+      let result = null;
+      item.querySelectorAll('.c-collapse--output-item').forEach((oi) => {
+        if (result) return;
+        const t = oi.querySelector('.c-collapse--output-title');
+        if (!t || !/висновок/i.test((t.textContent || '').trim())) return;
+        const txt = oi.querySelector('.c-collapse--output-text');
+        const text = (txt?.textContent || '').trim();
+        if (text) result = text;
+      });
+
+      if (!best || iso > best.iso) {
+        best = { iso, result };
       }
     });
 
     if (!best) return null;
-    const iso = best.date.toISOString().slice(0, 10);
-    const result = conclusion;
     return {
-      date: iso,
-      result,
-      result_code: classifyResult(result),
-      next_planned_date: addMonthsIso(iso, 12),
+      date: best.iso,
+      result: best.result,
+      result_code: classifyResult(best.result),
+      next_planned_date: addMonthsIso(best.iso, 12),
     };
+  }
+
+  // Parse "25 груд. 2025 р. 16:54" / "25.12.2025" / "12/25/2025" → Date.
+  function parseLooseDate(s) {
+    if (!s) return null;
+    // Reuse helpers.parseDate if it covers the Ukrainian-text format.
+    if (typeof parseDate === 'function') {
+      const d = parseDate(s);
+      if (d && !isNaN(d.getTime())) return d;
+    }
+    const ddmmyyyy = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (ddmmyyyy) return new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
+    const mdY = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if (mdY) {
+      let y = +mdY[3]; if (y < 100) y = y >= 30 ? 1900 + y : 2000 + y;
+      return new Date(y, +mdY[1] - 1, +mdY[2]);
+    }
+    return null;
   }
 
   function addMonthsIso(iso, months) {
