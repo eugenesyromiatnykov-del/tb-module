@@ -220,49 +220,69 @@
     return 'unknown';
   }
 
-  // Pull last R-ОГК from the DOM. Walks each .c-collapse--item, matches
-  // its .c-collapse--item-name against the chest-RX codes, then reads the
-  // sibling date + conclusion from THAT SAME item — avoids leaking the
-  // conclusion of an unrelated (more recent) diagnostic report.
+  // Pull last R-ОГК from the DOM. Anchors on .c-collapse--item-name
+  // (the only element whose text starts with the code, e.g.
+  // "58500-00 Рентгенографія грудної клітки"), climbs to its parent
+  // .c-collapse--item, then reads the date + conclusion from THAT item.
   function extractLastFluoro(_collectedData) {
-    const RX_NAME_RX = new RegExp(`\\b(${RX_CHEST_CODES.map((c) => c.replace(/[-/]/g, '\\$&')).join('|')})\\b`);
+    const RX_NAME_RX = new RegExp(`^\\s*(${RX_CHEST_CODES.map((c) => c.replace(/[-/]/g, '\\$&')).join('|')})\\b`);
 
-    let best = null; // { iso, result }
-    document.querySelectorAll('.c-collapse--item').forEach((item) => {
-      const name = item.querySelector('.c-collapse--item-name');
-      if (!name) return;
-      const nameText = (name.textContent || '').trim();
+    const candidates = [];
+    document.querySelectorAll('.c-collapse--item-name').forEach((nameEl) => {
+      const nameText = (nameEl.textContent || '').trim();
       if (!RX_NAME_RX.test(nameText)) return;
+      const item = nameEl.closest('.c-collapse--item');
+      if (!item) return;
 
-      // Date is in .c-collapse--item-info: "Дата: 25 груд. 2025 р. 16:54"
-      const info = item.querySelector('.c-collapse--item-info');
+      // Date — within the same .c-collapse--item-text container that holds name.
+      // Falls back to any .c-collapse--item-info inside the item.
+      const itemText = nameEl.closest('.c-collapse--item-text');
+      const info = itemText?.querySelector('.c-collapse--item-info')
+        || item.querySelector(':scope > .c-collapse--item-header .c-collapse--item-info');
       const infoText = (info?.textContent || '').trim();
       const parsed = parseLooseDate(infoText);
       if (!parsed) return;
       const iso = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
 
-      // Conclusion lives inside this item's body — local query, not document-wide.
+      // Conclusion lives in .c-collapse--item-body of THIS item only.
+      // Use a :scope-rooted selector so we don't bleed into sibling items.
       let result = null;
-      item.querySelectorAll('.c-collapse--output-item').forEach((oi) => {
-        if (result) return;
-        const t = oi.querySelector('.c-collapse--output-title');
-        if (!t || !/висновок/i.test((t.textContent || '').trim())) return;
-        const txt = oi.querySelector('.c-collapse--output-text');
-        const text = (txt?.textContent || '').trim();
-        if (text) result = text;
-      });
-
-      if (!best || iso > best.iso) {
-        best = { iso, result };
+      const body = item.querySelector(':scope > .c-collapse--item-body');
+      if (body) {
+        body.querySelectorAll('.c-collapse--output-item').forEach((oi) => {
+          if (result) return;
+          const t = oi.querySelector('.c-collapse--output-title');
+          if (!t || !/висновок/i.test((t.textContent || '').trim())) return;
+          const txt = oi.querySelector('.c-collapse--output-text');
+          const text = (txt?.textContent || '').trim();
+          if (text) result = text;
+        });
       }
+
+      candidates.push({ iso, result, nameText, hasBody: !!body, item });
     });
 
-    if (!best) return null;
+    console.log('[TB Module] R-ОГК candidates:', candidates.map((c) => ({
+      name: c.nameText, iso: c.iso, hasBody: c.hasBody, result: c.result,
+    })));
+
+    if (candidates.length === 0) return null;
+    // Pick the latest by ISO date; if it has no expanded body, fall back
+    // to the latest one that DOES have a body (conclusion).
+    candidates.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0));
+    const latest = candidates[0];
+    let chosen = latest;
+    if (!latest.result) {
+      const withResult = candidates.find((c) => c.result);
+      if (withResult) chosen = withResult;
+    }
+    console.log('[TB Module] R-ОГК chosen:', { name: chosen.nameText, iso: chosen.iso, result: chosen.result });
+
     return {
-      date: best.iso,
-      result: best.result,
-      result_code: classifyResult(best.result),
-      next_planned_date: addMonthsIso(best.iso, 12),
+      date: chosen.iso,
+      result: chosen.result,
+      result_code: classifyResult(chosen.result),
+      next_planned_date: addMonthsIso(chosen.iso, 12),
     };
   }
 
