@@ -1,0 +1,1152 @@
+// ============================================================================
+// UI.JS - ФИНАЛЬНАЯ ВЕРСИЯ С ПРОГРЕСС-БАРОМ И УЛУЧШЕНИЯМИ
+// ============================================================================
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+class MedicsIndicatorUI {
+    constructor() {
+        this.widget = null;
+        this.isExpanded = true;
+        this.isAnalyzing = false;
+        this.analysisProgress = 0;
+        // Масштаб: 'S'=0.72, 'M'=1.0, 'L'=1.18
+        const scaleMap = { S: 0.72, M: 1.0, L: 1.18 };
+        const saved = localStorage.getItem('mi-scale') || 'M';
+        this.scaleKey = scaleMap[saved] ? saved : 'M';
+        this.scaleMap = scaleMap;
+    }
+
+    init() {
+        log('Ініціалізація UI віджета...', 'info');
+        if (document.getElementById('medics-indicators-widget')) {
+            log('Віджет вже існує', 'warning');
+            return;
+        }
+        this.createWidget();
+        this.attachEventListeners();
+        this.addInfoIconStyles();
+        this.applyScale(this.scaleKey);
+        this.restorePosition();
+        // Базова інформація про пацієнта одразу — без розкриття секцій
+        setTimeout(() => this.updatePatientBanner(), 200);
+        log('UI віджет створено', 'success');
+    }
+
+    applyScale(key) {
+        this.scaleKey = key;
+        localStorage.setItem('mi-scale', key);
+        // Масштаб змінює ТІЛЬКИ ширину і розмір шрифту, НЕ висоту
+        const widthMap  = { S: '320px', M: '420px', L: '520px' };
+        const fontMap   = { S: '12px',  M: '14px',  L: '16px'  };
+        if (this.widget) {
+            this.widget.style.setProperty('width',     widthMap[key],  'important');
+            this.widget.style.setProperty('font-size', fontMap[key],   'important');
+        }
+        // Оновлюємо підсвітку кнопок
+        ['S','M','L'].forEach(k => {
+            const btn = document.getElementById(`mi-scale-${k}`);
+            if (!btn) return;
+            btn.style.background  = k === key ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)';
+            btn.style.fontWeight  = k === key ? '700' : '400';
+        });
+    }
+
+    addInfoIconStyles() {
+        if (document.getElementById('mi-info-icon-styles')) return;
+
+        const styleTag = document.createElement('style');
+        styleTag.id = 'mi-info-icon-styles';
+        styleTag.textContent = `
+            .mi-info-icon {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 16px !important;
+                height: 16px !important;
+                min-width: 16px !important;
+                min-height: 16px !important;
+                border-radius: 50% !important;
+                background: #cbd5e1 !important;
+                color: #475569 !important;
+                font-size: 10px !important;
+                font-weight: 700 !important;
+                font-style: italic !important;
+                font-family: Georgia, serif !important;
+                cursor: help !important;
+                position: relative !important;
+                flex-shrink: 0 !important;
+                transition: background 0.15s ease, color 0.15s ease !important;
+            }
+            .mi-info-icon:hover {
+                background: #64748b !important;
+                color: white !important;
+            }
+            .mi-info-icon-absolute {
+                position: absolute !important;
+                top: 12px !important;
+                right: 12px !important;
+                z-index: 10 !important;
+            }
+            .mi-info-tooltip {
+                visibility: hidden !important;
+                position: fixed !important;
+                background: #333 !important;
+                color: white !important;
+                padding: 10px 14px !important;
+                border-radius: 6px !important;
+                font-size: 12px !important;
+                font-weight: normal !important;
+                white-space: pre-line !important;
+                z-index: 1000000 !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+                pointer-events: none !important;
+                max-width: 320px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+            }
+            .mi-info-icon:hover .mi-info-tooltip {
+                visibility: visible !important;
+            }
+            /* Підсумкові плитки (фільтри) — звичайний скрол, без sticky */
+            .mi-summary-sticky {
+                padding: 0 0 8px 0 !important;
+                margin: 0 0 12px 0 !important;
+            }
+            .mi-tiles {
+                display: grid !important;
+                grid-template-columns: repeat(5, 1fr) !important;
+                gap: 4px !important;
+                margin: 0 0 6px 0 !important;
+            }
+            .mi-tile {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 2px !important;
+                padding: 8px 2px !important;
+                border: 2px solid transparent !important;
+                border-radius: 8px !important;
+                background: #f5f6f8 !important;
+                cursor: pointer !important;
+                transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease !important;
+                font-family: inherit !important;
+                color: inherit !important;
+                outline: none !important;
+            }
+            .mi-tile:hover {
+                transform: translateY(-1px) !important;
+                background: #eef0f4 !important;
+            }
+            .mi-tile.is-active {
+                background: #fff !important;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
+            }
+            .mi-tile-count {
+                font-size: 18px !important;
+                font-weight: 700 !important;
+                line-height: 1 !important;
+            }
+            .mi-tile-label {
+                font-size: 10px !important;
+                line-height: 1.1 !important;
+                color: #666 !important;
+                text-align: center !important;
+                white-space: nowrap !important;
+            }
+            .mi-legend {
+                font-size: 10px !important;
+                color: #888 !important;
+                line-height: 1.4 !important;
+                padding: 2px 4px !important;
+                margin: 0 !important;
+            }
+            .mi-filter-empty {
+                padding: 16px !important;
+                background: #f8f9fa !important;
+                border: 1px dashed #ced4da !important;
+                border-radius: 8px !important;
+                text-align: center !important;
+                color: #6c757d !important;
+                font-size: 13px !important;
+                margin: 0 0 12px 0 !important;
+            }
+            /* Картка індикатора */
+            .mi-indicator-card { transition: box-shadow 0.15s ease, transform 0.15s ease !important; }
+            .mi-indicator-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1) !important; }
+            /* Шапка пацієнта */
+            .mi-patient-banner {
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+                padding: 8px 16px !important;
+                background: #f8f9fb !important;
+                border-bottom: 1px solid #e9ecef !important;
+                font-size: 13px !important;
+                color: #344054 !important;
+                line-height: 1.3 !important;
+                margin: 0 !important;
+                flex-shrink: 0 !important;
+            }
+            .mi-patient-banner-name {
+                font-weight: 600 !important;
+                color: #212529 !important;
+            }
+            .mi-patient-banner-meta {
+                color: #6c757d !important;
+            }
+        `;
+        document.head.appendChild(styleTag);
+    }
+
+    // ─── Швидкий збір базової інформації про пацієнта без розкриття секцій ──
+    getQuickPatientInfo() {
+        const nameEl = document.querySelector('.c-patient-info-card--user-name');
+        const name = nameEl ? nameEl.textContent.trim() : '';
+
+        let age = null;
+        try {
+            const label = typeof findElementByText === 'function' ? findElementByText('Дата народження') : null;
+            if (label) {
+                let el = label.parentElement;
+                for (let i = 0; i < 5 && el; i++) {
+                    const m = el.textContent.match(/(\d{2}\.\d{2}\.\d{4})/);
+                    if (m) {
+                        const d = parseDate(m[1]);
+                        if (d) age = calculateAge(d);
+                        break;
+                    }
+                    el = el.parentElement;
+                }
+            }
+        } catch (_) {}
+
+        let gender = null;
+        try {
+            if (typeof GENDER_DETECTOR !== 'undefined' && GENDER_DETECTOR.detectGender) {
+                gender = GENDER_DETECTOR.detectGender();
+            }
+        } catch (_) {}
+
+        return { name, age, gender };
+    }
+
+    updatePatientBanner(info) {
+        const banner = document.getElementById('mi-patient-banner');
+        const nameSpan = document.getElementById('mi-patient-name');
+        const metaSpan = document.getElementById('mi-patient-meta');
+        if (!banner || !nameSpan || !metaSpan) return;
+
+        const data = info || this.getQuickPatientInfo();
+        if (!data.name) {
+            banner.style.setProperty('display', 'none', 'important');
+            return;
+        }
+
+        nameSpan.textContent = data.name;
+        const meta = [];
+        if (data.age != null) meta.push(`${data.age} років`);
+        if (data.gender === 'M') meta.push('♂ чол.');
+        else if (data.gender === 'F') meta.push('♀ жін.');
+        metaSpan.textContent = meta.length ? '• ' + meta.join(', ') : '';
+
+        banner.style.setProperty('display', 'flex', 'important');
+    }
+
+    // ─── Збереження/відновлення позиції віджета ─────────────────────────────
+    savePosition() {
+        if (!this.widget) return;
+        try {
+            const rect = this.widget.getBoundingClientRect();
+            const pos = {
+                left: Math.round(rect.left),
+                bottom: Math.round(window.innerHeight - rect.bottom)
+            };
+            localStorage.setItem('mi-position', JSON.stringify(pos));
+        } catch (_) {}
+    }
+
+    restorePosition() {
+        if (!this.widget) return;
+        try {
+            const raw = localStorage.getItem('mi-position');
+            if (!raw) return;
+            const pos = JSON.parse(raw);
+            if (typeof pos.left !== 'number' || typeof pos.bottom !== 'number') return;
+            const clamped = this.clampPosition(pos.left, pos.bottom);
+            this.widget.style.left = `${clamped.left}px`;
+            this.widget.style.bottom = `${clamped.bottom}px`;
+            this.widget.style.right = 'auto';
+            this.widget.style.top = 'auto';
+        } catch (_) {}
+    }
+
+    // ─── Сводна секція (плитки + легенда + фільтр) ──────────────────────────
+    renderSummarySection(results) {
+        // Виключаємо «Результат»-індикатори з підрахунку (як у completion bar)
+        const actionable = results.filter(r => !r.rule.name.includes('Результат'));
+        const counts = { completed: 0, overdue: 0, partial: 0, not_done: 0 };
+        actionable.forEach(r => {
+            if (counts[r.status] !== undefined) counts[r.status]++;
+        });
+        const total = actionable.length;
+
+        const tiles = [
+            { key: 'all',       count: total,            color: '#334155', icon: '📊', label: 'Усі' },
+            { key: 'completed', count: counts.completed, color: '#10b981', icon: '✅', label: 'Виконано' },
+            { key: 'overdue',   count: counts.overdue,   color: '#f59e0b', icon: '⏰', label: 'Прострочено' },
+            { key: 'partial',   count: counts.partial,   color: '#eab308', icon: '⚠️', label: 'Частково' },
+            { key: 'not_done',  count: counts.not_done,  color: '#ef4444', icon: '❌', label: 'Не виконано' }
+        ];
+
+        let html = `<div class="mi-summary-sticky"><div class="mi-tiles">`;
+        tiles.forEach(t => {
+            const isActive = t.key === 'all';
+            const activeBorder = isActive ? `border-color: ${t.color} !important;` : '';
+            html += `<button class="mi-tile ${isActive ? 'is-active' : ''}" data-filter="${t.key}" type="button" style="${activeBorder}">
+                <span class="mi-tile-count" style="color: ${t.color} !important;">${t.count}</span>
+                <span class="mi-tile-label">${t.icon} ${escapeHtml(t.label)}</span>
+            </button>`;
+        });
+        html += `</div>`;
+        html += `<p class="mi-legend">✅ виконано в строк&nbsp;&nbsp;•&nbsp;&nbsp;⏰ потребує оновлення&nbsp;&nbsp;•&nbsp;&nbsp;⚠️ частково&nbsp;&nbsp;•&nbsp;&nbsp;❌ не виконано</p>`;
+        html += `</div>`;
+        html += `<div id="mi-filter-empty" class="mi-filter-empty" style="display: none;">Немає індикаторів у цьому фільтрі</div>`;
+        return html;
+    }
+
+    applyFilter(filterKey) {
+        const tiles = document.querySelectorAll('.mi-tile');
+        tiles.forEach(t => {
+            const active = t.dataset.filter === filterKey;
+            t.classList.toggle('is-active', active);
+            // Підсвічуємо рамку плитки активним кольором (з її ж count-span)
+            const countEl = t.querySelector('.mi-tile-count');
+            const color = countEl ? countEl.style.color : '';
+            t.style.setProperty('border-color', active && color ? color : 'transparent', 'important');
+        });
+
+        let visibleCount = 0;
+        document.querySelectorAll('.mi-indicator-card').forEach(card => {
+            const status = card.dataset.status;
+            const show = (filterKey === 'all') || (status === filterKey);
+            card.style.display = show ? '' : 'none';
+            if (show) visibleCount++;
+        });
+
+        // Ховаємо порожні категорії
+        document.querySelectorAll('.mi-category-block').forEach(block => {
+            const hasVisible = Array.from(block.querySelectorAll('.mi-indicator-card'))
+                .some(c => c.style.display !== 'none');
+            block.style.display = hasVisible ? '' : 'none';
+        });
+
+        const empty = document.getElementById('mi-filter-empty');
+        if (empty) empty.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+
+    attachFilterListeners() {
+        document.querySelectorAll('.mi-tile').forEach(tile => {
+            tile.addEventListener('click', () => {
+                const filter = tile.dataset.filter;
+                // Повторний клік на активну плитку → повернутись до «Усі»
+                if (tile.classList.contains('is-active') && filter !== 'all') {
+                    this.applyFilter('all');
+                } else {
+                    this.applyFilter(filter);
+                }
+            });
+        });
+    }
+
+    createInfoIcon(tooltip, isAbsolute = false) {
+        const className = isAbsolute ? 'mi-info-icon mi-info-icon-absolute' : 'mi-info-icon';
+        return `<span class="${className}">i<span class="mi-info-tooltip">${escapeHtml(tooltip)}</span></span>`;
+    }
+
+    createWidget() {
+        const widget = document.createElement('div');
+        widget.id = 'medics-indicators-widget';
+        // Початкова висота — auto (під контент). Розтягується до 80vh після аналізу.
+        widget.style.cssText = `position: fixed !important; bottom: 2vh !important; right: 2vw !important; width: 420px !important; max-width: calc(100vw - 40px) !important; height: auto !important; background: #ffffff !important; border-radius: 14px !important; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06) !important; z-index: 999999 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; font-size: 14px !important; line-height: 1.5 !important; color: #0f172a !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 0 !important; transition: height 0.25s ease !important;`;
+
+        widget.innerHTML = `
+            <div id="mi-header" style="display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 14px 18px !important; background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important; color: white !important; border-radius: 14px 14px 0 0 !important; cursor: move !important; flex-shrink: 0 !important; margin: 0 !important;">
+                <div style="display: flex !important; align-items: center !important; gap: 10px !important; font-weight: 600 !important; font-size: 16px !important; margin: 0 !important;">
+                    <span style="font-size: 20px !important;">📊</span>
+                    <span>Medics Indicators</span>
+                </div>
+                <div style="display: flex !important; gap: 6px !important; align-items: center !important; margin: 0 !important;">
+                    <div style="display: flex !important; gap: 2px !important; background: rgba(255,255,255,0.1) !important; border-radius: 5px !important; padding: 2px !important;">
+                        <button id="mi-scale-S" style="padding: 2px 6px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">S</button>
+                        <button id="mi-scale-M" style="padding: 2px 6px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">M</button>
+                        <button id="mi-scale-L" style="padding: 2px 6px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">L</button>
+                    </div>
+                    <button id="mi-toggle-btn" style="padding: 4px 8px !important; background: rgba(255, 255, 255, 0.2) !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; font-size: 12px !important; margin: 0 !important; transition: background 0.2s !important;">_</button>
+                </div>
+            </div>
+
+            <div id="mi-patient-banner" class="mi-patient-banner" style="display: none !important;">
+                <span style="font-size: 14px !important;">👤</span>
+                <span id="mi-patient-name" class="mi-patient-banner-name"></span>
+                <span id="mi-patient-meta" class="mi-patient-banner-meta"></span>
+            </div>
+
+            <div id="mi-progress-container" style="display: none !important; padding: 14px 20px !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
+                <div style="display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 8px !important;">
+                    <span style="font-size: 13px !important; font-weight: 600 !important; color: #0f172a !important;">Аналіз…</span>
+                    <span id="mi-progress-percent" style="font-size: 12px !important; color: #64748b !important; margin-left: auto !important;">0%</span>
+                </div>
+                <div style="width: 100% !important; height: 6px !important; background: #e2e8f0 !important; border-radius: 999px !important; overflow: hidden !important;">
+                    <div id="mi-progress-bar" style="height: 100% !important; width: 0% !important; background: linear-gradient(90deg, #334155 0%, #64748b 100%) !important; transition: width 0.3s ease !important; border-radius: 999px !important;"></div>
+                </div>
+            </div>
+            
+            <div id="mi-completion-bar" style="display: none !important; padding: 12px 20px !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
+                <div style="display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 8px !important;">
+                    <span style="font-size: 13px !important; font-weight: 600 !important; color: #334155 !important;">Виконання індикаторів</span>
+                    <span id="mi-completion-percent" style="font-size: 13px !important; font-weight: 700 !important; color: #10b981 !important; margin-left: auto !important;">0%</span>
+                </div>
+                <div style="width: 100% !important; height: 8px !important; background: #e2e8f0 !important; border-radius: 999px !important; overflow: hidden !important;">
+                    <div id="mi-completion-bar-fill" style="height: 100% !important; width: 0% !important; background: linear-gradient(90deg, #10b981 0%, #34d399 100%) !important; transition: width 0.5s ease !important; border-radius: 999px !important;"></div>
+                </div>
+            </div>
+            
+            <div id="mi-widget-body" style="padding: 20px !important; overflow-y: auto !important; overflow-x: hidden !important; flex: 1 !important; background: #ffffff !important; margin: 0 !important; min-height: 0 !important;">
+                <div id="mi-instruction" style="margin-bottom: 16px !important; padding: 14px 16px !important; background: #f8fafc !important; border-radius: 10px !important; border: 1px solid #e2e8f0 !important; margin: 0 0 16px 0 !important;">
+                    <p style="margin: 0 0 4px 0 !important; color: #0f172a !important;">📋 <strong>Інструкція</strong></p>
+                    <p style="font-size: 13px !important; color: #64748b !important; margin: 0 !important;">Натисніть «Проаналізувати»</p>
+                </div>
+                <div id="mi-results" style="display: none !important; margin: 0 !important;"></div>
+                <div id="mi-form027-section" style="display: none !important; margin: 16px 0 0 0 !important; padding: 14px !important; background: #fffbeb !important; border: 1px solid #fde68a !important; border-radius: 12px !important;">
+                    <div style="display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 0 10px 0 !important;">
+                        <span style="font-weight: 600 !important; color: #92400e !important; flex: 1 !important;">📄 Виписка для форми 027/о</span>
+                        <button id="mi-form027-copy-btn" style="background: #10b981 !important; color: white !important; border: none !important; border-radius: 8px !important; padding: 6px 14px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; margin: 0 !important; transition: background 0.15s ease !important;">Копіювати</button>
+                    </div>
+                    <textarea id="mi-form027-textarea" readonly style="width: 100% !important; min-height: 200px !important; max-height: 50vh !important; padding: 10px !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important; font-size: 12px !important; line-height: 1.5 !important; resize: vertical !important; box-sizing: border-box !important; background: white !important; color: #0f172a !important; margin: 0 !important;"></textarea>
+                </div>
+            </div>
+
+            <div id="mi-footer" style="display: flex !important; justify-content: center !important; align-items: center !important; gap: 8px !important; padding: 12px 16px !important; background: #f8fafc !important; border-top: 1px solid #e2e8f0 !important; border-radius: 0 0 14px 14px !important; flex-shrink: 0 !important; margin: 0 !important;">
+                <button id="mi-analyze-btn" style="background: #334155 !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 12px 16px !important; font-size: 15px !important; font-weight: 600 !important; cursor: pointer !important; flex: 1 !important; transition: all 0.15s ease !important; margin: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12) !important;">
+                    <span class="mi-btn-text">Проаналізувати</span>
+                </button>
+                <button id="mi-form027-btn" style="background: #f59e0b !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 12px 14px !important; font-size: 14px !important; font-weight: 600 !important; cursor: pointer !important; flex: 0 0 auto !important; transition: all 0.15s ease !important; margin: 0 !important; white-space: nowrap !important; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;">📄 027/о</button>
+            </div>
+        `;
+
+        document.body.appendChild(widget);
+        this.widget = widget;
+
+        if (!document.getElementById('mi-scrollbar-styles')) {
+            const styleTag = document.createElement('style');
+            styleTag.id = 'mi-scrollbar-styles';
+            styleTag.textContent = `#mi-widget-body::-webkit-scrollbar { width: 6px !important; } #mi-widget-body::-webkit-scrollbar-track { background: #f1f1f1 !important; border-radius: 3px !important; } #mi-widget-body::-webkit-scrollbar-thumb { background: #888 !important; border-radius: 3px !important; } #mi-widget-body::-webkit-scrollbar-thumb:hover { background: #555 !important; }`;
+            document.head.appendChild(styleTag);
+        }
+    }
+
+    updateProgress(percent, stage) {
+        const progressBar = document.getElementById('mi-progress-bar');
+        const progressPercent = document.getElementById('mi-progress-percent');
+        
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+        }
+        if (progressPercent) {
+            progressPercent.textContent = `${Math.round(percent)}% - ${stage}`;
+        }
+    }
+
+    showProgressBar() {
+        const container = document.getElementById('mi-progress-container');
+        if (container) {
+            container.style.display = 'block';
+        }
+    }
+
+    hideProgressBar() {
+        const container = document.getElementById('mi-progress-container');
+        if (container) {
+            container.style.display = 'none';
+        }
+    }
+
+    updateCompletionBar(results) {
+        // Виключаємо індикатори "Результат"
+        const actionableResults = results.filter(r => !r.rule.name.includes('Результат'));
+        
+        if (actionableResults.length === 0) {
+            document.getElementById('mi-completion-bar').style.display = 'none';
+            return;
+        }
+
+        let completedCount = 0;
+        actionableResults.forEach(r => {
+            if (r.isCompleted) {
+                completedCount++;
+                return;
+            }
+            // Спецправило: індикатор просрочено, але є рекомендоване направлення
+            // яке виписано і ще не прострочено → вважаємо виконаним у прогрес-барі
+            if (r.status === 'overdue' && r.rule.recommendedReferrals && r.rule.recommendedReferrals.length > 0) {
+                const hasActiveReferral = r.requiredActions.some(
+                    a => a.isRecommendedReferral && a.isCompleted && !a.isExpired
+                );
+                if (hasActiveReferral) completedCount++;
+            }
+        });
+
+        const totalCount = actionableResults.length;
+        const percentage = Math.round((completedCount / totalCount) * 100);
+
+        const completionBar = document.getElementById('mi-completion-bar');
+        const completionBarFill = document.getElementById('mi-completion-bar-fill');
+        const completionPercent = document.getElementById('mi-completion-percent');
+
+        if (completionBar) completionBar.style.display = 'block';
+        if (completionBarFill) completionBarFill.style.width = `${percentage}%`;
+        if (completionPercent) completionPercent.textContent = `${percentage}% (${completedCount}/${totalCount})`;
+    }
+
+    attachEventListeners() {
+        const analyzeBtn = document.getElementById('mi-analyze-btn');
+        if (analyzeBtn) {
+            analyzeBtn.addEventListener('click', () => this.handleAnalyze());
+            analyzeBtn.addEventListener('mouseover', (e) => { e.currentTarget.style.background = '#475569'; });
+            analyzeBtn.addEventListener('mouseout', (e) => { e.currentTarget.style.background = '#334155'; });
+        }
+        const form027Btn = document.getElementById('mi-form027-btn');
+        if (form027Btn) {
+            form027Btn.addEventListener('click', () => this.handleForm027());
+            form027Btn.addEventListener('mouseover', (e) => { e.currentTarget.style.background = '#d97706'; });
+            form027Btn.addEventListener('mouseout', (e) => { e.currentTarget.style.background = '#f59e0b'; });
+        }
+        const copyBtn = document.getElementById('mi-form027-copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => this.handleCopyForm027());
+            copyBtn.addEventListener('mouseover', (e) => { e.currentTarget.style.background = '#059669'; });
+            copyBtn.addEventListener('mouseout', (e) => { e.currentTarget.style.background = '#10b981'; });
+        }
+        const toggleBtn = document.getElementById('mi-toggle-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => this.toggleWidget());
+            toggleBtn.addEventListener('mouseover', (e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'; });
+            toggleBtn.addEventListener('mouseout', (e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'; });
+        }
+        ['S','M','L'].forEach(key => {
+            const btn = document.getElementById(`mi-scale-${key}`);
+            if (btn) btn.addEventListener('click', () => this.applyScale(key));
+        });
+        this.makeDraggable();
+    }
+
+    async handleAnalyze() {
+        if (this.isAnalyzing) return;
+        this.isAnalyzing = true;
+        this.showProgressBar();
+        this.updateProgress(0, 'Підготовка...');
+
+        try {
+            this.updateProgress(10, 'Розкриття списків...');
+            
+            const collectedData = await DATA_COLLECTOR.collectData();
+            
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('[UI] 🔍 КРИТИЧНО: Збір направлень ОКРЕМО перед аналізом');
+            console.log('[UI] analyzer до parseReferrals:', collectedData.analyzer);
+            console.log('[UI] analyzer.referrals ДО:', Object.keys(collectedData.analyzer.referrals || {}));
+            
+            this.updateProgress(40, 'Збір направлень...');
+            await collectedData.analyzer.parseReferrals();
+            
+            console.log('[UI] analyzer.referrals ПІСЛЯ:', Object.keys(collectedData.analyzer.referrals || {}));
+            console.log('[UI] ✅ Направлення зібрано, передаю в indicator-matcher');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
+            this.updateProgress(70, 'Збір даних...');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            this.updateProgress(85, 'Аналіз індикаторів...');
+            const results = INDICATOR_MATCHER.matchRules(collectedData);
+            
+            this.updateProgress(100, 'Завершено');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            this.hideProgressBar();
+            this.displayResults(results, collectedData);
+        } catch (error) {
+            this.hideProgressBar();
+            this.showError(error.message);
+        } finally {
+            this.isAnalyzing = false;
+        }
+    }
+
+    async handleForm027() {
+        if (this.isAnalyzing) return;
+        if (typeof FORM_027_COLLECTOR === 'undefined') {
+            this.showError('FORM_027_COLLECTOR не визначено');
+            return;
+        }
+        this.isAnalyzing = true;
+        this.showProgressBar();
+        this.updateProgress(0, 'Підготовка...');
+
+        // Ховаємо результати аналізу та секцію 027 на час збору
+        const resultsDiv = document.getElementById('mi-results');
+        if (resultsDiv) resultsDiv.style.display = 'none';
+        const section = document.getElementById('mi-form027-section');
+        if (section) section.style.display = 'none';
+
+        try {
+            const text = await FORM_027_COLLECTOR.collect((percent, stage) => {
+                this.updateProgress(percent, stage);
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 200));
+            this.hideProgressBar();
+            this.showForm027(text);
+        } catch (error) {
+            this.hideProgressBar();
+            this.showError(error.message);
+        } finally {
+            this.isAnalyzing = false;
+        }
+    }
+
+    showForm027(text) {
+        const section = document.getElementById('mi-form027-section');
+        const textarea = document.getElementById('mi-form027-textarea');
+        if (!section || !textarea) return;
+        textarea.value = text;
+        section.style.display = 'block';
+        this.expandToFullHeight();
+        // Прокручуємо до секції
+        setTimeout(() => {
+            const body = document.getElementById('mi-widget-body');
+            if (body) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    }
+
+    async handleCopyForm027() {
+        const textarea = document.getElementById('mi-form027-textarea');
+        const copyBtn = document.getElementById('mi-form027-copy-btn');
+        if (!textarea || !textarea.value) return;
+
+        const setBtnText = (txt, color) => {
+            if (!copyBtn) return;
+            copyBtn.textContent = txt;
+            if (color) copyBtn.style.setProperty('background', color, 'important');
+        };
+
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(textarea.value);
+            } else {
+                // Запасний варіант через select+execCommand
+                textarea.removeAttribute('readonly');
+                textarea.select();
+                document.execCommand('copy');
+                textarea.setAttribute('readonly', 'readonly');
+                window.getSelection().removeAllRanges();
+            }
+            setBtnText('✓ Скопійовано', '#059669');
+            setTimeout(() => setBtnText('Копіювати', '#10b981'), 1500);
+        } catch (e) {
+            console.error('[Form027] Помилка копіювання:', e);
+            setBtnText('✗ Помилка', '#ef4444');
+            setTimeout(() => setBtnText('Копіювати', '#10b981'), 1500);
+        }
+    }
+
+    expandToFullHeight() {
+        if (!this.widget || !this.isExpanded) return;
+        this.widget.style.setProperty('height', '80vh', 'important');
+        this.widget.style.bottom = '20px';
+        this.widget.style.top = 'auto';
+    }
+
+    displayResults(results, data) {
+        const resultsDiv = document.getElementById('mi-results');
+        if (!resultsDiv) return;
+
+        // Ховаємо інструкцію — вона не потрібна після аналізу
+        const instruction = document.getElementById('mi-instruction');
+        if (instruction) instruction.style.setProperty('display', 'none', 'important');
+
+        // Оновлюємо плашку пацієнта повними даними
+        this.updatePatientBanner({
+            name: this.getQuickPatientInfo().name,
+            age: data.patient.age,
+            gender: data.patient.gender
+        });
+
+        resultsDiv.style.display = 'block';
+        if (results.length === 0) {
+            resultsDiv.innerHTML = `<div style="padding: 14px !important; background: #f0f9ff !important; border: 1px solid #bae6fd !important; border-radius: 10px !important; color: #075985 !important; margin: 0 !important;"><p style="margin: 0 !important;">ℹ️ Не знайдено застосовних індикаторів.</p></div>`;
+            return;
+        }
+
+        this.updateCompletionBar(results);
+        this.expandToFullHeight();
+
+        const grouped = this.groupByCategory(results);
+        const todoActions = this.collectTodoActions(results);
+
+        let html = this.renderSummarySection(results);
+        html += this.renderGenderSelector(data.patient.gender);
+        if (todoActions.length > 0) { html += this.renderTodoList(todoActions); }
+        for (const [category, categoryResults] of Object.entries(grouped)) {
+            const categoryObj = typeof INDICATOR_CATEGORIES !== 'undefined' ? INDICATOR_CATEGORIES[category] : { name: category, icon: '📋' };
+            html += `<div class="mi-category-block" data-category="${escapeHtml(category)}" style="margin-bottom: 16px !important; margin: 0 0 16px 0 !important; border-radius: 12px !important; overflow: hidden !important; border: 1px solid #e2e8f0 !important; background: white !important; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;"><div style="padding: 11px 14px !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; color: #0f172a !important; font-weight: 600 !important; font-size: 13px !important; display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 !important; text-transform: uppercase !important; letter-spacing: 0.4px !important;"><span style="font-size: 16px !important;">${categoryObj.icon}</span><span>${categoryObj.name}</span><span style="margin-left: auto !important; padding: 1px 9px !important; background: #e2e8f0 !important; color: #475569 !important; border-radius: 999px !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: 0 !important; text-transform: none !important;">${categoryResults.length}</span></div><div style="padding: 12px !important; background: white !important; margin: 0 !important;">`;
+            categoryResults.forEach(result => { html += this.renderIndicatorCard(result); });
+            html += `</div></div>`;
+        }
+        resultsDiv.innerHTML = html;
+        this.attachIndicatorListeners();
+        this.attachGenderSelectorListeners();
+        this.attachFilterListeners();
+        this.positionTooltips();
+        // Стартовий фільтр — «Усі»
+        this.applyFilter('all');
+    }
+
+    positionTooltips() {
+        document.querySelectorAll('.mi-info-icon').forEach(icon => {
+            icon.addEventListener('mouseenter', (e) => {
+                const tooltip = icon.querySelector('.mi-info-tooltip');
+                if (!tooltip) return;
+                
+                const iconRect = icon.getBoundingClientRect();
+                const widgetRect = this.widget.getBoundingClientRect();
+                
+                const left = iconRect.left + iconRect.width / 2;
+                const top = iconRect.top - 10;
+                
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+                tooltip.style.transform = 'translate(-50%, -100%)';
+                
+                setTimeout(() => {
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    if (tooltipRect.right > window.innerWidth - 10) {
+                        tooltip.style.left = `${window.innerWidth - tooltipRect.width - 10}px`;
+                        tooltip.style.transform = 'translateY(-100%)';
+                    }
+                    if (tooltipRect.left < 10) {
+                        tooltip.style.left = '10px';
+                        tooltip.style.transform = 'translateY(-100%)';
+                    }
+                }, 10);
+            });
+        });
+    }
+
+    renderGenderSelector(currentGender) {
+        const genderText = currentGender === 'M' ? '♂️ Чоловік' : currentGender === 'F' ? '♀️ Жінка' : 'Не визначено';
+        const isDetected = currentGender !== null;
+        const bgColor    = isDetected ? '#f0f9ff' : '#fffbeb';
+        const borderCol  = isDetected ? '#bae6fd' : '#fde68a';
+        const textCol    = isDetected ? '#075985' : '#92400e';
+        const maleActive   = currentGender === 'M';
+        const femaleActive = currentGender === 'F';
+        return `<div style="margin-bottom: 16px !important; padding: 14px !important; background: ${bgColor} !important; border: 1px solid ${borderCol} !important; border-radius: 12px !important; margin: 0 0 16px 0 !important;"><div style="display: flex !important; align-items: center !important; justify-content: space-between !important; margin-bottom: 10px !important;"><div><p style="margin: 0 0 2px 0 !important; font-weight: 600 !important; color: ${textCol} !important; font-size: 13px !important;">${isDetected ? '✓' : '⚠️'} Стать пацієнта</p><p style="margin: 0 !important; font-size: 12px !important; color: ${textCol} !important;">Поточна: <strong>${genderText}</strong></p></div></div><div style="display: flex !important; gap: 8px !important; margin: 0 !important;"><button id="mi-gender-male" style="flex: 1 !important; padding: 8px 12px !important; background: ${maleActive ? '#0284c7' : 'white'} !important; color: ${maleActive ? 'white' : '#0f172a'} !important; border: 1px solid ${maleActive ? '#0284c7' : '#cbd5e1'} !important; border-radius: 8px !important; cursor: pointer !important; font-size: 13px !important; font-weight: 600 !important; margin: 0 !important; transition: all 0.15s ease !important;">👨 Чоловік ${maleActive ? '✓' : ''}</button><button id="mi-gender-female" style="flex: 1 !important; padding: 8px 12px !important; background: ${femaleActive ? '#db2777' : 'white'} !important; color: ${femaleActive ? 'white' : '#0f172a'} !important; border: 1px solid ${femaleActive ? '#db2777' : '#cbd5e1'} !important; border-radius: 8px !important; cursor: pointer !important; font-size: 13px !important; font-weight: 600 !important; margin: 0 !important; transition: all 0.15s ease !important;">👩 Жінка ${femaleActive ? '✓' : ''}</button></div></div>`;
+    }
+
+    renderTodoList(todoActions) {
+        const grouped = {
+            episodes: todoActions.filter(a => a.isEpisode),
+            encounters: todoActions.filter(a => a.isEncounterAction),
+            observations: todoActions.filter(a => !a.isEpisode && !a.isEncounterAction && !a.isReferral && !a.isDiagnosticReport),
+            referrals: todoActions.filter(a => a.isReferral),
+            diagnosticReports: todoActions.filter(a => a.isDiagnosticReport)
+        };
+        const typeNames = {
+            episodes: { name: 'Епізоди', icon: '📋', color: '#6366f1' },
+            encounters: { name: 'Взаємодії', icon: '👥', color: '#8b5cf6' },
+            observations: { name: 'Обстеження', icon: '🔬', color: '#3b82f6' },
+            referrals: { name: 'Направлення', icon: '📄', color: '#f59e0b' },
+            diagnosticReports: { name: 'Діагностичні звіти', icon: '📑', color: '#ec4899' }
+        };
+        let html = `<div style="margin-bottom: 20px !important; margin: 0 0 20px 0 !important; border: 1px solid #fde68a !important; border-radius: 12px !important; overflow: hidden !important; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;"><div class="todo-header" style="display: flex !important; align-items: center !important; gap: 10px !important; padding: 12px 16px !important; background: #fef3c7 !important; color: #92400e !important; cursor: pointer !important; font-weight: 600 !important; margin: 0 !important;"><span style="font-size: 18px !important;">📝</span><span style="flex: 1 !important;">Необхідні дії</span><span style="padding: 2px 9px !important; background: #fcd34d !important; color: #78350f !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 700 !important;">${todoActions.length}</span><span class="todo-toggle" style="display: inline-block !important; width: 20px !important; height: 20px !important; line-height: 20px !important; text-align: center !important; font-size: 14px !important; transition: transform 0.2s !important;">▼</span></div><div id="mi-todo-content" style="display: block !important; padding: 14px !important; background: #fffbeb !important; margin: 0 !important;">`;
+        for (const [type, actions] of Object.entries(grouped)) {
+            if (actions.length === 0) continue;
+            const typeInfo = typeNames[type];
+            html += `<div style="margin-bottom: 16px !important; margin: 0 0 16px 0 !important;"><div style="display: flex !important; align-items: center !important; gap: 8px !important; margin-bottom: 10px !important; padding-bottom: 6px !important; border-bottom: 1px solid ${typeInfo.color}33 !important;"><span style="font-size: 16px !important;">${typeInfo.icon}</span><span style="font-weight: 600 !important; font-size: 12px !important; color: ${typeInfo.color} !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;">${typeInfo.name}</span><span style="margin-left: auto !important; padding: 1px 8px !important; background: ${typeInfo.color}1a !important; color: ${typeInfo.color} !important; border-radius: 999px !important; font-size: 11px !important; font-weight: 700 !important;">${actions.length}</span></div><div style="display: flex !important; flex-direction: column !important; gap: 8px !important;">`;
+            actions.forEach(action => {
+                const tooltip = 'Індикатори:\n' + action.indicators.join('\n');
+                if (action.isOrGroup) {
+                    // OR-група: один блок з кількома альтернативами
+                    const anyDone = action.alternatives.some(a => a.isCompleted);
+                    const borderColor = typeInfo.color;
+                    html += `<div style="position:relative !important; background:white !important; border:1px solid #e2e8f0 !important; border-left:3px solid ${borderColor} !important; border-radius:8px !important; box-shadow:0 1px 2px rgba(15, 23, 42, 0.04) !important; margin:0 !important; overflow:hidden !important;">`;
+                    html += `<div style="padding:5px 10px !important; background:${borderColor}10 !important; font-size:10px !important; font-weight:700 !important; color:${borderColor} !important; text-transform:uppercase !important; letter-spacing:0.5px !important; display:flex !important; align-items:center !important; gap:6px !important;">${action.isOverdue ? '⏰' : '⚠️'} <span>Виконати одне з</span>${this.createInfoIcon(tooltip, false)}</div>`;
+                    action.alternatives.forEach(alt => {
+                        const expired = alt.isCompleted && alt.isExpired;
+                        const ic = expired ? '⏰' : (alt.isCompleted ? '✅' : '↔️');
+                        html += `<div style="display:flex !important; align-items:center !important; gap:8px !important; padding:7px 12px !important;"><span style="font-size:13px !important;">${ic}</span><div style="flex:1 !important; font-size:12px !important; color:#0f172a !important; font-weight:500 !important;">${escapeHtml(alt.name)}</div></div>`;
+                    });
+                    if (action.indicators.length > 1) {
+                        html += `<div style="padding:3px 12px 6px !important; font-size:11px !important; color:#94a3b8 !important;">Для ${action.indicators.length} індикаторів</div>`;
+                    } else {
+                        html += `<div style="padding:3px 12px 6px !important; font-size:11px !important; color:#94a3b8 !important;">${escapeHtml(action.indicators[0])}</div>`;
+                    }
+                    html += `</div>`;
+                } else {
+                    html += `<div style="display:flex !important; align-items:center !important; gap:8px !important; padding:10px 12px !important; background:white !important; border:1px solid #e2e8f0 !important; border-left:3px solid ${typeInfo.color} !important; border-radius:8px !important; box-shadow:0 1px 2px rgba(15, 23, 42, 0.04) !important; margin:0 !important; position:relative !important;"><span style="font-size:16px !important;">${action.isOverdue ? '⏰' : '⚠️'}</span><div style="flex:1 !important; margin:0 !important;"><div style="font-weight:600 !important; color:#0f172a !important; font-size:13px !important; margin-bottom:3px !important;">${escapeHtml(action.name)}${action.isOverdue ? ' <span style="font-size:10px;color:#f59e0b;font-weight:700;letter-spacing:0.3px;">[ПРОСТРОЧЕНО]</span>' : ''}</div>${action.indicators.length > 1 ? `<div style="font-size:11px !important; color:#94a3b8 !important; margin:0 !important;">Для ${action.indicators.length} індикаторів</div>` : `<div style="font-size:11px !important; color:#94a3b8 !important; margin:0 !important;">${escapeHtml(action.indicators[0])}</div>`}</div>${this.createInfoIcon(tooltip, false)}</div>`;
+                }
+            });
+            html += `</div></div>`;
+        }
+        html += `</div></div>`;
+        return html;
+    }
+
+    collectTodoActions(results) {
+        // Map: ключ → запис в TODO
+        // Для OR-груп — ключ = `${ruleId}::OR::${orGroupId}`, запис містить масив альтернатив
+        const todoMap = new Map();
+
+        results.forEach(result => {
+            const needsAction = result.status === 'not_done'
+                || result.status === 'partial'
+                || result.status === 'overdue';
+            if (!needsAction) return;
+
+            const isOverdueResult = result.status === 'overdue';
+            const isReferral = result.rule.type === 'НАПРАВЛЕННЯ';
+            const isDiagnosticReport = result.rule.type === 'ДІАГНОСТИЧНИЙ_ЗВІТ';
+
+            // Групуємо дії по orGroupId
+            const orGroups = {};
+            const soloActions = [];
+
+            result.requiredActions.forEach(action => {
+                if (action.isConditional) return; // умовні вже відфільтровані
+                if (action.orGroupId) {
+                    if (!orGroups[action.orGroupId]) orGroups[action.orGroupId] = [];
+                    orGroups[action.orGroupId].push(action);
+                } else {
+                    soloActions.push(action);
+                }
+            });
+
+            // Обробляємо OR-групи
+            Object.entries(orGroups).forEach(([gId, groupActions]) => {
+                // Група "виконана" тільки якщо є не прострочений виконаний елемент
+                const groupDone = groupActions.some(a => a.isCompleted && !a.isAlternative && !a.isExpired);
+                if (groupDone) return; // реально виконано — не потрібно
+
+                // Ключ дедупликації: відсортовані коди OR-групи (незалежно від rule.id)
+                const key = 'OR::' + groupActions.map(a => a.code).sort().join('|');
+                if (todoMap.has(key)) {
+                    todoMap.get(key).indicators.push(result.rule.name);
+                } else {
+                    todoMap.set(key, {
+                        isOrGroup: true,
+                        orGroupId: gId,
+                        alternatives: groupActions.map(a => ({
+                            name: a.name,
+                            code: a.code,
+                            isCompleted: a.isCompleted && !a.isAlternative,
+                            isExpired: a.isExpired || false
+                        })),
+                        indicators: [result.rule.name],
+                        isEpisode: false,
+                        isEncounterAction: groupActions[0]?.isEncounterAction || false,
+                        isReferral: isReferral,
+                        isDiagnosticReport: isDiagnosticReport,
+                        isOverdue: isOverdueResult,
+                        // Для відображення заголовка беремо перший елемент
+                        name: groupActions.map(a => a.name).join(' / '),
+                        code: gId
+                    });
+                }
+            });
+
+            // Обробляємо звичайні (solo) дії
+            soloActions.forEach(action => {
+                // Рекомендовані направлення — додаємо в TODO якщо не виписано АБО виписано але прострочено
+                if (action.isRecommendedReferral) {
+                    if (action.isCompleted && !action.isExpired) return; // виписано і актуально — не треба нагадувати
+                    const key = `recommended-referral::${action.code}`;
+                    if (!todoMap.has(key)) {
+                        todoMap.set(key, {
+                            isOrGroup: false,
+                            name: action.name,
+                            code: action.code,
+                            indicators: [result.rule.name],
+                            isEpisode: false,
+                            isEncounterAction: false,
+                            isReferral: true,
+                            isDiagnosticReport: false,
+                            isRecommendedReferral: true,
+                            isOverdue: action.isExpired === true
+                        });
+                    } else {
+                        todoMap.get(key).indicators.push(result.rule.name);
+                    }
+                    return;
+                }
+                // Дія потрапляє в TODO якщо:
+                // 1. Вона не виконана (і не альтернативна)
+                // 2. АБО вона виконана, але прострочена (isExpired) — незалежно від статусу індикатора
+                const isActionExpired = action.isExpired === true;
+                const needsThisAction = (!action.isAlternative) && (
+                    !action.isCompleted || isActionExpired
+                );
+                if (!needsThisAction) return;
+
+                // Ключ дедупликації: тільки код дії (одне і те ж обстеження для кількох правил — один запис)
+                const key = `action::${action.code}`;
+                if (todoMap.has(key)) {
+                    todoMap.get(key).indicators.push(result.rule.name);
+                } else {
+                    todoMap.set(key, {
+                        isOrGroup: false,
+                        name: action.name,
+                        code: action.code,
+                        indicators: [result.rule.name],
+                        isEpisode: action.isEpisode || false,
+                        isEncounterAction: action.isEncounterAction || false,
+                        isReferral: isReferral,
+                        isDiagnosticReport: isDiagnosticReport,
+                        isOverdue: isOverdueResult
+                    });
+                }
+            });
+        });
+
+        return Array.from(todoMap.values());
+    }
+
+    renderIndicatorCard(result) {
+        const isResultIndicator = result.rule.name.includes('Результат');
+        let statusColor, statusText, statusIcon;
+        if (result.status === 'completed') { statusColor = isResultIndicator ? '#94a3b8' : '#10b981'; statusText = 'Виконано'; statusIcon = '✅'; } else if (result.status === 'overdue') { statusColor = isResultIndicator ? '#94a3b8' : '#f59e0b'; statusText = 'Протерміновано'; statusIcon = '⏰'; } else if (result.status === 'partial') { statusColor = isResultIndicator ? '#94a3b8' : '#eab308'; statusText = 'Частково'; statusIcon = '⚠️'; } else { statusColor = isResultIndicator ? '#94a3b8' : '#ef4444'; statusText = 'Не виконано'; statusIcon = '❌'; }
+        const requiredActions = result.requiredActions || [];
+        const formatDate = (d) => { if (!d) return ''; try { return new Date(d).toLocaleDateString('uk-UA'); } catch { return d; } };
+        const cardOpacity = isResultIndicator ? '0.55' : '1';
+        const applicabilityInfo = result.applicabilityReason || '';
+        let html = `<div class="mi-indicator-card" data-status="${result.status}" data-rule-id="${escapeHtml(result.rule.id)}" style="margin-bottom: 10px !important; padding: 14px 14px 14px 16px !important; border-radius: 10px !important; border: 1px solid #e2e8f0 !important; border-left: 3px solid ${statusColor} !important; background: white !important; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important; margin: 0 0 10px 0 !important; opacity: ${cardOpacity} !important; position: relative !important;">${this.createInfoIcon(applicabilityInfo, true)}<div style="display: flex !important; align-items: center !important; gap: 10px !important; cursor: pointer !important; margin: 0 !important; padding-right: 30px !important;" class="indicator-header" data-id="expand-${result.rule.id}"><span style="font-size: 18px !important;">${statusIcon}</span><span style="flex: 1 !important; font-weight: 600 !important; font-size: 14px !important; color: ${isResultIndicator ? '#64748b' : '#0f172a'} !important; line-height: 1.35 !important;">${escapeHtml(result.rule.name)}</span><span style="padding: 3px 9px !important; border-radius: 999px !important; background: ${statusColor}1a !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.4px !important; color: ${statusColor} !important; white-space: nowrap !important;">${statusText}</span><span style="display: inline-block !important; width: 18px !important; height: 18px !important; line-height: 18px !important; text-align: center !important; color: #94a3b8 !important; font-size: 12px !important; transition: transform 0.2s !important; margin: 0 !important;" class="indicator-toggle">▼</span></div><div id="expand-${result.rule.id}" style="display: none !important; padding-top: 12px !important; border-top: 1px solid #e2e8f0 !important; margin: 12px 0 0 0 !important;"><div style="font-size: 12px !important; color: #475569 !important; margin: 0 !important;"><div style="margin-bottom: 8px !important; font-weight: 600 !important; color: #0f172a !important; margin: 0 0 8px 0 !important;">Вимоги:</div>`;
+        html += this.renderActionsList(requiredActions, formatDate);
+        html += `</div></div></div>`;
+        return html;
+    }
+
+    // Рендер списку дій з підтримкою OR-груп (візуальне об'єднання)
+    renderActionsList(actions, formatDate) {
+        if (!formatDate) formatDate = (d) => { if (!d) return ''; try { return new Date(d).toLocaleDateString('uk-UA'); } catch { return d; } };
+        let html = '';
+        const rendered = new Set();
+        actions.forEach((action, idx) => {
+            if (rendered.has(idx)) return;
+            if (action.orGroupId) {
+                // Збираємо всю OR-групу разом
+                const groupItems = actions.map((a, i) => ({ a, i })).filter(({ a }) => a.orGroupId === action.orGroupId);
+                groupItems.forEach(({ i }) => rendered.add(i));
+                // Група "виконана" тільки якщо є виконаний і НЕ прострочений елемент
+                const groupDone = groupItems.some(({ a }) => a.isCompleted && !a.isAlternative && !a.isExpired);
+                const groupExpired = !groupDone && groupItems.some(({ a }) => a.isCompleted && !a.isAlternative && a.isExpired);
+                const bc = groupDone ? '#10b981' : (groupExpired ? '#f59e0b' : '#ef4444');
+                const bg = groupDone ? '#ecfdf5' : (groupExpired ? '#fffbeb' : '#fef2f2');
+                html += `<div style="border-left: 3px solid ${bc} !important; border-radius: 8px !important; margin: 0 0 8px 0 !important; overflow: hidden !important; background: ${bg} !important; border: 1px solid ${bc}33 !important; border-left-width: 3px !important;">`;
+                html += `<div style="padding: 4px 10px !important; background: ${bc}14 !important; font-size: 10px !important; font-weight: 700 !important; color: ${bc} !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;">↔ Виконати одне з</div>`;
+                groupItems.forEach(({ a }) => {
+                    const done = a.isCompleted && !a.isAlternative;
+                    const expired = done && a.isExpired;
+                    const ic = expired ? '⏰' : (done ? '✅' : (a.isAlternative ? '↔️' : '❌'));
+                    const dt = a.date ? formatDate(a.date) : '';
+                    const da = a.daysAgo != null ? `(${a.daysAgo} дн.)` : '';
+                    html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;"><span style="font-size:13px;">${ic}</span><div style="flex:1;"><div style="font-weight:500;color:#0f172a;font-size:12px;">${escapeHtml(a.name)}</div><div style="font-size:11px;color:#94a3b8;">${dt} ${da}</div></div></div>`;
+                });
+                html += `</div>`;
+            } else {
+                rendered.add(idx);
+                const done = action.isCompleted;
+                // Визначаємо чи прострочено: для направлень — якщо є expirationDate і вона в минулому
+                // Для обстежень/звітів — якщо daysAgo перевищує допустимий ліміт (зазвичай 365 дн.)
+                const isExpired = done && action.isExpired;
+                const ic = isExpired ? '⏰' : (done ? '✅' : '❌');
+                const dt = action.date ? formatDate(action.date) : '';
+                const da = action.daysAgo != null ? `(${action.daysAgo} дн.)` : '';
+                const ep = action.isEpisode ? ` <span style="font-size:10px;color:#6366f1;font-weight:600;">[ЕПІЗОД]</span>` : '';
+                const enc = action.isEncounterAction ? ` <span style="font-size:10px;color:#8b5cf6;font-weight:600;">[ВЗАЄМОДІЯ]</span>` : '';
+                // Рекомендовані направлення — окремий стиль, не впливають на статус
+                if (action.isRecommendedReferral) {
+                    const refExpired = done && action.isExpired;
+                    const refIc = refExpired ? '⏰' : (done ? '✅' : '📋');
+                    const refBg = refExpired ? '#fffbeb' : (done ? '#ecfdf5' : '#fffbeb');
+                    const refBorder = refExpired ? '#f59e0b' : (done ? '#10b981' : '#f59e0b');
+                    html += `<div style="display:flex;align-items:center;gap:8px;margin:0 0 8px 0;padding:8px 10px;background:${refBg};border-radius:8px;border-left:3px solid ${refBorder};"><span style="font-size:16px;">${refIc}</span><div style="flex:1;"><div style="font-weight:500;color:#0f172a;font-size:12px;">${escapeHtml(action.name)}</div><div style="font-size:11px;color:#94a3b8;">${dt} ${da}</div></div></div>`;
+                    return;
+                }
+                // Для спостережень (не епізодів, не взаємодій) — показуємо значення
+                const isObs = !action.isEpisode && !action.isEncounterAction && !action.isOrLogic;
+                const valHtml = isObs && action.value
+                    ? `<span style="font-size:10px;color:#475569;font-weight:600;margin-left:6px;background:#eef2ff;padding:1px 6px;border-radius:999px;">${escapeHtml(action.value)}</span>`
+                    : '';
+                html += `<div style="display:flex;align-items:center;gap:8px;margin:0 0 8px 0;padding:8px 10px;background:${done ? '#ecfdf5' : '#fef2f2'};border-radius:8px;"><span style="font-size:16px;">${ic}</span><div style="flex:1;"><div style="font-weight:500;color:#0f172a;">${escapeHtml(action.name)}${ep}${enc}${valHtml}</div><div style="font-size:11px;color:#94a3b8;">${dt} ${da}</div></div></div>`;
+            }
+        });
+        return html;
+    }
+
+    groupByCategory(results) { const grouped = {}; results.forEach(result => { const category = result.rule.category; if (!grouped[category]) grouped[category] = []; grouped[category].push(result); }); return grouped; }
+
+    attachIndicatorListeners() {
+        document.querySelectorAll('.indicator-header').forEach(header => { header.addEventListener('click', () => { const expandId = header.getAttribute('data-id'); const expandDiv = document.getElementById(expandId); const toggle = header.querySelector('.indicator-toggle'); if (expandDiv.style.display === 'none') { expandDiv.style.display = 'block'; toggle.style.transform = 'rotate(180deg)'; } else { expandDiv.style.display = 'none'; toggle.style.transform = 'rotate(0deg)'; } }); });
+        document.querySelectorAll('.todo-header').forEach(header => { header.addEventListener('click', () => { const contentDiv = document.getElementById('mi-todo-content'); const toggle = header.querySelector('.todo-toggle'); if (contentDiv.style.display === 'none') { contentDiv.style.display = 'block'; toggle.style.transform = 'rotate(180deg)'; } else { contentDiv.style.display = 'none'; toggle.style.transform = 'rotate(0deg)'; } }); });
+    }
+
+    attachGenderSelectorListeners() {
+        const maleBtn = document.getElementById('mi-gender-male');
+        const femaleBtn = document.getElementById('mi-gender-female');
+        if (maleBtn) { maleBtn.addEventListener('click', () => { if (typeof GENDER_DETECTOR !== 'undefined') { GENDER_DETECTOR.setManualGender('M'); this.handleAnalyze(); } }); }
+        if (femaleBtn) { femaleBtn.addEventListener('click', () => { if (typeof GENDER_DETECTOR !== 'undefined') { GENDER_DETECTOR.setManualGender('F'); this.handleAnalyze(); } }); }
+    }
+
+    showError(message) {
+        const resultsDiv = document.getElementById('mi-results');
+        if (!resultsDiv) return;
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = `<div style="padding: 14px !important; background: #fef2f2 !important; border: 1px solid #fecaca !important; border-radius: 10px !important; color: #991b1b !important; margin: 0 !important;"><p style="margin: 0 !important; font-weight: 500 !important;">❌ ${message}</p></div>`;
+    }
+
+    toggleWidget() {
+        const body        = document.getElementById('mi-widget-body');
+        const footer      = document.getElementById('mi-footer');
+        const progressC   = document.getElementById('mi-progress-container');
+        const completionB = document.getElementById('mi-completion-bar');
+        const toggleBtn   = document.getElementById('mi-toggle-btn');
+        if (!body || !toggleBtn) return;
+
+        this.isExpanded = !this.isExpanded;
+
+        if (this.isExpanded) {
+            // Розгортаємо: показуємо тіло/футер, виджет росте вгору від низу
+            body.style.display = 'block';
+            if (footer) footer.style.display = 'flex';
+            this.widget.style.setProperty('height', '80vh', 'important');
+            toggleBtn.textContent = '_';
+        } else {
+            // Згортаємо: ховаємо тіло/футер, висота стискається до хедера
+            // Залишаємо bottom/left без змін — виджет залишається на своєму місці внизу,
+            // просто стає меньшим (тільки хедер видно)
+            body.style.display = 'none';
+            if (footer)      footer.style.display      = 'none';
+            if (progressC)   progressC.style.display   = 'none';
+            if (completionB) completionB.style.display = 'none';
+            this.widget.style.setProperty('height', 'auto', 'important');
+            toggleBtn.textContent = '□';
+        }
+    }
+
+    clampPosition(left, bottom) {
+        const w  = this.widget.offsetWidth;
+        const h  = this.widget.offsetHeight;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        return {
+            left:   Math.max(10, Math.min(left,   vw - w - 10)),
+            bottom: Math.max(10, Math.min(bottom, vh - h - 10)),
+        };
+    }
+
+    getSnapAnchors() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        // 4 якоря зліва і 4 справа по вертикалі (bottom від низу екрану: 2%, 20%, 40%, 60%)
+        return [0.02, 0.20, 0.40, 0.60].flatMap(bFrac => [
+            { side: 'left',  x: 10,      bottom: Math.round(vh * bFrac) },
+            { side: 'right', x: vw - 10, bottom: Math.round(vh * bFrac) },
+        ]);
+    }
+
+    trySnap(widgetLeft, widgetBottom) {
+        const w = this.widget.offsetWidth;
+        const h = this.widget.offsetHeight;
+        const cx = widgetLeft   + w / 2;
+        const cy = widgetBottom + h / 2;   // умовний центр у bottom-координатах
+        const SNAP_DIST = 100;
+        let best = null, bestD = Infinity;
+
+        this.getSnapAnchors().forEach(anchor => {
+            const targetLeft   = anchor.side === 'left' ? anchor.x : anchor.x - w;
+            const targetBottom = anchor.bottom;
+            const d = Math.hypot(cx - (targetLeft + w / 2), cy - (targetBottom + h / 2));
+            if (d < SNAP_DIST && d < bestD) { bestD = d; best = { left: targetLeft, bottom: targetBottom }; }
+        });
+        return best;
+    }
+
+    makeDraggable() {
+        const header = document.getElementById('mi-header');
+        let isDragging = false;
+        let offsetX = 0, offsetFromBottom = 0;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return;
+            e.preventDefault();
+
+            // Нормалізуємо позицію до left + bottom (знімаємо right/top якщо є)
+            const rect = this.widget.getBoundingClientRect();
+            const currentLeft   = rect.left;
+            const currentBottom = window.innerHeight - rect.bottom;
+
+            this.widget.style.left   = `${currentLeft}px`;
+            this.widget.style.bottom = `${currentBottom}px`;
+            this.widget.style.right  = 'auto';
+            this.widget.style.top    = 'auto';
+
+            // Зміщення курсору від лівого краю і від нижнього краю
+            offsetX            = e.clientX - rect.left;
+            offsetFromBottom   = window.innerHeight - e.clientY - currentBottom;
+            isDragging = true;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const newLeft   = e.clientX - offsetX;
+            const newBottom = window.innerHeight - e.clientY - offsetFromBottom;
+            const clamped   = this.clampPosition(newLeft, newBottom);
+            this.widget.style.left   = `${clamped.left}px`;
+            this.widget.style.bottom = `${clamped.bottom}px`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+
+            // Примагнічування — тільки у свернутому стані
+            if (!this.isExpanded) {
+                const rect         = this.widget.getBoundingClientRect();
+                const widgetLeft   = rect.left;
+                const widgetBottom = window.innerHeight - rect.bottom;
+                const snap         = this.trySnap(widgetLeft, widgetBottom);
+                if (snap) {
+                    const clamped = this.clampPosition(snap.left, snap.bottom);
+                    this.widget.style.transition = 'left 0.2s ease, bottom 0.2s ease';
+                    this.widget.style.left   = `${clamped.left}px`;
+                    this.widget.style.bottom = `${clamped.bottom}px`;
+                    setTimeout(() => {
+                        if (this.widget) this.widget.style.transition = 'height 0.25s ease';
+                        this.savePosition();
+                    }, 220);
+                    return;
+                }
+            }
+            // Без снапу — зберігаємо одразу
+            this.savePosition();
+        });
+    }
+}
+
+console.log('[Medics Indicators] ui.js (фінальна версія з прогрес-баром)');

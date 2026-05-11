@@ -48,3 +48,6 @@ supabase/.branches
 
 # real patient data (PII) — never commit
 sample-data/
+
+# extension dev: large reference page dump (335 KB HTML) not needed in repo
+extension-main/page_ex

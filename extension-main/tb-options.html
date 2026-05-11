@@ -12,10 +12,8 @@
         background: #f8fafc;
         color: #0f172a;
       }
-      h1 {
-        font-size: 16px;
-        margin: 0 0 16px;
-      }
+      h1 { font-size: 16px; margin: 0 0 4px; }
+      p.lead { font-size: 12px; color: #64748b; margin: 0 0 16px; }
       label {
         display: block;
         font-size: 12px;
@@ -49,33 +47,26 @@
         cursor: pointer;
       }
       button:hover { background: #1d4ed8; }
-      .hint {
-        font-size: 11px;
-        color: #64748b;
-        margin: 0 0 12px;
-      }
-      #status {
-        margin-top: 12px;
-        font-size: 12px;
-        min-height: 16px;
-      }
+      .hint { font-size: 11px; color: #64748b; margin: -6px 0 12px; }
+      #status { margin-top: 12px; font-size: 12px; min-height: 16px; }
       .status-ok { color: #059669; }
       .status-err { color: #dc2626; }
     </style>
   </head>
   <body>
-    <h1>Модуль ТБ — налаштування</h1>
+    <h1>Модуль ТБ</h1>
+    <p class="lead">Інтеграція з Medics Indicators: дані пацієнта (ПІБ, діагнози, групи ризику) автоматично передаються в модуль після кожного "Аналізувати".</p>
 
     <label for="moduleUrl">URL модуля</label>
     <input id="moduleUrl" type="url" placeholder="https://tb-module.vercel.app" />
 
     <label for="pin">PIN практики</label>
     <input id="pin" type="password" inputmode="numeric" placeholder="••••••••" />
-    <p class="hint">Той самий PIN, що ви вводите при вході в модуль. Зберігається у захищеному сховищі браузера, не передається на сторонні сервери.</p>
+    <p class="hint">Той самий PIN, що ви вводите при вході в модуль.</p>
 
     <button id="save">Зберегти і перевірити</button>
     <div id="status"></div>
 
-    <script src="options.js"></script>
+    <script src="tb-options.js"></script>
   </body>
 </html>

@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveBtn = document.getElementById('save');
   const statusEl = document.getElementById('status');
 
-  chrome.storage.sync.get(['moduleUrl', 'pin'], (v) => {
-    moduleUrlEl.value = v.moduleUrl || '';
-    pinEl.value = v.pin || '';
+  chrome.storage.sync.get(['tbModuleUrl', 'tbModulePin'], (v) => {
+    moduleUrlEl.value = v.tbModuleUrl || '';
+    pinEl.value = v.tbModulePin || '';
   });
 
   saveBtn.addEventListener('click', async () => {
@@ -29,9 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     statusEl.textContent = 'Перевіряємо…';
 
-    // Try a probe call. We don't have a verify endpoint per se; we just hit
-    // /api/extension-sync without medics_id — it should return 400 (Bad
-    // Request) but only AFTER passing auth. 401 means PIN is wrong.
+    // Probe — call extension-sync without medics_id. 400 means auth passed.
     try {
       const r = await fetch(`${moduleUrl}/api/extension-sync`, {
         headers: { Authorization: `Bearer ${pin}` },
@@ -41,8 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusEl.className = 'status-err';
         return;
       }
-      // 400 (no medics_id) or 200 — both mean auth passed.
-      chrome.storage.sync.set({ moduleUrl, pin }, () => {
+      chrome.storage.sync.set({ tbModuleUrl: moduleUrl, tbModulePin: pin }, () => {
         statusEl.textContent = 'Збережено. Можете закрити це вікно.';
         statusEl.className = 'status-ok';
       });

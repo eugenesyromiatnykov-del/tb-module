@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Medics Indicators",
+  "version": "4.0.0",
+  "description": "Аналіз виконання індикаторів якості надавача ПМД",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
+    "default_title": "Medics Indicators"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://medics.ua/*"
+  ],
+  "options_page": "tb-options.html",
+  "content_scripts": [
+    {
+      "matches": ["https://medics.ua/*"],
+      "js": [
+        "helpers.js",
+        "gender-detector.js",
+        "gender-selector.js",
+        "parser.js",
+        "analyzer.js",
+        "indicators-rules.js",
+        "data-collector.js",
+        "indicator-matcher.js",
+        "form-027-collector.js",
+        "ui.js",
+        "content.js",
+        "tb-module-sync.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
