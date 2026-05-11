@@ -13,6 +13,7 @@ export type PatientFilter =
 export type PatientFilters = {
   location?: string;
   status?: string;
+  group?: string;       // single risk-group key (medical or social)
   search?: string;
   archived?: boolean;
   filter?: PatientFilter;
@@ -31,6 +32,7 @@ function buildQuery(filters: PatientFilters): string {
   const params = new URLSearchParams();
   if (filters.location) params.set('location', filters.location);
   if (filters.status) params.set('status', filters.status);
+  if (filters.group) params.set('group', filters.group);
   if (filters.search) params.set('search', filters.search);
   if (filters.archived) params.set('archived', '1');
   if (filters.filter) params.set('filter', filters.filter);

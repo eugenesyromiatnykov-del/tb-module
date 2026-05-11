@@ -159,6 +159,16 @@ export default async function handler(req: Req, res: Res) {
     if (location) query = query.eq('location_id', location);
   }
   if (status) query = query.eq('tb_status', status);
+
+  // Single risk-group filter: matches either medical_risk_groups or
+  // social_risk_groups arrays containing the key.
+  const group = asString(q.group);
+  if (group) {
+    // PostgREST array-contains: cs.{key}. The GIN indexes
+    // patients_med_groups + patients_soc_groups make this fast.
+    query = query.or(`medical_risk_groups.cs.{${group}},social_risk_groups.cs.{${group}}`);
+  }
+
   if (search) {
     const like = `%${search}%`;
     query = query.or(

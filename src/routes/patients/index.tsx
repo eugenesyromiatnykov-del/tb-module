@@ -23,6 +23,7 @@ import {
   type LocationId,
   type TbStatus,
 } from '@/types/database';
+import { RISK_GROUPS, labelOf } from '@/lib/risk-groups';
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -44,6 +45,7 @@ export function PatientsPage() {
 
   const [location, setLocation] = useState<'' | LocationId>('');
   const [status, setStatus] = useState<'' | TbStatus>('');
+  const [group, setGroup] = useState<string>('');
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
   const search = useDebounced(searchInput, 300);
@@ -52,11 +54,12 @@ export function PatientsPage() {
     () => ({
       location: location || undefined,
       status: status || undefined,
+      group: group || undefined,
       search: search || undefined,
       archived,
       filter,
     }),
-    [location, status, search, archived, filter],
+    [location, status, group, search, archived, filter],
   );
 
   const { data, isLoading, isFetching, error } = usePatients(filters);
@@ -110,12 +113,18 @@ export function PatientsPage() {
                 <span
                   key={g}
                   className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
+                  title={g}
                 >
-                  {g}
+                  {labelOf(g)}
                 </span>
               ))}
               {groups.length > 2 && (
-                <span className="text-xs text-slate-400">+{groups.length - 2}</span>
+                <span
+                  className="text-xs text-slate-400"
+                  title={groups.slice(2).map(labelOf).join(', ')}
+                >
+                  +{groups.length - 2}
+                </span>
               )}
             </div>
           );
@@ -244,6 +253,26 @@ export function PatientsPage() {
                 {TB_STATUS_LABELS[s]}
               </option>
             ))}
+          </Select>
+        </div>
+        <div className="w-56">
+          <label className="mb-1 block text-xs font-medium text-slate-600">Група ризику</label>
+          <Select value={group} onChange={(e) => setGroup(e.target.value)}>
+            <option value="">Усі</option>
+            <optgroup label="Медичні">
+              {RISK_GROUPS.filter((g) => g.category === 'medical').map((g) => (
+                <option key={g.key} value={g.key}>
+                  {g.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Соціальні">
+              {RISK_GROUPS.filter((g) => g.category === 'social').map((g) => (
+                <option key={g.key} value={g.key}>
+                  {g.label}
+                </option>
+              ))}
+            </optgroup>
           </Select>
         </div>
         <div className="flex items-center gap-2 pb-2">
