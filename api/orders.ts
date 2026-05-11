@@ -14,93 +14,94 @@ type Res = {
 
 export const config = { runtime: 'nodejs' };
 
-const BUCKET = 'orders';
+const ALLOWED_FIELDS = new Set(['title', 'url', 'notes', 'category']);
 
 function asString(v: string | string[] | undefined): string | undefined {
   if (Array.isArray(v)) return v[0];
   return v;
 }
 
+function normalizeUrl(u: string): string {
+  const s = u.trim();
+  if (!s) return s;
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+
 export default async function handler(req: Req, res: Res) {
   if (!(await requireAuth(req, res))) return;
   const supabase = getSupabaseAdmin();
   const q = req.query ?? {};
-  const action = asString(q.action);
 
   if (req.method === 'GET') {
-    // List all files in the bucket.
-    if (!action || action === 'list') {
-      const { data, error } = await supabase.storage.from(BUCKET).list('', {
-        limit: 200,
-        sortBy: { column: 'name', order: 'asc' },
-      });
-      if (error) {
-        res.status(500).json({ error: error.message });
-        return;
-      }
-      const items = (data ?? [])
-        .filter((f) => f.name && !f.name.startsWith('.'))
-        .map((f) => ({
-          name: f.name,
-          size: f.metadata?.size ?? null,
-          mime_type: f.metadata?.mimetype ?? null,
-          created_at: f.created_at,
-          updated_at: f.updated_at,
-        }));
-      res.status(200).json({ orders: items });
-      return;
-    }
-
-    // Get a short-lived signed download URL.
-    if (action === 'download') {
-      const path = asString(q.path);
-      if (!path) {
-        res.status(400).json({ error: 'path required' });
-        return;
-      }
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 5);
-      if (error) {
-        res.status(500).json({ error: error.message });
-        return;
-      }
-      res.status(200).json({ url: data.signedUrl });
-      return;
-    }
-
-    res.status(400).json({ error: `Unknown GET action: ${action}` });
-    return;
-  }
-
-  if (req.method === 'POST') {
-    // Server-side upload via base64 payload. OK for files up to ~4 MB
-    // (Vercel body limit). Bigger files would need signed upload URLs.
-    const body = (req.body ?? {}) as { filename?: string; content_base64?: string; mime_type?: string };
-    if (!body.filename || !body.content_base64) {
-      res.status(400).json({ error: 'filename and content_base64 required' });
-      return;
-    }
-    const buf = Buffer.from(body.content_base64, 'base64');
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(body.filename, buf, {
-        contentType: body.mime_type ?? 'application/octet-stream',
-        upsert: true,
-      });
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('title', { ascending: true });
     if (error) {
       res.status(500).json({ error: error.message });
       return;
     }
-    res.status(201).json({ ok: true, path: body.filename });
+    res.status(200).json({ orders: data ?? [] });
+    return;
+  }
+
+  if (req.method === 'POST') {
+    const body = (req.body ?? {}) as { title?: string; url?: string; notes?: string | null; category?: string | null };
+    const title = (body.title ?? '').trim();
+    const url = normalizeUrl(body.url ?? '');
+    if (!title || !url) {
+      res.status(400).json({ error: 'title and url required' });
+      return;
+    }
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({ title, url, notes: body.notes ?? null, category: body.category ?? null })
+      .select('*')
+      .maybeSingle();
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.status(201).json({ order: data });
+    return;
+  }
+
+  const id = asString(q.id);
+  if (!id) {
+    res.status(400).json({ error: 'id required' });
+    return;
+  }
+
+  if (req.method === 'PATCH') {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(body)) {
+      if (!ALLOWED_FIELDS.has(k)) continue;
+      if (k === 'url' && typeof v === 'string') patch[k] = normalizeUrl(v);
+      else if (k === 'title' && typeof v === 'string') patch[k] = v.trim();
+      else patch[k] = v;
+    }
+    if (Object.keys(patch).length === 0) {
+      res.status(400).json({ error: 'Nothing to update' });
+      return;
+    }
+    const { data, error } = await supabase
+      .from('orders')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .maybeSingle();
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.status(200).json({ order: data });
     return;
   }
 
   if (req.method === 'DELETE') {
-    const path = asString(q.path);
-    if (!path) {
-      res.status(400).json({ error: 'path required' });
-      return;
-    }
-    const { error } = await supabase.storage.from(BUCKET).remove([path]);
+    const { error } = await supabase.from('orders').delete().eq('id', id);
     if (error) {
       res.status(500).json({ error: error.message });
       return;
