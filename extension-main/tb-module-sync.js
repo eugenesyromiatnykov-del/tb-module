@@ -299,7 +299,24 @@
     const s = document.createElement('style');
     s.id = 'tb-module-styles';
     s.textContent = `
-      .tb-section { margin:12px 14px!important; padding:12px 14px!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:13px!important; color:#0f172a!important; box-sizing:border-box!important; }
+      /* Hide noise we don't need anymore */
+      #mi-completion-bar { display: none !important; }
+      .mi-summary-sticky, .mi-tiles, .mi-legend { display: none !important; }
+      #mi-instruction { display: none !important; }
+
+      /* Inline gender picker in patient banner */
+      .tb-gender-inline { display: inline-flex !important; gap: 4px !important; margin-left: 6px !important; vertical-align: middle !important; }
+      .tb-gender-inline button {
+        background: transparent !important; border: 1px solid #cbd5e1 !important;
+        border-radius: 6px !important; padding: 2px 6px !important;
+        font-size: 12px !important; line-height: 1 !important; cursor: pointer !important;
+        font-family: inherit !important; color: #475569 !important;
+      }
+      .tb-gender-inline button.is-active { background: #0284c7 !important; border-color: #0284c7 !important; color: #fff !important; }
+      .tb-gender-inline button.is-active-f { background: #db2777 !important; border-color: #db2777 !important; color: #fff !important; }
+      .tb-gender-inline button:hover { background: #f1f5f9 !important; }
+
+      .tb-section { margin:0 0 12px 0!important; padding:12px 14px!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:13px!important; color:#0f172a!important; box-sizing:border-box!important; }
       .tb-section--ok{border-color:#86efac!important;background:#f0fdf4!important}
       .tb-section--warn{border-color:#fbbf24!important;background:#fffbeb!important}
       .tb-section--err{border-color:#fca5a5!important;background:#fef2f2!important}
@@ -332,10 +349,11 @@
 
   function ensureSection() {
     let sec = document.getElementById('tb-module-section');
-    if (sec) return sec;
+    if (sec && document.body.contains(sec)) return sec;
     injectStyles();
-    const banner = document.getElementById('mi-patient-banner');
-    if (!banner || !banner.parentNode) return null;
+    // Insert as the FIRST child of widget body so it folds with the toggle.
+    const body = document.getElementById('mi-widget-body');
+    if (!body) return null;
     sec = document.createElement('div');
     sec.id = 'tb-module-section';
     sec.className = 'tb-section tb-section--neutral';
@@ -344,9 +362,9 @@
         <span class="tb-section__dot" style="background:#94a3b8;"></span>
         <h3 class="tb-section__title">📋 Модуль ТБ</h3>
       </div>
-      <div class="tb-section__body">Завантаження…</div>
+      <div class="tb-section__body">…</div>
     `;
-    banner.insertAdjacentElement('afterend', sec);
+    body.insertAdjacentElement('afterbegin', sec);
     STATE.sectionEl = sec;
     return sec;
   }
@@ -419,13 +437,10 @@
   }
 
   function renderEmpty(medicsId, source) {
-    const srcLbl = source === 'manual' ? '(введено вручну)' : '';
+    const srcLbl = source === 'manual' ? ' (введено вручну)' : '';
     setSection('info', `
-      <div>
-        <div class="tb-section__name">Пацієнта немає в реєстрі ТБ</div>
-        <div class="tb-section__meta">Medics ID: ${escHtml(medicsId)} ${srcLbl}</div>
-      </div>
-      <div class="tb-section__hint">Натисніть «Проаналізувати» — пацієнт додасться автоматично разом з діагнозами та R-ОГК.</div>
+      <div class="tb-section__meta">Medics ID: ${escHtml(medicsId)}${srcLbl} · <strong>немає в реєстрі ТБ</strong></div>
+      <div class="tb-section__hint">Натисніть «Проаналізувати» — пацієнт додасться автоматично з діагнозами та R-ОГК.</div>
       <div class="tb-section__actions">
         ${source === 'manual' ? '<button class="tb-btn tb-btn--ghost" id="tb-forget" type="button">Забути ID</button>' : ''}
         <button class="tb-btn tb-btn--ghost" id="tb-change-medics" type="button">Інший Medics ID</button>
@@ -438,7 +453,7 @@
   }
 
   function renderExisting(p, source) {
-    const srcLbl = source === 'manual' ? '(введено вручну)' : '';
+    const srcLbl = source === 'manual' ? ' (введено вручну)' : '';
     let nextRow = '';
     if (p.next_planned_date) {
       const m = p.next_planned_date.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -455,19 +470,16 @@
     const groups = [...(p.medical_risk_groups || []), ...(p.social_risk_groups || [])];
 
     setSection('ok', `
-      <div>
-        <div class="tb-section__name">${escHtml([p.surname, p.first_name, p.patronymic].filter(Boolean).join(' '))}</div>
-        <div class="tb-section__meta">
-          Medics ID: ${escHtml(p.medics_id || '')} ${srcLbl} ·
-          <span class="tb-section__status" style="${statusTone(p.tb_status)}">${statusLabel(p.tb_status)}</span>
-        </div>
+      <div class="tb-section__meta">
+        Medics ID: ${escHtml(p.medics_id || '')}${srcLbl} ·
+        <span class="tb-section__status" style="${statusTone(p.tb_status)}">${statusLabel(p.tb_status)}</span>
       </div>
       <div class="tb-section__row"><span>Остання флюоро:</span><strong>${p.last_fluoro_date ? formatDate(p.last_fluoro_date) : '—'}</strong></div>
       ${nextRow}
       ${groups.length > 0 ? `<div class="tb-section__groups">${groups.map((g) => `<span class="tb-section__group">${escHtml(g)}</span>`).join('')}</div>` : ''}
       ${STATE.lastSyncedAt
         ? `<div class="tb-section__hint">Синхронізовано ${new Date(STATE.lastSyncedAt).toLocaleTimeString('uk-UA')}</div>`
-        : `<div class="tb-section__hint">Оновлюється автоматично після «Проаналізувати».</div>`}
+        : `<div class="tb-section__hint">Оновлюється після «Проаналізувати».</div>`}
       <div class="tb-section__actions">
         <a class="tb-btn tb-btn--ghost" href="${STATE.config.url}/patients/${p.id}" target="_blank">Картка ↗</a>
         ${source === 'manual' ? '<button class="tb-btn tb-btn--ghost" id="tb-forget" type="button">Забути ID</button>' : ''}
@@ -554,19 +566,80 @@
   function installAnalyzeHook() {
     if (typeof MedicsIndicatorUI === 'undefined' || !MedicsIndicatorUI.prototype) return false;
     if (MedicsIndicatorUI.prototype.__tbModulePatched) return true;
-    const orig = MedicsIndicatorUI.prototype.displayResults;
-    if (typeof orig !== 'function') return false;
+
+    const origDisplay = MedicsIndicatorUI.prototype.displayResults;
+    if (typeof origDisplay !== 'function') return false;
     MedicsIndicatorUI.prototype.displayResults = function (results, collectedData) {
-      orig.call(this, results, collectedData);
+      origDisplay.call(this, results, collectedData);
       try {
         doSync(false, collectedData).catch((e) => console.error('[TB Module] auto-sync:', e));
       } catch (e) {
         console.error('[TB Module] auto-sync error:', e);
       }
     };
+
+    // Strip age tail from the name and inject inline gender picker into meta.
+    const origUpdateBanner = MedicsIndicatorUI.prototype.updatePatientBanner;
+    if (typeof origUpdateBanner === 'function') {
+      MedicsIndicatorUI.prototype.updatePatientBanner = function (info) {
+        const data = info || (typeof this.getQuickPatientInfo === 'function' ? this.getQuickPatientInfo() : null);
+        if (data && data.name) {
+          // Strip trailing "<digits> р." / "<digits>р." / "<digits> років" / "<digits>" etc.
+          data.name = data.name
+            .replace(/[,;].*$/, '')
+            .replace(/\s+\d+\s*(р\.?|років|років\.?)\s*$/iu, '')
+            .replace(/\s+\d+\s*$/, '')
+            .trim();
+        }
+        origUpdateBanner.call(this, data);
+        decorateBannerMeta(data);
+      };
+    }
+
+    // Hide the in-results "Стать пацієнта" card — picker now lives in the banner.
+    if (typeof MedicsIndicatorUI.prototype.renderGenderSelector === 'function') {
+      MedicsIndicatorUI.prototype.renderGenderSelector = function () { return ''; };
+    }
+
     MedicsIndicatorUI.prototype.__tbModulePatched = true;
-    console.log('[TB Module] displayResults hook installed');
+    console.log('[TB Module] hooks installed (displayResults + updatePatientBanner + renderGenderSelector)');
     return true;
+  }
+
+  // Replace the textual meta ("• 74 років, ♂ чол.") with age text + inline
+  // gender toggle buttons that hook into GENDER_DETECTOR.
+  function decorateBannerMeta(data) {
+    const meta = document.getElementById('mi-patient-meta');
+    if (!meta) return;
+    const age = data?.age;
+    const gender = data?.gender; // 'M' | 'F' | null
+
+    const ageHtml = age != null ? `• ${age} років` : '';
+    const maleClass = gender === 'M' ? 'is-active' : '';
+    const femaleClass = gender === 'F' ? 'is-active-f' : '';
+
+    meta.innerHTML = `
+      ${ageHtml}
+      <span class="tb-gender-inline">
+        <button type="button" id="tb-banner-male" class="${maleClass}" title="Чоловік">👨</button>
+        <button type="button" id="tb-banner-female" class="${femaleClass}" title="Жінка">👩</button>
+      </span>
+    `;
+
+    const setGender = (g) => {
+      if (typeof GENDER_DETECTOR === 'undefined' || !GENDER_DETECTOR.setManualGender) return;
+      GENDER_DETECTOR.setManualGender(g);
+      // Re-trigger analysis through their own button (no need for instance ref).
+      document.getElementById('mi-analyze-btn')?.click();
+    };
+    document.getElementById('tb-banner-male')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setGender('M');
+    });
+    document.getElementById('tb-banner-female')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setGender('F');
+    });
   }
 
   async function boot() {
