@@ -1,6 +1,6 @@
 export type LocationId = 'bilohirska' | 'zaluzhe';
 
-export type TbStatus = 'risk' | 'detected' | 'contact' | 'cleared' | 'external' | 'archived';
+export type TbStatus = 'observed' | 'risk' | 'detected' | 'contact' | 'cleared' | 'external' | 'archived';
 export type FluoroResultCode = 'normal' | 'pathology' | 'pending' | 'refused' | 'unknown';
 export type SputumTestType = 'xpert' | 'microscopy' | 'culture' | 'pcr';
 export type DataSource = 'manual' | 'extension' | 'imported_xlsx' | 'mis_sync';
@@ -70,7 +70,8 @@ export const LOCATION_LABELS: Record<LocationId, string> = {
 };
 
 export const TB_STATUS_LABELS: Record<TbStatus, string> = {
-  risk: 'На ризику',
+  observed: 'Спостереження',
+  risk: 'В групі ризику',
   detected: 'Виявлений',
   contact: 'Контактний',
   cleared: 'Знятий з обліку',

@@ -16,6 +16,7 @@
     sectionEl: null,
     lastSyncedAt: null,
     booted: false,
+    analyzedOnce: false, // section stays hidden until first "Проаналізувати"
   };
 
   // ─── Config (chrome.storage.sync) ─────────────────────────────────────
@@ -49,8 +50,12 @@
     }));
   }
 
-  // ─── ICPC-2 → medical_risk_groups (full RISK_FACTORS_TB coverage) ────
-  // Mirrors indicators-rules.js RISK_FACTORS_TB + indicators-spec.md Ind10.
+  // ─── ICPC-2 → medical_risk_groups ─────────────────────────────────────
+  // Covers RISK_FACTORS_TB except the Z01-Z06 social codes — those mean
+  // "бідність / харчі / житло / безробіття" in ICPC-2 but conflict with
+  // unrelated МКХ-10 Z-codes and are too generic for auto-tagging.
+  // The 'social_distress' group is kept in the module but reserved for
+  // manual selection in the patient card.
   const ICPC_TO_GROUP = {
     // ВІЛ / СНІД
     B90: 'hiv',
@@ -82,9 +87,6 @@
     // Вагітність / пологи
     W78: 'pregnancy', W84: 'pregnancy',
     W90: 'pregnancy', W91: 'pregnancy', W92: 'pregnancy', W93: 'pregnancy',
-    // Соціальні фактори
-    Z01: 'social_distress', Z02: 'social_distress',
-    Z03: 'social_distress', Z06: 'social_distress',
   };
 
   function diagnosesToGroups(diagnoses) {
@@ -372,6 +374,7 @@
   function setSection(state, html) {
     const sec = ensureSection();
     if (!sec) return;
+    sec.style.display = STATE.analyzedOnce ? '' : 'none';
     sec.className = `tb-section tb-section--${state}`;
     const dot = sec.querySelector('.tb-section__dot');
     if (dot) {
@@ -382,6 +385,12 @@
     if (body) body.innerHTML = html;
   }
 
+  function revealSection() {
+    STATE.analyzedOnce = true;
+    const sec = document.getElementById('tb-module-section');
+    if (sec) sec.style.display = '';
+  }
+
   function escHtml(s) {
     return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
@@ -390,10 +399,18 @@
     return m ? `${m[3]}.${m[2]}.${m[1]}` : '—';
   }
   function statusLabel(s) {
-    return ({ risk: 'На ризику', detected: 'Виявлений', contact: 'Контактний', cleared: 'Знятий з обліку', external: 'Не декларант', archived: 'Архівний' })[s] || s;
+    return ({ observed: 'Спостереження', risk: 'В групі ризику', detected: 'Виявлений', contact: 'Контактний', cleared: 'Знятий з обліку', external: 'Не декларант', archived: 'Архівний' })[s] || s;
   }
   function statusTone(s) {
-    return ({ risk: 'background:#f1f5f9;color:#334155', detected: 'background:#fef3c7;color:#92400e', contact: 'background:#dbeafe;color:#1e40af', cleared: 'background:#d1fae5;color:#065f46', external: 'background:#ede9fe;color:#6d28d9', archived: 'background:#f1f5f9;color:#94a3b8' })[s] || 'background:#f1f5f9;color:#334155';
+    return ({
+      observed: 'background:#f8fafc;color:#475569',
+      risk: 'background:#fed7aa;color:#9a3412',
+      detected: 'background:#fef3c7;color:#92400e',
+      contact: 'background:#dbeafe;color:#1e40af',
+      cleared: 'background:#d1fae5;color:#065f46',
+      external: 'background:#ede9fe;color:#6d28d9',
+      archived: 'background:#f1f5f9;color:#94a3b8',
+    })[s] || 'background:#f1f5f9;color:#334155';
   }
 
   function renderUnconfigured() {
@@ -571,6 +588,7 @@
     if (typeof origDisplay !== 'function') return false;
     MedicsIndicatorUI.prototype.displayResults = function (results, collectedData) {
       origDisplay.call(this, results, collectedData);
+      revealSection();
       try {
         doSync(false, collectedData).catch((e) => console.error('[TB Module] auto-sync:', e));
       } catch (e) {
@@ -648,7 +666,9 @@
     const tryInit = () => {
       if (!document.getElementById('mi-patient-banner')) return false;
       installAnalyzeHook();
-      refresh();
+      // Do NOT call refresh() on boot — section stays out of sight until
+      // the user clicks "Проаналізувати". The hook in displayResults will
+      // call revealSection() + sync.
       STATE.booted = true;
       return true;
     };

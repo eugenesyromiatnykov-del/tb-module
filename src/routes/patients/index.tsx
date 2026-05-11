@@ -334,7 +334,8 @@ function rowAccent(p: Patient): string {
 
 function StatusBadge({ status }: { status: TbStatus }) {
   const tone: Record<TbStatus, string> = {
-    risk: 'bg-slate-100 text-slate-700',
+    observed: 'bg-slate-50 text-slate-600',
+    risk: 'bg-orange-100 text-orange-800',
     detected: 'bg-yellow-100 text-yellow-800',
     contact: 'bg-blue-100 text-blue-800',
     cleared: 'bg-green-100 text-green-800',
