@@ -1,19 +1,18 @@
 // ============================================================================
 // TB-MODULE-SYNC.JS
-// Інтеграція з Medics Indicators: дані пацієнта (ПІБ, ДН, ICPC-2 діагнози)
-// після кожного "Аналізувати" автоматично відправляються в модуль ТБ.
+// Інтеграція з Medics Indicators: після кожного "Аналізувати" дані пацієнта
+// (ПІБ, ДН, ICPC-2 діагнози → medical_risk_groups, останній R-ОГК з результатом)
+// автоматично відправляються в модуль ТБ.
 //
-// Завантажується останнім у content_scripts після ui.js (потрібен
-// MedicsIndicatorUI.prototype.displayResults) і parser.js (для діагнозів).
+// Завантажується останнім у content_scripts після ui.js + parser.js + analyzer.js.
 // ============================================================================
 
 (() => {
   'use strict';
 
   const STATE = {
-    config: null,                  // { url, pin }
-    currentKey: null,              // location.href without query/hash, used to remember manual Medics ID
-    currentMedicsId: null,         // resolved Medics ID (auto or manual)
+    config: null,
+    currentMedicsId: null,
     sectionEl: null,
     lastSyncedAt: null,
     booted: false,
@@ -30,23 +29,62 @@
       });
     });
   }
+  function isConfigured() { return !!(STATE.config && STATE.config.url && STATE.config.pin); }
 
-  function isConfigured() {
-    return !!(STATE.config && STATE.config.url && STATE.config.pin);
+  // ─── Manual Medics ID storage (pageURL → Medics ID) ──────────────────
+  function pageKey() { return location.origin + location.pathname; }
+  function getManualMappings() {
+    return new Promise((r) => chrome.storage.sync.get(['tbManualMedics'], (v) => r(v.tbManualMedics || {})));
+  }
+  function saveManualMapping(key, id) {
+    return new Promise((r) => chrome.storage.sync.get(['tbManualMedics'], (v) => {
+      const m = v.tbManualMedics || {}; m[key] = id;
+      chrome.storage.sync.set({ tbManualMedics: m }, r);
+    }));
+  }
+  function deleteManualMapping(key) {
+    return new Promise((r) => chrome.storage.sync.get(['tbManualMedics'], (v) => {
+      const m = v.tbManualMedics || {}; delete m[key];
+      chrome.storage.sync.set({ tbManualMedics: m }, r);
+    }));
   }
 
-  // ─── ICPC-2 → medical_risk_groups (mirrors src/lib/risk-groups.ts) ───
+  // ─── ICPC-2 → medical_risk_groups (full RISK_FACTORS_TB coverage) ────
+  // Mirrors indicators-rules.js RISK_FACTORS_TB + indicators-spec.md Ind10.
   const ICPC_TO_GROUP = {
+    // ВІЛ / СНІД
     B90: 'hiv',
-    T89: 'diabetes', T90: 'diabetes',
+    // Онкологія
     A79: 'oncology', B72: 'oncology', B74: 'oncology',
     D74: 'oncology', D75: 'oncology', D76: 'oncology', D77: 'oncology', D78: 'oncology',
+    L71: 'oncology', N74: 'oncology',
     R84: 'oncology', R85: 'oncology',
     U75: 'oncology', U76: 'oncology', U77: 'oncology',
+    T71: 'oncology', W72: 'oncology',
+    X75: 'oncology', X76: 'oncology', X77: 'oncology',
+    Y77: 'oncology', Y78: 'oncology',
+    // Цукровий діабет
+    T89: 'diabetes', T90: 'diabetes',
+    // Шкідливі звички
+    P15: 'alcohol_abuse', P16: 'alcohol_abuse',
+    P17: 'tobacco_use',
+    P19: 'drug_abuse',
+    // Респіраторні
     R95: 'chronic_respiratory', R96: 'chronic_respiratory',
     R79: 'chronic_respiratory',
     R81: 'pneumonia_history',
-    D85: 'peptic_ulcer', D86: 'peptic_ulcer',
+    R82: 'pleurisy',
+    // Харчування / вага
+    T05: 'nutrition_problem',
+    T08: 'weight_loss',
+    // Урологія
+    U28: 'urology_disorder',
+    // Вагітність / пологи
+    W78: 'pregnancy', W84: 'pregnancy',
+    W90: 'pregnancy', W91: 'pregnancy', W92: 'pregnancy', W93: 'pregnancy',
+    // Соціальні фактори
+    Z01: 'social_distress', Z02: 'social_distress',
+    Z03: 'social_distress', Z06: 'social_distress',
   };
 
   function diagnosesToGroups(diagnoses) {
@@ -64,41 +102,8 @@
     return { groups: [...groups], codes: [...codes] };
   }
 
-  // ─── Page key → manual Medics ID mapping (in storage) ────────────────
-  function pageKey() {
-    // Strip query/hash so reload won't drop saved Medics ID.
-    return location.origin + location.pathname;
-  }
-
-  function getManualMappings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(['tbManualMedics'], (v) => {
-        resolve(v.tbManualMedics || {});
-      });
-    });
-  }
-  function saveManualMapping(key, medicsId) {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(['tbManualMedics'], (v) => {
-        const map = v.tbManualMedics || {};
-        map[key] = medicsId;
-        chrome.storage.sync.set({ tbManualMedics: map }, () => resolve());
-      });
-    });
-  }
-  function deleteManualMapping(key) {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(['tbManualMedics'], (v) => {
-        const map = v.tbManualMedics || {};
-        delete map[key];
-        chrome.storage.sync.set({ tbManualMedics: map }, () => resolve());
-      });
-    });
-  }
-
-  // ─── Medics ID extraction (auto + manual fallback) ──────────────────
+  // ─── Medics ID extraction (auto + manual fallback) ───────────────────
   function tryAutoExtractMedicsId() {
-    // 1) Query params
     try {
       const url = new URL(location.href);
       for (const k of ['medics_id', 'patient_id', 'id', 'mid']) {
@@ -106,38 +111,27 @@
         if (v && /^\d{4,}$/.test(v)) return v;
       }
     } catch (_) {}
-
-    // 2) URL path: /patient/<id>, /patients/<id>
     const path = location.pathname + location.hash;
-    let m = path.match(/\/patients?\/(\d{4,})\b/i);
+    const m = path.match(/\/patients?\/(\d{4,})\b/i);
     if (m) return m[1];
-
-    // 3) Data attributes
     const attr = document.querySelector('[data-medics-id], [data-patient-id]');
     if (attr) {
       const v = attr.getAttribute('data-medics-id') || attr.getAttribute('data-patient-id');
       if (v && /^\d{4,}$/.test(v)) return v;
     }
-
-    // 4) "Medics ID" / "ID пацієнта" labels inside patient card
-    const labels = ['Medics ID', 'ID пацієнта', 'ID Medics'];
-    for (const txt of labels) {
-      if (typeof findElementByText === 'function') {
+    if (typeof findElementByText === 'function') {
+      for (const txt of ['Medics ID', 'ID пацієнта']) {
         const el = findElementByText(txt);
-        if (el) {
-          // Search next 3 siblings + parent's children for digit run.
-          let node = el;
-          for (let i = 0; i < 5; i++) {
-            node = node.nextElementSibling || node.parentElement?.nextElementSibling;
-            if (!node) break;
-            const mm = (node.textContent || '').match(/(\d{4,})/);
-            if (mm) return mm[1];
-          }
+        if (!el) continue;
+        let node = el;
+        for (let i = 0; i < 5; i++) {
+          node = node.nextElementSibling || node.parentElement?.nextElementSibling;
+          if (!node) break;
+          const mm = (node.textContent || '').match(/(\d{4,})/);
+          if (mm) return mm[1];
         }
       }
     }
-
-    // 5) Numeric run in patient-info-card itself (last-ditch heuristic)
     const card = document.querySelector('#med-card-block, .c-patient-info-card');
     if (card) {
       const txt = (card.textContent || '').replace(/\s+/g, ' ');
@@ -156,16 +150,24 @@
     return { id: null, source: null };
   }
 
-  // ─── DOM helpers ──────────────────────────────────────────────────────
+  // ─── ПІБ extraction — only Cyrillic words, max 3 ─────────────────────
+  // .c-patient-info-card--user-name often contains "Іваненко Іван Іванович, 75 років"
+  // We keep only cyrillic words (including apostrophes), discard age/commas.
   function extractNameParts() {
     const nameEl = document.querySelector('.c-patient-info-card--user-name');
     if (!nameEl) return null;
-    const parts = nameEl.textContent.trim().split(/\s+/);
-    if (parts.length < 2) return null;
+    const raw = (nameEl.textContent || '').trim();
+    if (!raw) return null;
+    const cleaned = raw.replace(/[,;()].*/, '');
+    const tokens = cleaned
+      .split(/\s+/)
+      .filter((w) => /^[А-ЯІЇЄҐа-яіїєґʼ'`\-]+$/.test(w))
+      .slice(0, 3);
+    if (tokens.length < 2) return null;
     return {
-      surname: parts[0],
-      first_name: parts[1],
-      patronymic: parts.slice(2).join(' ') || null,
+      surname: tokens[0],
+      first_name: tokens[1],
+      patronymic: tokens[2] || null,
     };
   }
 
@@ -198,6 +200,77 @@
     };
   }
 
+  // ─── R-ОГК: pull last diagnostic report + its conclusion text ────────
+  // Codes from indicator 10 requiredActions / sample data:
+  //   58500-00 Рентгенографія грудної клітки
+  //   56301-00 КТ грудної клітки
+  //   A34030   (alias used in the rendered DOM)
+  const RX_CHEST_CODES = ['58500-00', '56301-00', 'A34030'];
+
+  function classifyResult(text) {
+    if (!text) return 'unknown';
+    const s = text.toLowerCase();
+    // "norm" / "without pathology" / "without features"
+    if (/без\s*патолог|у\s*меж[аі]х\s*норм|без\s*особлив|норм/.test(s)) return 'normal';
+    if (/патолог|зміни|інфільтрат|тінь|вогнищ|туберкульоз|зззтб|хр\.\s*бр/.test(s)) return 'pathology';
+    if (/відмов/.test(s)) return 'refused';
+    if (/очік|pending/.test(s)) return 'pending';
+    return 'unknown';
+  }
+
+  // Pull last R-ОГК from analyzer.diagnosticReports + DOM conclusion.
+  function extractLastFluoro(collectedData) {
+    // 1) Date from analyzer.diagnosticReports (it parsed Ukrainian-text dates already)
+    let best = null; // { code, date: Date }
+    const reports = collectedData?.diagnosticReports || {};
+    for (const code of RX_CHEST_CODES) {
+      const r = reports[code];
+      if (r?.date) {
+        if (!best || r.date > best.date) best = { code, date: r.date };
+      }
+    }
+
+    // 2) Conclusion text — scan DOM for output-item titled "Висновок" that's
+    //    physically associated with one of the chest-RX codes.
+    let conclusion = null;
+    document.querySelectorAll('.c-collapse--output-item').forEach((item) => {
+      const title = item.querySelector('.c-collapse--output-title');
+      if (!title || !/висновок/i.test(title.textContent || '')) return;
+      const txtEl = item.querySelector('.c-collapse--output-text');
+      const text = (txtEl?.textContent || '').trim();
+      if (!text) return;
+
+      // Walk up looking for a container that mentions a chest-RX code.
+      let parent = item.parentElement;
+      for (let i = 0; i < 8 && parent; i++) {
+        const pText = parent.textContent || '';
+        if (RX_CHEST_CODES.some((c) => pText.includes(c))) {
+          // First match wins (closest enclosing container with a code).
+          if (!conclusion) conclusion = text;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+    });
+
+    if (!best) return null;
+    const iso = best.date.toISOString().slice(0, 10);
+    const result = conclusion;
+    return {
+      date: iso,
+      result,
+      result_code: classifyResult(result),
+      next_planned_date: addMonthsIso(iso, 12),
+    };
+  }
+
+  function addMonthsIso(iso, months) {
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1 + months, +m[3]);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   // ─── API ──────────────────────────────────────────────────────────────
   async function apiGet(medicsId) {
     const r = await fetch(
@@ -220,133 +293,49 @@
     return r.json();
   }
 
-  // ─── Inject CSS once ──────────────────────────────────────────────────
+  // ─── CSS once ─────────────────────────────────────────────────────────
   function injectStyles() {
     if (document.getElementById('tb-module-styles')) return;
     const s = document.createElement('style');
     s.id = 'tb-module-styles';
     s.textContent = `
-      .tb-section {
-        margin: 12px 14px !important;
-        padding: 12px 14px !important;
-        background: #ffffff !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 12px !important;
-        font-family: -apple-system, "Segoe UI", Roboto, sans-serif !important;
-        font-size: 13px !important;
-        color: #0f172a !important;
-        box-sizing: border-box !important;
-      }
-      .tb-section--ok      { border-color: #86efac !important; background: #f0fdf4 !important; }
-      .tb-section--warn    { border-color: #fbbf24 !important; background: #fffbeb !important; }
-      .tb-section--err     { border-color: #fca5a5 !important; background: #fef2f2 !important; }
-      .tb-section--info    { border-color: #93c5fd !important; background: #eff6ff !important; }
-      .tb-section--neutral { border-color: #e2e8f0 !important; background: #f8fafc !important; }
-      .tb-section__head {
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-        margin-bottom: 8px !important;
-      }
-      .tb-section__title {
-        font-weight: 600 !important;
-        font-size: 13px !important;
-        color: #0f172a !important;
-        margin: 0 !important;
-      }
-      .tb-section__dot {
-        width: 8px !important;
-        height: 8px !important;
-        border-radius: 50% !important;
-        display: inline-block !important;
-        flex-shrink: 0 !important;
-      }
-      .tb-section__body { line-height: 1.5 !important; }
-      .tb-section__row {
-        display: flex !important;
-        justify-content: space-between !important;
-        gap: 10px !important;
-        padding: 2px 0 !important;
-        color: #475569 !important;
-        font-size: 12px !important;
-      }
-      .tb-section__row strong { color: #0f172a !important; font-weight: 600 !important; }
-      .tb-section__status {
-        display: inline-block !important;
-        padding: 2px 8px !important;
-        border-radius: 999px !important;
-        font-size: 11px !important;
-        font-weight: 500 !important;
-        margin-left: 4px !important;
-      }
-      .tb-section__actions {
-        margin-top: 10px !important;
-        display: flex !important;
-        gap: 6px !important;
-        flex-wrap: wrap !important;
-      }
-      .tb-btn {
-        background: #2563eb !important; color: #fff !important;
-        border: 0 !important; border-radius: 6px !important;
-        padding: 6px 12px !important; font-size: 12px !important;
-        font-weight: 500 !important; cursor: pointer !important;
-        text-decoration: none !important; display: inline-flex !important;
-        align-items: center !important; gap: 4px !important;
-        font-family: inherit !important;
-      }
-      .tb-btn:hover { background: #1d4ed8 !important; }
-      .tb-btn--ghost {
-        background: #ffffff !important; color: #0f172a !important;
-        border: 1px solid #cbd5e1 !important;
-      }
-      .tb-btn--ghost:hover { background: #f1f5f9 !important; }
-      .tb-btn--danger { background: #dc2626 !important; }
-      .tb-btn--danger:hover { background: #b91c1c !important; }
-      .tb-btn:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
-      .tb-input {
-        font-family: inherit !important;
-        padding: 6px 10px !important;
-        font-size: 12px !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 6px !important;
-        flex: 1 !important;
-        min-width: 0 !important;
-        box-sizing: border-box !important;
-      }
-      .tb-input:focus { outline: 2px solid #2563eb !important; outline-offset: -1px !important; border-color: transparent !important; }
-      .tb-section__hint { font-size: 11px !important; color: #64748b !important; margin-top: 4px !important; }
-      .tb-section__name {
-        font-weight: 600 !important; font-size: 14px !important;
-        color: #0f172a !important; margin: 0 0 2px !important;
-      }
-      .tb-section__meta {
-        font-size: 11px !important; color: #64748b !important;
-        margin-bottom: 8px !important;
-      }
-      .tb-section__groups {
-        display: flex !important; flex-wrap: wrap !important; gap: 4px !important;
-        margin-top: 6px !important;
-      }
-      .tb-section__group {
-        background: #f1f5f9 !important; border: 1px solid #cbd5e1 !important;
-        padding: 1px 7px !important; border-radius: 999px !important;
-        font-size: 11px !important; color: #334155 !important;
-      }
+      .tb-section { margin:12px 14px!important; padding:12px 14px!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:13px!important; color:#0f172a!important; box-sizing:border-box!important; }
+      .tb-section--ok{border-color:#86efac!important;background:#f0fdf4!important}
+      .tb-section--warn{border-color:#fbbf24!important;background:#fffbeb!important}
+      .tb-section--err{border-color:#fca5a5!important;background:#fef2f2!important}
+      .tb-section--info{border-color:#93c5fd!important;background:#eff6ff!important}
+      .tb-section--neutral{border-color:#e2e8f0!important;background:#f8fafc!important}
+      .tb-section__head{display:flex!important;align-items:center!important;gap:8px!important;margin-bottom:8px!important}
+      .tb-section__title{font-weight:600!important;font-size:13px!important;color:#0f172a!important;margin:0!important}
+      .tb-section__dot{width:8px!important;height:8px!important;border-radius:50%!important;display:inline-block!important;flex-shrink:0!important}
+      .tb-section__body{line-height:1.5!important}
+      .tb-section__row{display:flex!important;justify-content:space-between!important;gap:10px!important;padding:2px 0!important;color:#475569!important;font-size:12px!important}
+      .tb-section__row strong{color:#0f172a!important;font-weight:600!important}
+      .tb-section__status{display:inline-block!important;padding:2px 8px!important;border-radius:999px!important;font-size:11px!important;font-weight:500!important;margin-left:4px!important}
+      .tb-section__actions{margin-top:10px!important;display:flex!important;gap:6px!important;flex-wrap:wrap!important}
+      .tb-btn{background:#2563eb!important;color:#fff!important;border:0!important;border-radius:6px!important;padding:6px 12px!important;font-size:12px!important;font-weight:500!important;cursor:pointer!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;gap:4px!important;font-family:inherit!important}
+      .tb-btn:hover{background:#1d4ed8!important}
+      .tb-btn--ghost{background:#fff!important;color:#0f172a!important;border:1px solid #cbd5e1!important}
+      .tb-btn--ghost:hover{background:#f1f5f9!important}
+      .tb-btn:disabled{opacity:0.5!important;cursor:not-allowed!important}
+      .tb-input{font-family:inherit!important;padding:6px 10px!important;font-size:12px!important;border:1px solid #cbd5e1!important;border-radius:6px!important;flex:1!important;min-width:0!important;box-sizing:border-box!important}
+      .tb-input:focus{outline:2px solid #2563eb!important;outline-offset:-1px!important;border-color:transparent!important}
+      .tb-section__hint{font-size:11px!important;color:#64748b!important;margin-top:4px!important}
+      .tb-section__name{font-weight:600!important;font-size:14px!important;color:#0f172a!important;margin:0 0 2px!important}
+      .tb-section__meta{font-size:11px!important;color:#64748b!important;margin-bottom:8px!important}
+      .tb-section__groups{display:flex!important;flex-wrap:wrap!important;gap:4px!important;margin-top:6px!important}
+      .tb-section__group{background:#f1f5f9!important;border:1px solid #cbd5e1!important;padding:1px 7px!important;border-radius:999px!important;font-size:11px!important;color:#334155!important}
+      .tb-section__quote{margin-top:6px!important;padding:8px 10px!important;background:#fff!important;border:1px solid #e2e8f0!important;border-radius:6px!important;font-size:11px!important;color:#475569!important;font-style:italic!important;line-height:1.4!important}
     `;
     document.head.appendChild(s);
   }
 
-  // ─── Section UI ───────────────────────────────────────────────────────
   function ensureSection() {
     let sec = document.getElementById('tb-module-section');
     if (sec) return sec;
-
     injectStyles();
-
-    // Place section just AFTER the patient banner inside the widget.
     const banner = document.getElementById('mi-patient-banner');
     if (!banner || !banner.parentNode) return null;
-
     sec = document.createElement('div');
     sec.id = 'tb-module-section';
     sec.className = 'tb-section tb-section--neutral';
@@ -383,58 +372,40 @@
     return m ? `${m[3]}.${m[2]}.${m[1]}` : '—';
   }
   function statusLabel(s) {
-    return ({
-      risk: 'На ризику', detected: 'Виявлений', contact: 'Контактний',
-      cleared: 'Знятий з обліку', external: 'Не декларант', archived: 'Архівний',
-    })[s] || s;
+    return ({ risk: 'На ризику', detected: 'Виявлений', contact: 'Контактний', cleared: 'Знятий з обліку', external: 'Не декларант', archived: 'Архівний' })[s] || s;
   }
   function statusTone(s) {
-    return ({
-      risk: 'background:#f1f5f9;color:#334155', detected: 'background:#fef3c7;color:#92400e',
-      contact: 'background:#dbeafe;color:#1e40af', cleared: 'background:#d1fae5;color:#065f46',
-      external: 'background:#ede9fe;color:#6d28d9', archived: 'background:#f1f5f9;color:#94a3b8',
-    })[s] || 'background:#f1f5f9;color:#334155';
+    return ({ risk: 'background:#f1f5f9;color:#334155', detected: 'background:#fef3c7;color:#92400e', contact: 'background:#dbeafe;color:#1e40af', cleared: 'background:#d1fae5;color:#065f46', external: 'background:#ede9fe;color:#6d28d9', archived: 'background:#f1f5f9;color:#94a3b8' })[s] || 'background:#f1f5f9;color:#334155';
   }
 
-  // ─── Render variants ──────────────────────────────────────────────────
   function renderUnconfigured() {
     setSection('warn', `
       <div>Не налаштовано. Введіть URL модуля та PIN в опціях розширення.</div>
-      <div class="tb-section__actions">
-        <button class="tb-btn" id="tb-open-options" type="button">Відкрити опції</button>
-      </div>
+      <div class="tb-section__actions"><button class="tb-btn" id="tb-open-options" type="button">Відкрити опції</button></div>
     `);
     document.getElementById('tb-open-options')?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'openOptions' });
-      // Fallback for cases where background message handler isn't set up.
       if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
     });
   }
 
   function renderNeedMedicsId() {
-    const map = STATE._pendingMappings || {};
-    const last = map[pageKey()] || '';
     setSection('warn', `
       <div>Не вдалось знайти Medics ID на сторінці. Введіть його вручну — запамʼятаю для цієї сторінки.</div>
       <div class="tb-section__actions">
-        <input class="tb-input" id="tb-medics-input" placeholder="напр. 3990123" value="${escHtml(last)}" inputmode="numeric" />
+        <input class="tb-input" id="tb-medics-input" placeholder="напр. 3990123" inputmode="numeric" />
         <button class="tb-btn" id="tb-medics-save" type="button">Зберегти</button>
       </div>
-      <div class="tb-section__hint">Medics ID — це числове поле на профілі НСЗУ. Знайти можна у виписці декларантів з МІС.</div>
+      <div class="tb-section__hint">Medics ID — числове поле з НСЗУ. Знайти можна у виписці декларантів.</div>
     `);
     const input = document.getElementById('tb-medics-input');
-    const save = document.getElementById('tb-medics-save');
     const submit = async () => {
       const v = (input.value || '').trim();
-      if (!/^\d{4,}$/.test(v)) {
-        input.style.borderColor = '#ef4444';
-        return;
-      }
+      if (!/^\d{4,}$/.test(v)) { input.style.borderColor = '#ef4444'; return; }
       await saveManualMapping(pageKey(), v);
       STATE.currentMedicsId = v;
       await refresh();
     };
-    save.addEventListener('click', submit);
+    document.getElementById('tb-medics-save').addEventListener('click', submit);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
     input.focus();
   }
@@ -442,9 +413,7 @@
   function renderError(msg) {
     setSection('err', `
       <div>${escHtml(msg)}</div>
-      <div class="tb-section__actions">
-        <button class="tb-btn tb-btn--ghost" id="tb-retry" type="button">Спробувати знову</button>
-      </div>
+      <div class="tb-section__actions"><button class="tb-btn tb-btn--ghost" id="tb-retry" type="button">Спробувати знову</button></div>
     `);
     document.getElementById('tb-retry')?.addEventListener('click', () => refresh());
   }
@@ -455,42 +424,35 @@
     if (!ctx.surname) missing.push('ПІБ');
     if (!ctx.birth_date) missing.push('ДН');
     const canCreate = missing.length === 0;
-    const sourceLabel = source === 'manual' ? '(введено вручну)' : '';
-
+    const srcLbl = source === 'manual' ? '(введено вручну)' : '';
     setSection('info', `
       <div>
         <div class="tb-section__name">Пацієнта немає в реєстрі ТБ</div>
-        <div class="tb-section__meta">Medics ID: ${escHtml(medicsId)} ${sourceLabel}</div>
+        <div class="tb-section__meta">Medics ID: ${escHtml(medicsId)} ${srcLbl}</div>
       </div>
-      ${
-        canCreate
-          ? `<div class="tb-section__row"><span>Зчитано:</span><strong>${escHtml([ctx.surname, ctx.first_name, ctx.patronymic].filter(Boolean).join(' '))} · ${escHtml(ctx.birth_date || '')}</strong></div>`
-          : `<div class="tb-section__row" style="color:#92400e;"><span>Не зчитано:</span><strong>${missing.join(', ')}</strong></div>`
-      }
+      ${canCreate
+        ? `<div class="tb-section__row"><span>Зчитано:</span><strong>${escHtml([ctx.surname, ctx.first_name, ctx.patronymic].filter(Boolean).join(' '))} · ${escHtml(ctx.birth_date || '')}</strong></div>`
+        : `<div class="tb-section__row" style="color:#92400e;"><span>Не зчитано:</span><strong>${missing.join(', ')}</strong></div>`}
       <div class="tb-section__actions">
         <button class="tb-btn" id="tb-sync" type="button"${canCreate ? '' : ' disabled'}>
           ${canCreate ? 'Створити в модулі' : 'Не вистачає даних'}
         </button>
-        ${source === 'manual' ? '<button class="tb-btn tb-btn--ghost" id="tb-forget" type="button">Забути Medics ID</button>' : ''}
+        ${source === 'manual' ? '<button class="tb-btn tb-btn--ghost" id="tb-forget" type="button">Забути ID</button>' : ''}
         <button class="tb-btn tb-btn--ghost" id="tb-change-medics" type="button">Інший Medics ID</button>
       </div>
     `);
     document.getElementById('tb-sync')?.addEventListener('click', () => doSync(true));
     document.getElementById('tb-forget')?.addEventListener('click', async () => {
-      await deleteManualMapping(pageKey());
-      STATE.currentMedicsId = null;
-      await refresh();
+      await deleteManualMapping(pageKey()); STATE.currentMedicsId = null; await refresh();
     });
-    document.getElementById('tb-change-medics')?.addEventListener('click', () => renderNeedMedicsId());
+    document.getElementById('tb-change-medics')?.addEventListener('click', renderNeedMedicsId);
   }
 
   function renderExisting(p, source) {
-    const ctx = extractContext();
-    const sourceLabel = source === 'manual' ? '(введено вручну)' : '';
-    const next = p.next_planned_date;
+    const srcLbl = source === 'manual' ? '(введено вручну)' : '';
     let nextRow = '';
-    if (next) {
-      const m = next.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (p.next_planned_date) {
+      const m = p.next_planned_date.match(/^(\d{4})-(\d{2})-(\d{2})/);
       let extra = '';
       if (m) {
         const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -499,7 +461,7 @@
         if (days > 0) extra = ` <span style="color:#dc2626;font-weight:600;">просрочено ${days} дн.</span>`;
         else if (days >= -7) extra = ` <span style="color:#ea580c;">через ${-days} дн.</span>`;
       }
-      nextRow = `<div class="tb-section__row"><span>Наступна:</span><strong>${formatDate(next)}${extra}</strong></div>`;
+      nextRow = `<div class="tb-section__row"><span>Наступна:</span><strong>${formatDate(p.next_planned_date)}${extra}</strong></div>`;
     }
     const groups = [...(p.medical_risk_groups || []), ...(p.social_risk_groups || [])];
 
@@ -507,7 +469,7 @@
       <div>
         <div class="tb-section__name">${escHtml([p.surname, p.first_name, p.patronymic].filter(Boolean).join(' '))}</div>
         <div class="tb-section__meta">
-          Medics ID: ${escHtml(p.medics_id || '')} ${sourceLabel} ·
+          Medics ID: ${escHtml(p.medics_id || '')} ${srcLbl} ·
           <span class="tb-section__status" style="${statusTone(p.tb_status)}">${statusLabel(p.tb_status)}</span>
         </div>
       </div>
@@ -523,31 +485,23 @@
     `);
     document.getElementById('tb-sync')?.addEventListener('click', () => doSync(true));
     document.getElementById('tb-forget')?.addEventListener('click', async () => {
-      await deleteManualMapping(pageKey());
-      STATE.currentMedicsId = null;
-      await refresh();
+      await deleteManualMapping(pageKey()); STATE.currentMedicsId = null; await refresh();
     });
-  }
-
-  function renderLoading() {
-    setSection('neutral', '<div>Завантаження…</div>');
   }
 
   // ─── Main flow ────────────────────────────────────────────────────────
   async function refresh() {
     if (!isConfigured()) return renderUnconfigured();
-    renderLoading();
-
-    const resolved = await resolveMedicsId();
-    if (!resolved.id) return renderNeedMedicsId();
-    STATE.currentMedicsId = resolved.id;
-
+    setSection('neutral', '<div>Завантаження…</div>');
+    const r = await resolveMedicsId();
+    if (!r.id) return renderNeedMedicsId();
+    STATE.currentMedicsId = r.id;
     try {
-      const r = await apiGet(resolved.id);
-      if (!r.found) return renderEmpty(resolved.id, resolved.source);
-      return renderExisting(r.patient, resolved.source);
+      const res = await apiGet(r.id);
+      if (!res.found) return renderEmpty(r.id, r.source);
+      return renderExisting(res.patient, r.source);
     } catch (e) {
-      console.error('[TB Module] apiGet failed:', e);
+      console.error('[TB Module] apiGet:', e);
       return renderError(`Помилка запиту: ${e.message}`);
     }
   }
@@ -559,10 +513,7 @@
       const r = await resolveMedicsId();
       medicsId = r.id;
     }
-    if (!medicsId) {
-      console.warn('[TB Module] sync aborted: no Medics ID');
-      return renderNeedMedicsId();
-    }
+    if (!medicsId) return renderNeedMedicsId();
 
     const ctx = extractContext();
     if (!ctx.surname || !ctx.first_name) {
@@ -570,7 +521,7 @@
       return renderError('Не вдалось зчитати ПІБ зі сторінки');
     }
 
-    // Diagnoses: prefer analyzer's collected data; fallback to parser.
+    // Diagnoses → groups + codes.
     let diag = { groups: [], codes: [] };
     if (analyzedData?.patient?.diagnoses) {
       diag = diagnosesToGroups(analyzedData.patient.diagnoses);
@@ -581,6 +532,9 @@
         if (data?.diagnoses) diag = diagnosesToGroups(data.diagnoses);
       } catch (_) {}
     }
+
+    // R-ОГК last record + planned next.
+    const fluoro = analyzedData ? extractLastFluoro(analyzedData) : null;
 
     setSection('info', '<div>Синхронізуємо…</div>');
     const payload = {
@@ -593,11 +547,13 @@
       diagnoses_codes: diag.codes,
       medical_risk_groups: diag.groups,
     };
+    if (fluoro) payload.fluoro = fluoro;
+
     console.log('[TB Module] sync payload:', payload);
     try {
       const result = await apiUpsert(payload);
       STATE.lastSyncedAt = Date.now();
-      console.log('[TB Module] sync OK:', result, 'groups:', diag.groups.join(',') || '—');
+      console.log('[TB Module] sync OK:', result);
       await refresh();
     } catch (e) {
       console.error('[TB Module] sync FAILED:', e);
@@ -605,13 +561,12 @@
     }
   }
 
-  // ─── Hook displayResults so auto-sync runs after each Analyze ────────
+  // ─── Hook into displayResults ─────────────────────────────────────────
   function installAnalyzeHook() {
     if (typeof MedicsIndicatorUI === 'undefined' || !MedicsIndicatorUI.prototype) return false;
     if (MedicsIndicatorUI.prototype.__tbModulePatched) return true;
     const orig = MedicsIndicatorUI.prototype.displayResults;
     if (typeof orig !== 'function') return false;
-
     MedicsIndicatorUI.prototype.displayResults = function (results, collectedData) {
       orig.call(this, results, collectedData);
       try {
@@ -625,12 +580,9 @@
     return true;
   }
 
-  // ─── Boot ─────────────────────────────────────────────────────────────
   async function boot() {
     if (STATE.booted) return;
     STATE.config = await loadConfig();
-    STATE._pendingMappings = await getManualMappings();
-
     const tryInit = () => {
       if (!document.getElementById('mi-patient-banner')) return false;
       installAnalyzeHook();
@@ -638,24 +590,16 @@
       STATE.booted = true;
       return true;
     };
-
     if (tryInit()) return;
-    const obs = new MutationObserver(() => {
-      if (tryInit()) obs.disconnect();
-    });
+    const obs = new MutationObserver(() => { if (tryInit()) obs.disconnect(); });
     obs.observe(document.body, { childList: true, subtree: true });
     setTimeout(() => obs.disconnect(), 60000);
   }
 
-  // Live-react to config changes saved in options page.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
     if (changes.tbModuleUrl || changes.tbModulePin || changes.tbManualMedics) {
-      loadConfig().then((cfg) => {
-        STATE.config = cfg;
-        STATE.currentMedicsId = null;
-        refresh();
-      });
+      loadConfig().then((cfg) => { STATE.config = cfg; STATE.currentMedicsId = null; refresh(); });
     }
   });
 
