@@ -17,6 +17,9 @@
     lastSyncedAt: null,
     booted: false,
     analyzedOnce: false, // section stays hidden until first "Проаналізувати"
+    analyzing: false,    // overlay is up and we're waiting for displayResults
+    lastBannerName: '',  // for SPA navigation detection
+    overlayTimeout: null,
   };
 
   // ─── Config (chrome.storage.sync) ─────────────────────────────────────
@@ -332,6 +335,100 @@
     return r.json();
   }
 
+  // ─── Auto-analyze overlay ─────────────────────────────────────────────
+  function ensureOverlayStyles() {
+    if (document.getElementById('tb-overlay-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'tb-overlay-styles';
+    s.textContent = `
+      #tb-auto-overlay {
+        position: fixed !important; inset: 0 !important;
+        background: rgba(15, 23, 42, 0.55) !important;
+        backdrop-filter: blur(3px) !important;
+        -webkit-backdrop-filter: blur(3px) !important;
+        z-index: 2147483646 !important;
+        display: flex !important;
+        align-items: center !important; justify-content: center !important;
+        font-family: -apple-system, "Segoe UI", Roboto, sans-serif !important;
+      }
+      #tb-auto-overlay .tb-overlay-card {
+        background: #fff !important; border-radius: 12px !important;
+        padding: 22px 28px !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25) !important;
+        display: flex !important; flex-direction: column !important;
+        align-items: center !important; gap: 12px !important;
+        min-width: 240px !important;
+      }
+      #tb-auto-overlay .tb-overlay-spinner {
+        width: 32px !important; height: 32px !important;
+        border: 3px solid #e2e8f0 !important;
+        border-top-color: #2563eb !important;
+        border-radius: 50% !important;
+        animation: tb-overlay-spin 0.8s linear infinite !important;
+      }
+      @keyframes tb-overlay-spin { to { transform: rotate(360deg); } }
+      #tb-auto-overlay .tb-overlay-text {
+        color: #0f172a !important; font-size: 14px !important; font-weight: 500 !important;
+        text-align: center !important;
+      }
+      #tb-auto-overlay .tb-overlay-sub {
+        color: #64748b !important; font-size: 12px !important; text-align: center !important;
+      }
+      #tb-auto-overlay .tb-overlay-cancel {
+        margin-top: 6px !important; padding: 6px 14px !important;
+        background: transparent !important; color: #64748b !important;
+        border: 1px solid #cbd5e1 !important; border-radius: 6px !important;
+        font-size: 12px !important; cursor: pointer !important;
+        font-family: inherit !important;
+      }
+      #tb-auto-overlay .tb-overlay-cancel:hover { background: #f1f5f9 !important; color: #0f172a !important; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function showOverlay() {
+    if (document.getElementById('tb-auto-overlay')) return;
+    ensureOverlayStyles();
+    const ov = document.createElement('div');
+    ov.id = 'tb-auto-overlay';
+    ov.innerHTML = `
+      <div class="tb-overlay-card">
+        <div class="tb-overlay-spinner"></div>
+        <div class="tb-overlay-text">Аналізуємо пацієнта…</div>
+        <div class="tb-overlay-sub">Збираємо діагнози, направлення та R-ОГК</div>
+        <button type="button" class="tb-overlay-cancel">Скасувати</button>
+      </div>
+    `;
+    document.body.appendChild(ov);
+    ov.querySelector('.tb-overlay-cancel')?.addEventListener('click', () => hideOverlay());
+  }
+
+  function hideOverlay() {
+    document.getElementById('tb-auto-overlay')?.remove();
+    STATE.analyzing = false;
+    if (STATE.overlayTimeout) {
+      clearTimeout(STATE.overlayTimeout);
+      STATE.overlayTimeout = null;
+    }
+  }
+
+  function startAutoAnalyze() {
+    if (STATE.analyzing) return;
+    const btn = document.getElementById('mi-analyze-btn');
+    if (!btn) return;
+    STATE.analyzing = true;
+    showOverlay();
+    // Safety net: if analyze never completes in 45s, drop the overlay.
+    STATE.overlayTimeout = setTimeout(() => {
+      console.warn('[TB Module] auto-analyze timeout — dropping overlay');
+      hideOverlay();
+    }, 45_000);
+    // Click on the next tick so any synchronous setup finishes.
+    setTimeout(() => {
+      try { btn.click(); } catch (e) { console.error('[TB Module] auto-analyze click failed:', e); hideOverlay(); }
+    }, 50);
+  }
+
   // ─── CSS once ─────────────────────────────────────────────────────────
   function injectStyles() {
     if (document.getElementById('tb-module-styles')) return;
@@ -625,6 +722,7 @@
     if (typeof origDisplay !== 'function') return false;
     MedicsIndicatorUI.prototype.displayResults = function (results, collectedData) {
       origDisplay.call(this, results, collectedData);
+      hideOverlay();
       revealSection();
       try {
         doSync(false, collectedData).catch((e) => console.error('[TB Module] auto-sync:', e));
@@ -633,13 +731,23 @@
       }
     };
 
+    // Drop overlay if analyze raises an error (showError is their failure path).
+    const origShowError = MedicsIndicatorUI.prototype.showError;
+    if (typeof origShowError === 'function') {
+      MedicsIndicatorUI.prototype.showError = function (msg) {
+        hideOverlay();
+        origShowError.call(this, msg);
+      };
+    }
+
     // Strip age tail from the name and inject inline gender picker into meta.
+    // Also detect SPA navigation between patients (name changes) and trigger
+    // a fresh auto-analyze.
     const origUpdateBanner = MedicsIndicatorUI.prototype.updatePatientBanner;
     if (typeof origUpdateBanner === 'function') {
       MedicsIndicatorUI.prototype.updatePatientBanner = function (info) {
         const data = info || (typeof this.getQuickPatientInfo === 'function' ? this.getQuickPatientInfo() : null);
         if (data && data.name) {
-          // Strip trailing "<digits> р." / "<digits>р." / "<digits> років" / "<digits>" etc.
           data.name = data.name
             .replace(/[,;].*$/, '')
             .replace(/\s+\d+\s*(р\.?|років|років\.?)\s*$/iu, '')
@@ -648,6 +756,22 @@
         }
         origUpdateBanner.call(this, data);
         decorateBannerMeta(data);
+
+        // SPA navigation: name changed → new patient → re-analyze.
+        const currentName = (data?.name || '').trim();
+        if (
+          currentName &&
+          STATE.lastBannerName &&
+          currentName !== STATE.lastBannerName &&
+          !STATE.analyzing
+        ) {
+          STATE.currentMedicsId = null;
+          STATE.analyzedOnce = false;
+          const sec = document.getElementById('tb-module-section');
+          if (sec) sec.style.display = 'none';
+          setTimeout(() => startAutoAnalyze(), 400);
+        }
+        if (currentName) STATE.lastBannerName = currentName;
       };
     }
 
