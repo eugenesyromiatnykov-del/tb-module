@@ -825,12 +825,14 @@
     if (STATE.booted) return;
     STATE.config = await loadConfig();
     const tryInit = () => {
-      if (!document.getElementById('mi-patient-banner')) return false;
+      if (!document.getElementById('mi-patient-banner') || !document.getElementById('mi-analyze-btn')) {
+        return false;
+      }
       installAnalyzeHook();
-      // Do NOT call refresh() on boot — section stays out of sight until
-      // the user clicks "Проаналізувати". The hook in displayResults will
-      // call revealSection() + sync.
       STATE.booted = true;
+      // Auto-run analysis on page open. Overlay covers the page until the
+      // displayResults hook hides it.
+      setTimeout(() => startAutoAnalyze(), 300);
       return true;
     };
     if (tryInit()) return;
