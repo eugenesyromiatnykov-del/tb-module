@@ -412,21 +412,73 @@
     }
   }
 
-  function startAutoAnalyze() {
+  // Show overlay IMMEDIATELY when a patient page is detected (well before
+  // the indicators widget renders) so the user can't click anything on the
+  // half-loaded page. The actual analyze click happens later, only after
+  // the page DOM has settled.
+  function isPatientPage() {
+    return !!(
+      document.querySelector('#med-card-block') &&
+      document.querySelector('.c-patient-info-card--user-name')
+    );
+  }
+
+  // Resolves once the DOM hasn't mutated for `quietMs` ms (or after maxMs).
+  // Mirrors data-collector's waitForDomStable so we don't fire the analyze
+  // click before medics.ua finishes loading episodes / encounters / DRs.
+  function waitForDomStable(quietMs = 700, maxMs = 8000) {
+    return new Promise((resolve) => {
+      let lastMutation = Date.now();
+      const observer = new MutationObserver(() => { lastMutation = Date.now(); });
+      observer.observe(document.body, {
+        childList: true, subtree: true,
+        attributes: true, attributeFilter: ['class', 'ng-hide'],
+      });
+      const start = Date.now();
+      const tick = setInterval(() => {
+        const quiet = Date.now() - lastMutation;
+        const total = Date.now() - start;
+        if (quiet >= quietMs || total >= maxMs) {
+          clearInterval(tick);
+          observer.disconnect();
+          resolve(quiet >= quietMs ? 'stable' : 'timeout');
+        }
+      }, 100);
+    });
+  }
+
+  async function startAutoAnalyze() {
     if (STATE.analyzing) return;
-    const btn = document.getElementById('mi-analyze-btn');
-    if (!btn) return;
     STATE.analyzing = true;
     showOverlay();
-    // Safety net: if analyze never completes in 45s, drop the overlay.
+
+    // Safety net: if analyze never completes in 60s, drop the overlay.
     STATE.overlayTimeout = setTimeout(() => {
       console.warn('[TB Module] auto-analyze timeout — dropping overlay');
       hideOverlay();
-    }, 45_000);
-    // Click on the next tick so any synchronous setup finishes.
-    setTimeout(() => {
-      try { btn.click(); } catch (e) { console.error('[TB Module] auto-analyze click failed:', e); hideOverlay(); }
-    }, 50);
+    }, 60_000);
+
+    // Wait for the Analyze button to be present AND the page DOM to settle
+    // (medics.ua keeps streaming episodes/encounters/DRs for ~1-2s after the
+    // patient banner appears).
+    const start = Date.now();
+    while (Date.now() - start < 15_000) {
+      const btn = document.getElementById('mi-analyze-btn');
+      if (btn) break;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    const btn = document.getElementById('mi-analyze-btn');
+    if (!btn) {
+      console.warn('[TB Module] mi-analyze-btn never appeared');
+      hideOverlay();
+      return;
+    }
+    const reason = await waitForDomStable(700, 8000);
+    console.log(`[TB Module] page settled (${reason}) — clicking Аналізувати`);
+    try { btn.click(); } catch (e) {
+      console.error('[TB Module] auto-analyze click failed:', e);
+      hideOverlay();
+    }
   }
 
   // ─── CSS once ─────────────────────────────────────────────────────────
@@ -769,7 +821,9 @@
           STATE.analyzedOnce = false;
           const sec = document.getElementById('tb-module-section');
           if (sec) sec.style.display = 'none';
-          setTimeout(() => startAutoAnalyze(), 400);
+          // Cover the screen instantly; startAutoAnalyze waits for DOM stable.
+          showOverlay();
+          setTimeout(() => startAutoAnalyze(), 100);
         }
         if (currentName) STATE.lastBannerName = currentName;
       };
@@ -824,15 +878,24 @@
   async function boot() {
     if (STATE.booted) return;
     STATE.config = await loadConfig();
-    const tryInit = () => {
-      if (!document.getElementById('mi-patient-banner') || !document.getElementById('mi-analyze-btn')) {
-        return false;
+    // Step 1: Cover the screen the moment a patient page is detected,
+    // even before the indicators widget renders. Prevents accidental
+    // clicks on the page during the 1-2 sec while medics.ua streams data.
+    const ensureOverlayUpEarly = () => {
+      if (isPatientPage() && !document.getElementById('tb-auto-overlay') && !STATE.analyzing) {
+        showOverlay();
       }
+    };
+    ensureOverlayUpEarly();
+
+    // Step 2: Wait for the widget, install hooks, then kick off the analyze.
+    const tryInit = () => {
+      ensureOverlayUpEarly();
+      if (!document.getElementById('mi-patient-banner')) return false;
       installAnalyzeHook();
       STATE.booted = true;
-      // Auto-run analysis on page open. Overlay covers the page until the
-      // displayResults hook hides it.
-      setTimeout(() => startAutoAnalyze(), 300);
+      // startAutoAnalyze itself waits for mi-analyze-btn + DOM stable.
+      setTimeout(() => startAutoAnalyze(), 100);
       return true;
     };
     if (tryInit()) return;
