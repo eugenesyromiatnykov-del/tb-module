@@ -55,7 +55,7 @@ export function NewQuestionnairePage() {
   return (
     <div className="max-w-2xl">
       <PageHeader
-        title="Новий опросник"
+        title="Новий опитувальник"
         subtitle="Скринінг ТБ за додатком 9 (4 симптоми ВООЗ)"
         actions={
           <Button variant="secondary" onClick={() => navigate('/questionnaires')}>
@@ -169,7 +169,7 @@ export function NewQuestionnairePage() {
             )}
             <div className="mt-4 flex gap-2">
               <Button type="submit" disabled={create.isPending || !patientId}>
-                {create.isPending ? 'Зберігаємо…' : 'Зберегти опросник'}
+                {create.isPending ? 'Зберігаємо…' : 'Зберегти опитувальник'}
               </Button>
               <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
                 Скасувати

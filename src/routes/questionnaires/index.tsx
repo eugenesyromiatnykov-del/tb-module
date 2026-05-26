@@ -18,11 +18,11 @@ export function QuestionnairesPage() {
   return (
     <div>
       <PageHeader
-        title="Опросники (додаток 9)"
+        title="Опитувальники (додаток 9)"
         subtitle={
           isLoading
             ? 'Завантаження…'
-            : `Усього: ${rows.length}. Новий опросник створюється з картки пацієнта.`
+            : `Усього: ${rows.length}. Новий опитувальник створюється з картки пацієнта.`
         }
       />
 
@@ -52,9 +52,9 @@ export function QuestionnairesPage() {
         <Card>
           <CardBody className="py-12 text-center">
             <FileText className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-            <div className="text-sm font-medium text-slate-700">Опросників ще немає</div>
+            <div className="text-sm font-medium text-slate-700">Опитувальників ще немає</div>
             <div className="mt-1 text-xs text-slate-500">
-              Відкрийте картку пацієнта → вкладку «Опросники» → «+ Новий опросник».
+              Відкрийте картку пацієнта → вкладку «Опитувальники» → «+ Новий опитувальник».
             </div>
           </CardBody>
         </Card>

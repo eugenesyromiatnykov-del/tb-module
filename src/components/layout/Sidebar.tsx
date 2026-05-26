@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
-  ClipboardList,
   BookOpen,
   Settings as SettingsIcon,
   LogOut,
@@ -15,7 +14,6 @@ type Item = { to: string; label: string; icon: React.ComponentType<{ className?:
 const items: Item[] = [
   { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { to: '/patients', label: 'Пацієнти', icon: Users },
-  { to: '/questionnaires', label: 'Опросники', icon: ClipboardList },
   { to: '/orders', label: 'Накази', icon: BookOpen },
   { to: '/settings', label: 'Налаштування', icon: SettingsIcon },
 ];

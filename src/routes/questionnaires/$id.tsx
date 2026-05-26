@@ -42,7 +42,7 @@ export function QuestionnaireDetailPage() {
   const needsAnyAction = q.result === 'needs_xray' || q.result === 'needs_referral';
 
   const handleDelete = async () => {
-    if (!confirm('Видалити опросник?')) return;
+    if (!confirm('Видалити опитувальник?')) return;
     await del.mutateAsync(q.id);
     navigate('/questionnaires');
   };
@@ -50,7 +50,7 @@ export function QuestionnaireDetailPage() {
   return (
     <div className="max-w-3xl">
       <PageHeader
-        title="Опросник додатку 9"
+        title="Опитувальник додатку 9"
         subtitle={new Date(q.filled_at).toLocaleString('uk-UA', {
           dateStyle: 'medium',
           timeStyle: 'short',

@@ -80,14 +80,59 @@ function applyFilter<Q extends { eq: Function; lt: Function; gt: Function; gte: 
 }
 
 
+const ALLOWED_CREATE_FIELDS = new Set([
+  'medics_id',
+  'surname',
+  'first_name',
+  'patronymic',
+  'birth_date',
+  'gender',
+  'phone',
+  'address',
+  'location_id',
+  'tb_status',
+  'contact_of',
+  'social_risk_groups',
+  'medical_risk_groups',
+  'is_external',
+  'notes',
+]);
+
 export default async function handler(req: Req, res: Res) {
   if (!(await requireAuth(req, res))) return;
+
+  const supabase = getSupabaseAdmin();
+
+  if (req.method === 'POST') {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const row: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(body)) {
+      if (ALLOWED_CREATE_FIELDS.has(k)) row[k] = v;
+    }
+    if (!row.surname || !row.first_name || !row.birth_date) {
+      res.status(400).json({ error: 'surname, first_name, birth_date — обовʼязкові' });
+      return;
+    }
+    // Sensible defaults.
+    if (!row.tb_status) row.tb_status = 'risk';
+    if (!('medical_risk_groups' in row)) row.medical_risk_groups = [];
+    if (!('social_risk_groups' in row)) row.social_risk_groups = [];
+    if (!('diagnoses_codes' in row)) row.diagnoses_codes = [];
+
+    const { data, error } = await supabase.from('patients').insert(row).select('*').maybeSingle();
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.status(201).json({ patient: data });
+    return;
+  }
+
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
 
-  const supabase = getSupabaseAdmin();
   const q = req.query ?? {};
   const mode = asString(q.mode);
 
@@ -150,6 +195,7 @@ export default async function handler(req: Req, res: Res) {
   const location = asString(q.location);
   const status = asString(q.status);
   const group = asString(q.group);
+  const contactOf = asString(q.contact_of);
   const includeArchived = asString(q.archived) === '1';
   const search = (asString(q.search) ?? '').trim();
 
@@ -161,6 +207,7 @@ export default async function handler(req: Req, res: Res) {
     if (location) query = query.eq('location_id', location);
   }
   if (status) query = query.eq('tb_status', status);
+  if (contactOf) query = query.eq('contact_of', contactOf);
 
   if (group) {
     // PostgREST array-contains: cs.{key}. GIN indexes make this fast.

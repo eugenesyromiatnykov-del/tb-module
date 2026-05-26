@@ -28,6 +28,17 @@ export function useUpdatePatient(id: string) {
   });
 }
 
+export function useCreatePatient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<Patient>) =>
+      apiFetch<{ patient: Patient }>('/api/patients', { method: 'POST', json: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+  });
+}
+
 export function useAddFluoro(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({

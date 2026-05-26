@@ -22,6 +22,12 @@ const PATIENT_FIELDS = `
 `;
 
 const ALLOWED_PATCH_FIELDS = new Set([
+  'medics_id',
+  'surname',
+  'first_name',
+  'patronymic',
+  'birth_date',
+  'gender',
   'phone',
   'address',
   'location_id',

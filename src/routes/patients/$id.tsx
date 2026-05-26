@@ -12,11 +12,15 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import {
   useAddFluoro,
   useAddSputum,
+  useCreatePatient,
   useDeleteFluoro,
   useDeleteSputum,
   usePatient,
   useUpdatePatient,
 } from '@/hooks/usePatient';
+import { apiFetch } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import type { Patient } from '@/types/database';
 import { calcAge, formatDateUk } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import { MEDICAL_GROUPS, SOCIAL_GROUPS, labelOf } from '@/lib/risk-groups';
@@ -33,7 +37,7 @@ import {
   type TbStatus,
 } from '@/types/database';
 
-type Tab = 'overview' | 'fluoro' | 'sputum' | 'questionnaires';
+type Tab = 'overview' | 'fluoro' | 'sputum' | 'contacts' | 'questionnaires';
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -89,14 +93,22 @@ export function PatientDetailPage() {
         <TabButton active={tab === 'sputum'} onClick={() => setTab('sputum')}>
           Мокротиння ({sputum_tests.length})
         </TabButton>
+        {patient.tb_status === 'detected' && (
+          <TabButton active={tab === 'contacts'} onClick={() => setTab('contacts')}>
+            Контакти
+          </TabButton>
+        )}
         <TabButton active={tab === 'questionnaires'} onClick={() => setTab('questionnaires')}>
-          Опросники
+          Опитувальники
         </TabButton>
       </div>
 
       {tab === 'overview' && <OverviewTab data={data} />}
       {tab === 'fluoro' && <FluoroTab patientId={patient.id} records={fluorography} />}
       {tab === 'sputum' && <SputumTab patientId={patient.id} records={sputum_tests} />}
+      {tab === 'contacts' && patient.tb_status === 'detected' && (
+        <ContactsTab indexPatient={patient} />
+      )}
       {tab === 'questionnaires' && <QuestionnairesTab patientId={patient.id} />}
     </div>
   );
@@ -109,7 +121,7 @@ function QuestionnairesTab({ patientId }: { patientId: string }) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Опросники (додаток 9)</CardTitle>
+          <CardTitle>Опитувальники (додаток 9)</CardTitle>
           <Link to={`/questionnaires/new?patient_id=${patientId}`}>
             <Button size="sm">
               <Plus className="h-4 w-4" /> Новий
@@ -123,7 +135,7 @@ function QuestionnairesTab({ patientId }: { patientId: string }) {
             <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
           </div>
         ) : rows.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-slate-500">Опросників ще немає</div>
+          <div className="px-5 py-10 text-center text-sm text-slate-500">Опитувальників ще немає</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -225,22 +237,61 @@ function OverviewTab({
     update.mutate({ is_external: checked });
   };
 
+  // Inline editable text field — saves on blur if value actually changed.
+  const TextField = ({
+    label, field, type = 'text', placeholder,
+  }: { label: string; field: keyof typeof patient; type?: string; placeholder?: string }) => {
+    const initial = (patient[field] as string | null) ?? '';
+    const [val, setVal] = useState<string>(initial);
+    return (
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600">{label}</label>
+        <Input
+          type={type}
+          value={val}
+          placeholder={placeholder}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={() => {
+            const next = val.trim() === '' ? null : val.trim();
+            if (next !== initial) update.mutate({ [field]: next } as Partial<typeof patient>);
+          }}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>Контактні дані</CardTitle>
+          <CardTitle>Особисті дані</CardTitle>
         </CardHeader>
-        <CardBody className="space-y-3 text-sm">
-          <Field label="Телефон" value={patient.phone ?? '—'} />
-          <Field label="Адреса" value={patient.address ?? '—'} />
-          <Field label="Стать" value={patient.gender === 'M' ? 'Чоловіча' : patient.gender === 'F' ? 'Жіноча' : '—'} />
+        <CardBody className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <TextField label="Прізвище" field="surname" />
+          <TextField label="Імʼя" field="first_name" />
+          <TextField label="По батькові" field="patronymic" />
+          <TextField label="Дата народження" field="birth_date" type="date" />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Стать</label>
+            <Select
+              value={patient.gender ?? ''}
+              onChange={(e) => update.mutate({ gender: (e.target.value || null) as 'M' | 'F' | null })}
+            >
+              <option value="">— не вказано —</option>
+              <option value="M">Чоловіча</option>
+              <option value="F">Жіноча</option>
+            </Select>
+          </div>
+          <TextField label="Medics ID" field="medics_id" placeholder="напр. 3990123" />
+          <TextField label="Телефон" field="phone" placeholder="+380…" />
+          <div className="sm:col-span-2">
+            <TextField label="Адреса" field="address" />
+          </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
             <Select
               value={patient.location_id ?? ''}
               onChange={(e) => update.mutate({ location_id: (e.target.value || null) as LocationId | null })}
-              disabled={update.isPending}
             >
               <option value="">— не вказано —</option>
               {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
@@ -250,22 +301,11 @@ function OverviewTab({
               ))}
             </Select>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300"
-              checked={patient.is_external}
-              onChange={(e) => toggleExternal(e.target.checked)}
-              disabled={update.isPending}
-            />
-            Не декларант (зовнішній пацієнт)
-          </label>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Статус ТБ</label>
             <Select
               value={patient.tb_status}
               onChange={(e) => setStatus(e.target.value as TbStatus)}
-              disabled={update.isPending}
             >
               {(Object.keys(TB_STATUS_LABELS) as TbStatus[]).map((s) => (
                 <option key={s} value={s}>
@@ -273,6 +313,27 @@ function OverviewTab({
                 </option>
               ))}
             </Select>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300"
+              checked={patient.is_external}
+              onChange={(e) => toggleExternal(e.target.checked)}
+            />
+            Не декларант (зовнішній пацієнт)
+          </label>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-slate-600">Нотатки</label>
+            <textarea
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              rows={2}
+              defaultValue={patient.notes ?? ''}
+              onBlur={(e) => {
+                const next = e.target.value.trim() === '' ? null : e.target.value;
+                if ((next ?? '') !== (patient.notes ?? '')) update.mutate({ notes: next });
+              }}
+            />
           </div>
         </CardBody>
       </Card>
@@ -326,15 +387,6 @@ function OverviewTab({
           </div>
         </CardBody>
       </Card>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="text-sm text-slate-900">{value}</div>
     </div>
   );
 }
@@ -628,3 +680,184 @@ function addYearsIso(iso: string, years: number): string {
 
 // avoid "unused" warning for Link (kept for future quick navigation if needed)
 void Link;
+
+// ─── Contacts tab — only visible for detected patients ──────────────────────
+
+function useContacts(indexPatientId: string) {
+  return useQuery({
+    queryKey: ['contacts', indexPatientId],
+    queryFn: () =>
+      apiFetch<{ patients: Patient[] }>(
+        `/api/patients?contact_of=${encodeURIComponent(indexPatientId)}`,
+      ).then((r) => r.patients),
+  });
+}
+
+function ContactsTab({ indexPatient }: { indexPatient: Patient }) {
+  const { data: contacts, isLoading } = useContacts(indexPatient.id);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Контактні особи</CardTitle>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> Додати контактного
+          </Button>
+        </div>
+      </CardHeader>
+      <CardBody className="p-0">
+        {isLoading ? (
+          <div className="px-5 py-10 text-center">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-400" />
+          </div>
+        ) : !contacts || contacts.length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-slate-500">
+            Контактних осіб ще не внесено
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">ПІБ</th>
+                <th className="px-4 py-2 font-medium">ДН</th>
+                <th className="px-4 py-2 font-medium">Телефон</th>
+                <th className="w-10 px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {contacts.map((c) => (
+                <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="px-4 py-2 text-slate-900">
+                    <Link to={`/patients/${c.id}`} className="text-blue-700 hover:underline">
+                      {[c.surname, c.first_name, c.patronymic].filter(Boolean).join(' ')}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-slate-700">{formatDateUk(c.birth_date)}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-slate-600">{c.phone ?? '—'}</td>
+                  <td className="px-4 py-2">
+                    <Link to={`/patients/${c.id}`} className="text-xs text-blue-700 hover:underline">
+                      Картка →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </CardBody>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent title="Новий контактний">
+          <AddContactForm indexPatient={indexPatient} onClose={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+function AddContactForm({
+  indexPatient,
+  onClose,
+}: {
+  indexPatient: Patient;
+  onClose: () => void;
+}) {
+  const [surname, setSurname] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [patronymic, setPatronymic] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState<'' | 'M' | 'F'>('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [locationId, setLocationId] = useState<'' | LocationId>(indexPatient.location_id ?? '');
+  const [isExternal, setIsExternal] = useState(true);
+  const create = useCreatePatient();
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        create.mutate(
+          {
+            surname: surname.trim(),
+            first_name: firstName.trim(),
+            patronymic: patronymic.trim() || null,
+            birth_date: birthDate,
+            gender: gender || null,
+            phone: phone.trim() || null,
+            address: address.trim() || null,
+            location_id: (locationId || null) as LocationId | null,
+            tb_status: 'risk',
+            contact_of: indexPatient.id,
+            social_risk_groups: ['close_contact'],
+            is_external: isExternal,
+          },
+          { onSuccess: onClose },
+        );
+      }}
+    >
+      <FormField label="Прізвище">
+        <Input required value={surname} onChange={(e) => setSurname(e.target.value)} />
+      </FormField>
+      <FormField label="Імʼя">
+        <Input required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+      </FormField>
+      <FormField label="По батькові">
+        <Input value={patronymic} onChange={(e) => setPatronymic(e.target.value)} />
+      </FormField>
+      <FormField label="Дата народження">
+        <Input required type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+      </FormField>
+      <FormField label="Стать">
+        <Select value={gender} onChange={(e) => setGender(e.target.value as '' | 'M' | 'F')}>
+          <option value="">— не вказано —</option>
+          <option value="M">Чоловіча</option>
+          <option value="F">Жіноча</option>
+        </Select>
+      </FormField>
+      <FormField label="Телефон">
+        <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380…" />
+      </FormField>
+      <FormField label="Адреса">
+        <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+      </FormField>
+      <FormField label="Амбулаторія">
+        <Select value={locationId} onChange={(e) => setLocationId(e.target.value as '' | LocationId)}>
+          <option value="">— не вказано —</option>
+          {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
+            <option key={id} value={id}>
+              {LOCATION_LABELS[id]}
+            </option>
+          ))}
+        </Select>
+      </FormField>
+      <label className="flex items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-slate-300"
+          checked={isExternal}
+          onChange={(e) => setIsExternal(e.target.checked)}
+        />
+        Не декларант (зовнішній)
+      </label>
+      <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+        Контакт автоматично отримає групу ризику «Близький контакт» та статус «В групі ризику».
+      </div>
+      {create.error && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
+          {(create.error as Error).message}
+        </div>
+      )}
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" disabled={create.isPending}>
+          {create.isPending ? 'Зберігаємо…' : 'Додати'}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Скасувати
+        </Button>
+      </div>
+    </form>
+  );
+}
