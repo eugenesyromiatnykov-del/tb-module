@@ -119,13 +119,6 @@ export default async function handler(req: Req, res: Res) {
       }
       out[f] = count ?? 0;
     }
-    // "needs review" — observed status: in registry, has fluoro but no groups yet.
-    const { count: needsReview } = await supabase
-      .from('patient_dashboard')
-      .select('id', { count: 'exact', head: true })
-      .eq('archived', false)
-      .eq('tb_status', 'observed');
-    out.needs_review = needsReview ?? 0;
     // Last MIS import
     const { data: lastImport, error: liErr } = await supabase
       .from('mis_imports')
@@ -158,7 +151,6 @@ export default async function handler(req: Req, res: Res) {
   const status = asString(q.status);
   const group = asString(q.group);
   const includeArchived = asString(q.archived) === '1';
-  const includeObserved = asString(q.observed) === '1';
   const search = (asString(q.search) ?? '').trim();
 
   let query = supabase.from('patient_dashboard').select(SELECT_FULL);
@@ -167,12 +159,6 @@ export default async function handler(req: Req, res: Res) {
   } else {
     if (!includeArchived) query = query.eq('archived', false);
     if (location) query = query.eq('location_id', location);
-    // Default registry view: only risk + detected. observed ("Потребує
-    // перегляду") hidden unless explicitly asked for via ?observed=1 or
-    // ?status=observed. archived hidden via ?archived=1 already.
-    if (!status && !includeObserved) {
-      query = query.in('tb_status', ['risk', 'detected']);
-    }
   }
   if (status) query = query.eq('tb_status', status);
 

@@ -1,13 +1,16 @@
 export type LocationId = 'bilohirska' | 'zaluzhe';
 
-// Simplified set after the 0006 migration:
-// - risk      — active tracking; has at least one risk group
-// - detected  — TB diagnosed
-// - observed  — has fluoro history but no risk groups; needs manual review
-// - archived  — soft-deleted (left the practice / deceased)
-// Old values ('contact', 'cleared', 'external') no longer used; 'external'
-// is now the boolean is_external column.
-export type TbStatus = 'risk' | 'detected' | 'observed' | 'archived';
+// Final set after 0007:
+// - risk      — default; doctor explicitly tracks this person for TB.
+//   "В групі ризику" / "Контактний" all live here. Risk groups
+//   (medical_risk_groups + social_risk_groups) describe WHY.
+// - detected  — TB diagnosed.
+// - archived  — soft-deleted (left the practice / deceased).
+// Status is set manually; no triggers auto-flip it.
+// Old enum values ('observed', 'contact', 'cleared', 'external') exist in
+// the PG type for backward compat but are never written by the app.
+// 'external' (не декларант) is now the boolean is_external column.
+export type TbStatus = 'risk' | 'detected' | 'archived';
 export type FluoroResultCode = 'normal' | 'pathology' | 'pending' | 'refused' | 'unknown';
 export type SputumTestType = 'xpert' | 'microscopy' | 'culture' | 'pcr';
 export type DataSource = 'manual' | 'extension' | 'imported_xlsx' | 'mis_sync';
@@ -81,7 +84,6 @@ export const LOCATION_LABELS: Record<LocationId, string> = {
 export const TB_STATUS_LABELS: Record<TbStatus, string> = {
   risk: 'В групі ризику',
   detected: 'Виявлений',
-  observed: 'Потребує перегляду',
   archived: 'Архівний',
 };
 
