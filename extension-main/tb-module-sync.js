@@ -558,12 +558,6 @@
       .tb-gender-inline button:hover { background: #f1f5f9 !important; }
 
       .tb-section { margin:0 0 12px 0!important; padding:12px 14px!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:13px!important; color:#0f172a!important; box-sizing:border-box!important; }
-      .tb-auto-toggle {
-        display: inline-flex !important; align-items: center !important; gap: 4px !important;
-        margin-left: auto !important; font-size: 11px !important; color: #475569 !important;
-        cursor: pointer !important; font-weight: 400 !important;
-      }
-      .tb-auto-toggle input { width: 14px !important; height: 14px !important; margin: 0 !important; cursor: pointer !important; }
       .tb-section--ok{border-color:#86efac!important;background:#f0fdf4!important}
       .tb-section--warn{border-color:#fbbf24!important;background:#fffbeb!important}
       .tb-section--err{border-color:#fca5a5!important;background:#fef2f2!important}
@@ -604,30 +598,69 @@
     sec = document.createElement('div');
     sec.id = 'tb-module-section';
     sec.className = 'tb-section tb-section--neutral';
-    const auto = STATE.config?.autoAnalyze !== false;
     sec.innerHTML = `
       <div class="tb-section__head">
         <span class="tb-section__dot" style="background:#94a3b8;"></span>
         <h3 class="tb-section__title">📋 Модуль ТБ</h3>
-        <label class="tb-auto-toggle" title="Автоматичний аналіз при відкритті пацієнта">
-          <input type="checkbox" id="tb-auto-toggle" ${auto ? 'checked' : ''} />
-          <span>Авто-аналіз</span>
-        </label>
       </div>
       <div class="tb-section__body">…</div>
     `;
     body.insertAdjacentElement('afterbegin', sec);
     STATE.sectionEl = sec;
-    // Wire the inline toggle.
-    sec.querySelector('#tb-auto-toggle')?.addEventListener('change', async (e) => {
-      const checked = e.target.checked;
-      await setAutoAnalyzePref(checked);
-      STATE.config = { ...STATE.config, autoAnalyze: checked };
-      if (checked && !STATE.analyzing) {
+    return sec;
+  }
+
+  // Inject auto-analyze toggle directly into the Medics Indicators widget
+  // header, next to the S/M/L scale buttons.
+  function injectAutoToggle() {
+    if (document.getElementById('mi-tb-auto-toggle')) return;
+    const header = document.getElementById('mi-header');
+    if (!header) return;
+    // Insert before the scale-button cluster so it sits on the left of the
+    // header controls (S/M/L + minimise).
+    const rightCluster = header.querySelector('div[style*="display: flex"][style*="gap: 6px"]');
+    if (!rightCluster) return;
+
+    if (!document.getElementById('mi-tb-auto-style')) {
+      const st = document.createElement('style');
+      st.id = 'mi-tb-auto-style';
+      st.textContent = `
+        #mi-tb-auto-toggle {
+          display: inline-flex !important; align-items: center !important; gap: 6px !important;
+          padding: 4px 8px !important;
+          background: rgba(255,255,255,0.12) !important;
+          border: 1px solid rgba(255,255,255,0.18) !important;
+          border-radius: 6px !important;
+          color: #fff !important; font-size: 11px !important; font-weight: 500 !important;
+          cursor: pointer !important;
+          font-family: inherit !important;
+          user-select: none !important;
+        }
+        #mi-tb-auto-toggle:hover { background: rgba(255,255,255,0.2) !important; }
+        #mi-tb-auto-toggle input { width: 13px !important; height: 13px !important; margin: 0 !important; cursor: pointer !important; accent-color: #2563eb !important; }
+        #mi-tb-auto-toggle span { white-space: nowrap !important; }
+      `;
+      document.head.appendChild(st);
+    }
+
+    const wrap = document.createElement('label');
+    wrap.id = 'mi-tb-auto-toggle';
+    wrap.title = 'Автоматичний аналіз при відкритті пацієнта';
+    const checked = STATE.config?.autoAnalyze !== false;
+    wrap.innerHTML = `
+      <input type="checkbox" ${checked ? 'checked' : ''} />
+      <span>Авто-аналіз</span>
+    `;
+    rightCluster.insertAdjacentElement('afterbegin', wrap);
+
+    wrap.querySelector('input').addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      await setAutoAnalyzePref(on);
+      STATE.config = { ...STATE.config, autoAnalyze: on };
+      if (on && !STATE.analyzing) {
         startAutoAnalyze();
       }
     });
-    return sec;
   }
 
   function setSection(state, html) {
@@ -975,6 +1008,7 @@
       ensureOverlayUpEarly();
       if (!document.getElementById('mi-patient-banner')) return false;
       installAnalyzeHook();
+      injectAutoToggle();
       STATE.booted = true;
       if (STATE.config.autoAnalyze) {
         // startAutoAnalyze itself waits for mi-analyze-btn + DOM stable.
