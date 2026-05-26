@@ -1,6 +1,13 @@
 export type LocationId = 'bilohirska' | 'zaluzhe';
 
-export type TbStatus = 'observed' | 'risk' | 'detected' | 'contact' | 'cleared' | 'external' | 'archived';
+// Simplified set after the 0006 migration:
+// - risk      — active tracking; has at least one risk group
+// - detected  — TB diagnosed
+// - observed  — has fluoro history but no risk groups; needs manual review
+// - archived  — soft-deleted (left the practice / deceased)
+// Old values ('contact', 'cleared', 'external') no longer used; 'external'
+// is now the boolean is_external column.
+export type TbStatus = 'risk' | 'detected' | 'observed' | 'archived';
 export type FluoroResultCode = 'normal' | 'pathology' | 'pending' | 'refused' | 'unknown';
 export type SputumTestType = 'xpert' | 'microscopy' | 'culture' | 'pcr';
 export type DataSource = 'manual' | 'extension' | 'imported_xlsx' | 'mis_sync';
@@ -31,6 +38,8 @@ export type Patient = {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+
+  is_external: boolean;
 
   // Derived from latest fluoro record (via patient_dashboard view).
   last_fluoro_date: string | null;
@@ -66,16 +75,13 @@ export type DeclarantsDiff = {
 
 export const LOCATION_LABELS: Record<LocationId, string> = {
   bilohirska: 'Білогірська амбулаторія',
-  zaluzhe: 'Залужжя',
+  zaluzhe: 'Залузька амбулаторія',
 };
 
 export const TB_STATUS_LABELS: Record<TbStatus, string> = {
-  observed: 'Спостереження',
   risk: 'В групі ризику',
   detected: 'Виявлений',
-  contact: 'Контактний',
-  cleared: 'Знятий з обліку',
-  external: 'Не декларант',
+  observed: 'Потребує перегляду',
   archived: 'Архівний',
 };
 

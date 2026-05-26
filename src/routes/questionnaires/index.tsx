@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Loader2, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Loader2, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
-import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Card, CardBody } from '@/components/ui/Card';
 import { useQuestionnaires } from '@/hooks/useQuestionnaires';
@@ -10,7 +9,6 @@ import { RESULT_LABELS, type QuestionnaireResult } from '@/lib/questionnaire';
 import { cn } from '@/lib/utils';
 
 export function QuestionnairesPage() {
-  const navigate = useNavigate();
   const [resultFilter, setResultFilter] = useState<'' | QuestionnaireResult>('');
   const { data, isLoading, error } = useQuestionnaires(
     useMemo(() => (resultFilter ? { result: resultFilter } : {}), [resultFilter]),
@@ -21,11 +19,10 @@ export function QuestionnairesPage() {
     <div>
       <PageHeader
         title="Опросники (додаток 9)"
-        subtitle={isLoading ? 'Завантаження…' : `Усього: ${rows.length}`}
-        actions={
-          <Button onClick={() => navigate('/questionnaires/new')}>
-            <Plus className="h-4 w-4" /> Новий опросник
-          </Button>
+        subtitle={
+          isLoading
+            ? 'Завантаження…'
+            : `Усього: ${rows.length}. Новий опросник створюється з картки пацієнта.`
         }
       />
 
@@ -56,7 +53,9 @@ export function QuestionnairesPage() {
           <CardBody className="py-12 text-center">
             <FileText className="mx-auto mb-3 h-8 w-8 text-slate-300" />
             <div className="text-sm font-medium text-slate-700">Опросників ще немає</div>
-            <div className="mt-1 text-xs text-slate-500">Натисніть «Новий опросник» щоб заповнити перший.</div>
+            <div className="mt-1 text-xs text-slate-500">
+              Відкрийте картку пацієнта → вкладку «Опросники» → «+ Новий опросник».
+            </div>
           </CardBody>
         </Card>
       ) : (

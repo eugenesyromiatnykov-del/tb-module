@@ -92,7 +92,7 @@ export default async function handler(req: Req, res: Res) {
       q = q.gt('next_planned_date', a.toISOString().slice(0, 10)).lte('next_planned_date', b.toISOString().slice(0, 10));
     }
     if (filter === 'detected') q = q.eq('tb_status', 'detected');
-    if (filter === 'contacts_no_fluoro') q = q.eq('tb_status', 'contact').is('last_fluoro_date', null);
+    if (filter === 'contacts_no_fluoro') q = q.contains('social_risk_groups', ['close_contact']).is('last_fluoro_date', null);
     const { count, error } = await q;
     if (error) {
       res.status(500).json({ error: `count ${filter}: ${error.message}` });

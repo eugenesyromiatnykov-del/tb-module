@@ -84,6 +84,15 @@ const WIDGETS: Widget[] = [
   },
 ];
 
+// Standalone — needs separate navigation (?status=observed, not a ?filter=).
+const NEEDS_REVIEW_WIDGET = {
+  key: 'needs_review' as const,
+  label: 'Потребує перегляду',
+  description: 'Є флюоро, але немає груп ризику',
+  icon: AlertTriangle,
+  tone: 'amber' as Tone,
+};
+
 const TONE_STYLES: Record<Tone, { bg: string; text: string; ring: string }> = {
   red: { bg: 'bg-red-50', text: 'text-red-700', ring: 'ring-red-200 hover:ring-red-300' },
   orange: { bg: 'bg-orange-50', text: 'text-orange-700', ring: 'ring-orange-200 hover:ring-orange-300' },
@@ -144,12 +153,33 @@ export function DashboardPage() {
             })}
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => navigate('/patients?status=observed')}
+              className={cn(
+                'rounded-xl bg-white p-4 text-left ring-1 transition cursor-pointer hover:shadow-sm',
+                TONE_STYLES[NEEDS_REVIEW_WIDGET.tone].ring,
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className={cn('inline-flex h-9 w-9 items-center justify-center rounded-lg', TONE_STYLES[NEEDS_REVIEW_WIDGET.tone].bg)}>
+                  <NEEDS_REVIEW_WIDGET.icon className={cn('h-5 w-5', TONE_STYLES[NEEDS_REVIEW_WIDGET.tone].text)} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-slate-700">{NEEDS_REVIEW_WIDGET.label}</div>
+                  <div className="text-xs text-slate-500">{NEEDS_REVIEW_WIDGET.description}</div>
+                </div>
+                <div className={cn('text-3xl font-semibold tabular-nums', TONE_STYLES[NEEDS_REVIEW_WIDGET.tone].text)}>
+                  {stats.needs_review}
+                </div>
+              </div>
+            </button>
             <InfoCard
               icon={TrendingUp}
               label="Активні пацієнти"
               value={stats.totalActive}
-              hint="Не архівні, обидві локації"
+              hint="Не архівні, обидві амбулаторії"
             />
             <InfoCard
               icon={Database}

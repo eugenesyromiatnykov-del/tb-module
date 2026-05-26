@@ -28,6 +28,7 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'tb_status',
   'social_risk_groups',
   'medical_risk_groups',
+  'is_external',
   'notes',
   'contact_of',
   'archived',

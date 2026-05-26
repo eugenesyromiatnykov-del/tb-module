@@ -104,7 +104,7 @@ export function ImportDeclarantsPage() {
     <div className="max-w-4xl">
       <PageHeader
         title="Імпорт декларантів"
-        subtitle="Завантажте свіжу xlsx-виписку з МІС. Локація визначається автоматично за колонкою «Відділення» у кожному рядку."
+        subtitle="Завантажте свіжу xlsx-виписку з МІС. Амбулаторія визначається автоматично за колонкою «Відділення» у кожному рядку."
         actions={
           <Button variant="secondary" onClick={() => navigate('/settings')}>
             ← Налаштування

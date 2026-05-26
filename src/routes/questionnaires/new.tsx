@@ -25,7 +25,9 @@ export function NewQuestionnairePage() {
   const [searchParams] = useSearchParams();
   const presetPatient = searchParams.get('patient_id') ?? null;
 
-  const [anonymous, setAnonymous] = useState(presetPatient ? false : true);
+  // Anonymous questionnaires are no longer supported — every form is attached
+  // to a patient. Form opens with a preset id from ?patient_id=, otherwise the
+  // user must pick a patient via the search picker below.
   const [patientId, setPatientId] = useState<string | null>(presetPatient);
   const [filledBy, setFilledBy] = useState<FilledBy>('doctor');
   const [answers, setAnswers] = useState<QuestionnaireAnswers>(emptyAnswers());
@@ -36,8 +38,9 @@ export function NewQuestionnairePage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!patientId) return;
     const created = await create.mutateAsync({
-      patient_id: anonymous ? null : patientId,
+      patient_id: patientId,
       answers: answers as unknown as Record<string, unknown>,
       result,
       filled_by: filledBy,
@@ -79,18 +82,7 @@ export function NewQuestionnairePage() {
                 </Select>
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300"
-                checked={anonymous}
-                onChange={(e) => setAnonymous(e.target.checked)}
-              />
-              Анонімно (без привʼязки до пацієнта)
-            </label>
-            {!anonymous && (
-              <PatientPicker selected={patientId} onSelect={setPatientId} />
-            )}
+            <PatientPicker selected={patientId} onSelect={setPatientId} />
           </CardBody>
         </Card>
 
@@ -176,15 +168,15 @@ export function NewQuestionnairePage() {
               </div>
             )}
             <div className="mt-4 flex gap-2">
-              <Button type="submit" disabled={create.isPending || (!anonymous && !patientId)}>
+              <Button type="submit" disabled={create.isPending || !patientId}>
                 {create.isPending ? 'Зберігаємо…' : 'Зберегти опросник'}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate('/questionnaires')}>
+              <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
                 Скасувати
               </Button>
             </div>
-            {!anonymous && !patientId && (
-              <p className="mt-2 text-xs text-orange-700">Оберіть пацієнта або позначте «Анонімно».</p>
+            {!patientId && (
+              <p className="mt-2 text-xs text-orange-700">Оберіть пацієнта.</p>
             )}
           </CardBody>
         </Card>

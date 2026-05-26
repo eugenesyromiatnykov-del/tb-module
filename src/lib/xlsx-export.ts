@@ -14,7 +14,7 @@ export function exportPatientsXlsx(patients: Patient[], filename: string): void 
     'Вік': calcAge(p.birth_date) ?? '',
     'Телефон': p.phone ?? '',
     'Адреса': p.address ?? '',
-    'Локація': p.location_id ? LOCATION_LABELS[p.location_id] : '',
+    'Амбулаторія': p.location_id ? LOCATION_LABELS[p.location_id] : '',
     'Статус': TB_STATUS_LABELS[p.tb_status],
     'Медичні групи ризику': p.medical_risk_groups.join(', '),
     'Соціальні групи ризику': p.social_risk_groups.join(', '),

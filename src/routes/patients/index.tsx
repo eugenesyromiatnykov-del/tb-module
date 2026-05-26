@@ -88,7 +88,7 @@ export function PatientsPage() {
         cell: (info) => <span className="text-slate-600">{String(info.getValue() ?? '')}</span>,
       },
       {
-        header: 'Локація',
+        header: 'Амбулаторія',
         accessorKey: 'location_id',
         cell: (info) => {
           const id = info.getValue<LocationId | null>();
@@ -233,7 +233,7 @@ export function PatientsPage() {
           </div>
         </div>
         <div className="w-44">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Локація</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
           <Select value={location} onChange={(e) => setLocation(e.target.value as '' | LocationId)}>
             <option value="">Усі</option>
             {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
@@ -350,24 +350,20 @@ export function PatientsPage() {
 
 function rowAccent(p: Patient): string {
   // Priority: overdue (red) > this_week (orange) > next_30 (cyan) >
-  // detected (yellow) > contact (blue).
+  // detected (yellow).
   const bucket = fluoroBucket(p.next_planned_date);
   if (bucket === 'overdue') return 'border-l-4 border-l-red-500';
   if (bucket === 'this_week') return 'border-l-4 border-l-orange-400';
   if (bucket === 'next_30') return 'border-l-4 border-l-cyan-400';
   if (p.tb_status === 'detected') return 'border-l-4 border-l-yellow-400';
-  if (p.tb_status === 'contact') return 'border-l-4 border-l-blue-400';
   return '';
 }
 
 function StatusBadge({ status }: { status: TbStatus }) {
   const tone: Record<TbStatus, string> = {
-    observed: 'bg-slate-50 text-slate-600',
     risk: 'bg-orange-100 text-orange-800',
     detected: 'bg-yellow-100 text-yellow-800',
-    contact: 'bg-blue-100 text-blue-800',
-    cleared: 'bg-green-100 text-green-800',
-    external: 'bg-purple-100 text-purple-800',
+    observed: 'bg-amber-50 text-amber-700',
     archived: 'bg-slate-100 text-slate-500',
   };
   return (

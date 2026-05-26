@@ -8,6 +8,7 @@ export type DashboardStats = {
   no_fluoro: number;
   contacts_no_fluoro: number;
   detected: number;
+  needs_review: number; // tb_status='observed': has fluoro but no risk groups
   totalActive: number;
   lastImport_daysAgo: number; // -1 if never
 };

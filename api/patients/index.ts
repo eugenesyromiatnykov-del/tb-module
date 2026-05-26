@@ -18,7 +18,7 @@ const SELECT_FULL = `
   id, medics_id, surname, first_name, patronymic, birth_date, gender,
   phone, address, location_id, tb_status, contact_of,
   medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_synced_at,
-  notes, archived, archived_reason, archived_at, created_at, updated_at,
+  notes, archived, archived_reason, archived_at, is_external, created_at, updated_at,
   last_fluoro_date, next_planned_date, last_result_code
 `;
 
@@ -44,7 +44,7 @@ function daysFromNow(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function applyFilter<Q extends { eq: Function; lt: Function; gt: Function; gte: Function; lte: Function; is: Function; not: Function }>(
+function applyFilter<Q extends { eq: Function; lt: Function; gt: Function; gte: Function; lte: Function; is: Function; not: Function; contains: Function }>(
   q: Q,
   filter: Filter | undefined,
   location?: string,
@@ -67,7 +67,8 @@ function applyFilter<Q extends { eq: Function; lt: Function; gt: Function; gte: 
       out = out.is('last_fluoro_date', null) as Q;
       break;
     case 'contacts_no_fluoro':
-      out = out.eq('tb_status', 'contact').is('last_fluoro_date', null) as Q;
+      // After the 0006 refactor "контактний" is a social_risk_group, not a status.
+      out = out.contains('social_risk_groups', ['close_contact']).is('last_fluoro_date', null) as Q;
       break;
     case 'detected':
       out = out.eq('tb_status', 'detected') as Q;
@@ -118,6 +119,13 @@ export default async function handler(req: Req, res: Res) {
       }
       out[f] = count ?? 0;
     }
+    // "needs review" — observed status: in registry, has fluoro but no groups yet.
+    const { count: needsReview } = await supabase
+      .from('patient_dashboard')
+      .select('id', { count: 'exact', head: true })
+      .eq('archived', false)
+      .eq('tb_status', 'observed');
+    out.needs_review = needsReview ?? 0;
     // Last MIS import
     const { data: lastImport, error: liErr } = await supabase
       .from('mis_imports')
@@ -148,7 +156,9 @@ export default async function handler(req: Req, res: Res) {
   const filter = asString(q.filter) as Filter | undefined;
   const location = asString(q.location);
   const status = asString(q.status);
+  const group = asString(q.group);
   const includeArchived = asString(q.archived) === '1';
+  const includeObserved = asString(q.observed) === '1';
   const search = (asString(q.search) ?? '').trim();
 
   let query = supabase.from('patient_dashboard').select(SELECT_FULL);
@@ -157,15 +167,17 @@ export default async function handler(req: Req, res: Res) {
   } else {
     if (!includeArchived) query = query.eq('archived', false);
     if (location) query = query.eq('location_id', location);
+    // Default registry view: only risk + detected. observed ("Потребує
+    // перегляду") hidden unless explicitly asked for via ?observed=1 or
+    // ?status=observed. archived hidden via ?archived=1 already.
+    if (!status && !includeObserved) {
+      query = query.in('tb_status', ['risk', 'detected']);
+    }
   }
   if (status) query = query.eq('tb_status', status);
 
-  // Single risk-group filter: matches either medical_risk_groups or
-  // social_risk_groups arrays containing the key.
-  const group = asString(q.group);
   if (group) {
-    // PostgREST array-contains: cs.{key}. The GIN indexes
-    // patients_med_groups + patients_soc_groups make this fast.
+    // PostgREST array-contains: cs.{key}. GIN indexes make this fast.
     query = query.or(`medical_risk_groups.cs.{${group}},social_risk_groups.cs.{${group}}`);
   }
 

@@ -221,6 +221,10 @@ function OverviewTab({
     update.mutate({ tb_status: status });
   };
 
+  const toggleExternal = (checked: boolean) => {
+    update.mutate({ is_external: checked });
+  };
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="lg:col-span-2">
@@ -232,7 +236,7 @@ function OverviewTab({
           <Field label="Адреса" value={patient.address ?? '—'} />
           <Field label="Стать" value={patient.gender === 'M' ? 'Чоловіча' : patient.gender === 'F' ? 'Жіноча' : '—'} />
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Локація</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
             <Select
               value={patient.location_id ?? ''}
               onChange={(e) => update.mutate({ location_id: (e.target.value || null) as LocationId | null })}
@@ -246,6 +250,16 @@ function OverviewTab({
               ))}
             </Select>
           </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300"
+              checked={patient.is_external}
+              onChange={(e) => toggleExternal(e.target.checked)}
+              disabled={update.isPending}
+            />
+            Не декларант (зовнішній пацієнт)
+          </label>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Статус ТБ</label>
             <Select
