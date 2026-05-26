@@ -45,7 +45,10 @@ delete from patients
 -- assign a group manually.
 
 -- 6) Rebuild patient_dashboard view to expose is_external.
-create or replace view patient_dashboard as
+-- Must DROP + CREATE (not CREATE OR REPLACE) because we insert is_external
+-- in the middle of the column list; PG only allows REPLACE to add at the end.
+drop view if exists patient_dashboard;
+create view patient_dashboard as
 select
   p.id,
   p.medics_id,
