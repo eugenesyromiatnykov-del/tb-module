@@ -626,35 +626,64 @@
       st.id = 'mi-tb-auto-style';
       st.textContent = `
         #mi-tb-auto-toggle {
-          display: inline-flex !important; align-items: center !important; gap: 6px !important;
-          padding: 4px 8px !important;
-          background: rgba(255,255,255,0.12) !important;
+          display: inline-flex !important; align-items: center !important; gap: 8px !important;
+          padding: 4px 6px 4px 10px !important;
+          background: rgba(255,255,255,0.08) !important;
           border: 1px solid rgba(255,255,255,0.18) !important;
-          border-radius: 6px !important;
-          color: #fff !important; font-size: 11px !important; font-weight: 500 !important;
+          border-radius: 999px !important;
+          font-size: 11px !important; font-weight: 600 !important;
           cursor: pointer !important;
           font-family: inherit !important;
           user-select: none !important;
+          color: rgba(255,255,255,0.9) !important;
         }
-        #mi-tb-auto-toggle:hover { background: rgba(255,255,255,0.2) !important; }
-        #mi-tb-auto-toggle input { width: 13px !important; height: 13px !important; margin: 0 !important; cursor: pointer !important; accent-color: #2563eb !important; }
-        #mi-tb-auto-toggle span { white-space: nowrap !important; }
+        #mi-tb-auto-toggle .tb-auto-label {
+          letter-spacing: 0.04em !important;
+          text-transform: uppercase !important;
+          font-size: 10px !important;
+        }
+        #mi-tb-auto-toggle .tb-auto-pill {
+          display: inline-flex !important; align-items: center !important;
+          padding: 2px 8px !important;
+          border-radius: 999px !important;
+          font-weight: 700 !important;
+          font-size: 10px !important;
+          letter-spacing: 0.05em !important;
+          min-width: 44px !important;
+          justify-content: center !important;
+          transition: background 0.15s ease, color 0.15s ease !important;
+        }
+        #mi-tb-auto-toggle[data-on="true"] .tb-auto-pill {
+          background: #10b981 !important;
+          color: #ffffff !important;
+          box-shadow: 0 0 0 1px rgba(16,185,129,0.4) !important;
+        }
+        #mi-tb-auto-toggle[data-on="false"] .tb-auto-pill {
+          background: rgba(148,163,184,0.35) !important;
+          color: rgba(255,255,255,0.85) !important;
+        }
+        #mi-tb-auto-toggle:hover { background: rgba(255,255,255,0.14) !important; }
       `;
       document.head.appendChild(st);
     }
 
-    const wrap = document.createElement('label');
+    const checked = STATE.config?.autoAnalyze !== false;
+    const wrap = document.createElement('button');
+    wrap.type = 'button';
     wrap.id = 'mi-tb-auto-toggle';
     wrap.title = 'Автоматичний аналіз при відкритті пацієнта';
-    const checked = STATE.config?.autoAnalyze !== false;
+    wrap.dataset.on = String(checked);
     wrap.innerHTML = `
-      <input type="checkbox" ${checked ? 'checked' : ''} />
-      <span>Авто-аналіз</span>
+      <span class="tb-auto-label">Авто-аналіз</span>
+      <span class="tb-auto-pill">${checked ? 'УВІМК' : 'ВИМК'}</span>
     `;
     rightCluster.insertAdjacentElement('afterbegin', wrap);
 
-    wrap.querySelector('input').addEventListener('change', async (e) => {
-      const on = e.target.checked;
+    wrap.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const on = wrap.dataset.on !== 'true';
+      wrap.dataset.on = String(on);
+      wrap.querySelector('.tb-auto-pill').textContent = on ? 'УВІМК' : 'ВИМК';
       await setAutoAnalyzePref(on);
       STATE.config = { ...STATE.config, autoAnalyze: on };
       if (on && !STATE.analyzing) {
