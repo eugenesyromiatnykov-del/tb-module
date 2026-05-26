@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle, FileText } from 'lucide-react';
 import { useQuestionnaires } from '@/hooks/useQuestionnaires';
@@ -22,6 +22,7 @@ import {
 } from '@/hooks/usePatient';
 import { apiFetch } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
+import { usePatients } from '@/hooks/usePatients';
 import type { Patient } from '@/types/database';
 import { calcAge, formatDateUk } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -101,7 +102,7 @@ export function PatientDetailPage() {
         <TabButton active={tab === 'quantiferon'} onClick={() => setTab('quantiferon')}>
           Квантиферон ({quantiferon_tests.length})
         </TabButton>
-        {patient.tb_status === 'detected' && (
+        {showContactsTab(patient) && (
           <TabButton active={tab === 'contacts'} onClick={() => setTab('contacts')}>
             Контакти
           </TabButton>
@@ -117,7 +118,7 @@ export function PatientDetailPage() {
       {tab === 'quantiferon' && (
         <QuantiferonTab patientId={patient.id} records={quantiferon_tests} />
       )}
-      {tab === 'contacts' && patient.tb_status === 'detected' && (
+      {tab === 'contacts' && showContactsTab(patient) && (
         <ContactsTab indexPatient={patient} />
       )}
       {tab === 'questionnaires' && <QuestionnairesTab patientId={patient.id} />}
@@ -197,6 +198,15 @@ function QResultBadge({ result }: { result: QuestionnaireResult }) {
 
 // avoid "FileText not used" lint warning if no symptom path uses it
 void FileText;
+
+// Contacts tab is shown for index TB cases AND for patients who were
+// previously treated — both groups need their close contacts tracked.
+function showContactsTab(p: Patient): boolean {
+  return (
+    p.tb_status === 'detected' ||
+    (p.medical_risk_groups || []).includes('previously_treated')
+  );
+}
 
 function TabButton({
   active,
@@ -985,6 +995,146 @@ function ContactsTab({ indexPatient }: { indexPatient: Patient }) {
 }
 
 function AddContactForm({
+  indexPatient,
+  onClose,
+}: {
+  indexPatient: Patient;
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+        <button
+          type="button"
+          onClick={() => setMode('existing')}
+          className={cn(
+            'flex-1 rounded px-3 py-1.5 text-sm font-medium transition',
+            mode === 'existing' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+          )}
+        >
+          З реєстру
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('new')}
+          className={cn(
+            'flex-1 rounded px-3 py-1.5 text-sm font-medium transition',
+            mode === 'new' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+          )}
+        >
+          Новий
+        </button>
+      </div>
+      {mode === 'existing' ? (
+        <ExistingContactPicker indexPatient={indexPatient} onClose={onClose} />
+      ) : (
+        <NewContactForm indexPatient={indexPatient} onClose={onClose} />
+      )}
+    </div>
+  );
+}
+
+function ExistingContactPicker({
+  indexPatient,
+  onClose,
+}: {
+  indexPatient: Patient;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Patient | null>(null);
+  const debouncedSearch = useDebouncedValue(search, 250);
+  const { data } = usePatients(useMemo(() => (debouncedSearch ? { search: debouncedSearch } : {}), [debouncedSearch]));
+  const rows = (data?.patients ?? []).filter((p) => p.id !== indexPatient.id).slice(0, 30);
+  const link = useUpdatePatient(selected?.id ?? '');
+
+  const onLink = async () => {
+    if (!selected) return;
+    const social = Array.from(
+      new Set([...(selected.social_risk_groups || []), 'close_contact']),
+    );
+    await link.mutateAsync({
+      contact_of: indexPatient.id,
+      social_risk_groups: social,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="space-y-3">
+      {selected ? (
+        <div className="space-y-2">
+          <div className="rounded-md border border-slate-200 p-2 text-sm">
+            <div className="font-medium text-slate-900">
+              {selected.surname} {selected.first_name} {selected.patronymic ?? ''}
+            </div>
+            <div className="text-xs text-slate-500">
+              {selected.birth_date} · {selected.medics_id ?? 'no medics'}
+            </div>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+            Пацієнт отримає групу ризику «Близький контакт» та посилання на цього індексного пацієнта.
+            Інші його дані не змінюються.
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" onClick={onLink} disabled={link.isPending}>
+              {link.isPending ? 'Зберігаємо…' : 'Звʼязати як контактного'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setSelected(null)}>
+              Інший пацієнт
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Input
+            placeholder="Пошук ПІБ або Medics ID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
+          {search && rows.length > 0 && (
+            <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+              {rows.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelected(p)}
+                  className="block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50"
+                >
+                  <div className="font-medium text-slate-900">
+                    {p.surname} {p.first_name} {p.patronymic ?? ''}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {p.birth_date} · {p.medics_id ?? 'no medics'}
+                    {p.contact_of && p.contact_of !== indexPatient.id && (
+                      <span className="ml-2 text-orange-600">вже контакт іншого</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {search && rows.length === 0 && (
+            <div className="text-xs text-slate-500">Нікого не знайдено</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function useDebouncedValue<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+function NewContactForm({
   indexPatient,
   onClose,
 }: {
