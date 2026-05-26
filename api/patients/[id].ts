@@ -14,11 +14,18 @@ type Res = {
 
 export const config = { runtime: 'nodejs' };
 
+// Read from the patient_dashboard view so derived columns (last_fluoro_date,
+// last_sputum_*, last_quantiferon_*, next_planned_date) come back together
+// with the base patient row.
 const PATIENT_FIELDS = `
   id, medics_id, surname, first_name, patronymic, birth_date, gender,
   phone, address, location_id, tb_status, contact_of,
   medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_synced_at,
-  notes, archived, archived_reason, archived_at, created_at, updated_at
+  notes, archived, archived_reason, archived_at, is_external,
+  created_at, updated_at,
+  last_fluoro_date, next_planned_date, last_result_code,
+  last_sputum_date, last_sputum_test_type, last_sputum_result,
+  last_quantiferon_date, last_quantiferon_result_code, last_quantiferon_result
 `;
 
 const ALLOWED_PATCH_FIELDS = new Set([
