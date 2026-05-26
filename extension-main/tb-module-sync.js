@@ -53,16 +53,16 @@
     }));
   }
 
-  // ─── ICPC-2 → medical_risk_groups ─────────────────────────────────────
-  // Covers RISK_FACTORS_TB except the Z01-Z06 social codes — those mean
-  // "бідність / харчі / житло / безробіття" in ICPC-2 but conflict with
-  // unrelated МКХ-10 Z-codes and are too generic for auto-tagging.
-  // The 'social_distress' group is kept in the module but reserved for
-  // manual selection in the patient card.
+  // ─── Code → medical_risk_groups ───────────────────────────────────────
+  // ICPC-2 codes have no dot (3 chars: "B90", "T90"). МКХ-10 codes have a
+  // dot ("B20.0", "E11.71"). The SAME 3-char string can mean different
+  // things in each system — e.g. ICPC-2 B90 = "ВІЛ/СНІД", but МКХ-10 B90
+  // (and B90.0-B90.9) = "Наслідки туберкульозу". So we split them by
+  // dot-presence.
+
+  // ICPC-2: exact match on the full code (no dot expected).
   const ICPC_TO_GROUP = {
-    // ВІЛ / СНІД
     B90: 'hiv',
-    // Онкологія
     A79: 'oncology', B72: 'oncology', B74: 'oncology',
     D74: 'oncology', D75: 'oncology', D76: 'oncology', D77: 'oncology', D78: 'oncology',
     L71: 'oncology', N74: 'oncology',
@@ -71,26 +71,61 @@
     T71: 'oncology', W72: 'oncology',
     X75: 'oncology', X76: 'oncology', X77: 'oncology',
     Y77: 'oncology', Y78: 'oncology',
-    // Цукровий діабет
     T89: 'diabetes', T90: 'diabetes',
-    // Шкідливі звички
     P15: 'alcohol_abuse', P16: 'alcohol_abuse',
     P17: 'tobacco_use',
     P19: 'drug_abuse',
-    // Респіраторні
-    R95: 'chronic_respiratory', R96: 'chronic_respiratory',
-    R79: 'chronic_respiratory',
+    R95: 'chronic_respiratory', R96: 'chronic_respiratory', R79: 'chronic_respiratory',
     R81: 'pneumonia_history',
     R82: 'pleurisy',
-    // Харчування / вага
     T05: 'nutrition_problem',
     T08: 'weight_loss',
-    // Урологія
     U28: 'urology_disorder',
-    // Вагітність / пологи
     W78: 'pregnancy', W84: 'pregnancy',
     W90: 'pregnancy', W91: 'pregnancy', W92: 'pregnancy', W93: 'pregnancy',
   };
+
+  // МКХ-10: prefix match. Walks from longest prefix to shortest.
+  // First match wins (so a more specific prefix overrides a generic one).
+  const ICD10_PREFIX_RULES = [
+    // HIV/AIDS — but ONLY B20-B24 (NOT B90.*, which is "Sequelae of TB")
+    [/^B2[0-4]\b/, 'hiv'],
+    // Sequelae of tuberculosis — B90 + B90.x in МКХ-10
+    [/^B90(\.|$)/, 'previously_treated'],
+    // Active TB history — A15-A19, plus the doctor-style A15.x, etc.
+    [/^A1[5-9]\b/, 'previously_treated'],
+    [/^Z86\.1\b/, 'previously_treated'],
+    // Oncology — C00-D48
+    [/^C\d/, 'oncology'],
+    [/^D[0-3]\d/, 'oncology'],
+    [/^D4[0-8]\b/, 'oncology'],
+    // Diabetes — E10-E14
+    [/^E1[0-4]\b/, 'diabetes'],
+    // Chronic respiratory — J40-J47
+    [/^J4[0-7]\b/, 'chronic_respiratory'],
+    // Pneumonia history — J12-J18
+    [/^J1[2-8]\b/, 'pneumonia_history'],
+    // Peptic ulcer — K25-K28
+    [/^K2[5-8]\b/, 'peptic_ulcer'],
+    // Psychiatry — F-codes
+    [/^F\d/, 'psychiatric'],
+    // Alcohol / tobacco / drug as МКХ-10
+    [/^F10\b/, 'alcohol_abuse'],
+    [/^F17\b/, 'tobacco_use'],
+    [/^Z72\.0\b/, 'tobacco_use'],
+    [/^Z86\.43\b/, 'tobacco_use'],
+    [/^G31\.2\b/, 'alcohol_abuse'],
+  ];
+
+  function icpcGroup(code) {
+    return ICPC_TO_GROUP[code] || null;
+  }
+  function icd10Group(code) {
+    for (const [re, group] of ICD10_PREFIX_RULES) {
+      if (re.test(code)) return group;
+    }
+    return null;
+  }
 
   function diagnosesToGroups(diagnoses) {
     if (!Array.isArray(diagnoses)) return { groups: [], codes: [] };
@@ -100,11 +135,22 @@
       const code = typeof d === 'string' ? d : d.code;
       if (!code) continue;
       codes.add(code);
-      const base = code.split('.')[0];
-      const g = ICPC_TO_GROUP[base];
+      const isIcd10 = code.includes('.');
+      const g = isIcd10 ? icd10Group(code) : icpcGroup(code);
       if (g) groups.add(g);
     }
     return { groups: [...groups], codes: [...codes] };
+  }
+
+  function ageFromBirth(iso) {
+    if (!iso) return null;
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const today = new Date();
+    let age = today.getFullYear() - +m[1];
+    const md = today.getMonth() + 1 - +m[2];
+    if (md < 0 || (md === 0 && today.getDate() < +m[3])) age -= 1;
+    return age;
   }
 
   // ─── Medics ID extraction (auto + manual fallback) ───────────────────
@@ -741,6 +787,13 @@
     const fluoro = analyzedData ? extractLastFluoro(analyzedData) : null;
 
     setSection('info', '<div>Синхронізуємо…</div>');
+    // Age-based social group: 60+ auto-tagged on creation. (The server
+    // /api/extension-sync only appends to medical_risk_groups, so we
+    // attach a separate social_risk_groups field — server merges it too.)
+    const autoSocial = [];
+    const age = ageFromBirth(ctx.birth_date);
+    if (age != null && age >= 60) autoSocial.push('elderly_60');
+
     const payload = {
       medics_id: medicsId,
       surname: ctx.surname,
@@ -750,6 +803,7 @@
       gender: ctx.gender,
       diagnoses_codes: diag.codes,
       medical_risk_groups: diag.groups,
+      social_risk_groups: autoSocial,
     };
     if (fluoro) payload.fluoro = fluoro;
 

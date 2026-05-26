@@ -108,6 +108,7 @@ export default async function handler(req: Req, res: Res) {
       location_id?: string | null;
       diagnoses_codes?: string[];
       medical_risk_groups?: string[];
+      social_risk_groups?: string[];
       fluoro?: {
         date: string;
         result?: string | null;
@@ -155,6 +156,13 @@ export default async function handler(req: Req, res: Res) {
         );
         patch.medical_risk_groups = merged;
       }
+      if (Array.isArray(body.social_risk_groups) && body.social_risk_groups.length > 0) {
+        // Union with existing — never remove a manually-set tag.
+        const merged = Array.from(
+          new Set([...(existing.social_risk_groups ?? []), ...body.social_risk_groups]),
+        );
+        patch.social_risk_groups = merged;
+      }
       if (Object.keys(patch).length > 0) {
         const { error } = await supabase.from('patients').update(patch).eq('id', patientId);
         if (error) {
@@ -180,7 +188,7 @@ export default async function handler(req: Req, res: Res) {
         location_id: body.location_id ?? null,
         tb_status: 'risk' as const,
         medical_risk_groups: body.medical_risk_groups ?? [],
-        social_risk_groups: [],
+        social_risk_groups: body.social_risk_groups ?? [],
         diagnoses_codes: body.diagnoses_codes ?? [],
         diagnoses_synced_at: body.diagnoses_codes ? new Date().toISOString() : null,
       };

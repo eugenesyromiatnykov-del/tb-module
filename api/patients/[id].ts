@@ -59,7 +59,7 @@ export default async function handler(req: Req, res: Res) {
 
   if (req.method === 'GET') {
     const [patientRes, fluoroRes, sputumRes, quantRes] = await Promise.all([
-      supabase.from('patients').select(PATIENT_FIELDS).eq('id', id).maybeSingle(),
+      supabase.from('patient_dashboard').select(PATIENT_FIELDS).eq('id', id).maybeSingle(),
       supabase.from('fluorography').select('*').eq('patient_id', id).order('date', { ascending: false }),
       supabase.from('sputum_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
       supabase.from('quantiferon_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
@@ -91,11 +91,16 @@ export default async function handler(req: Req, res: Res) {
       res.status(400).json({ error: 'Nothing to update' });
       return;
     }
+    const { error: updErr } = await supabase.from('patients').update(patch).eq('id', id);
+    if (updErr) {
+      res.status(500).json({ error: updErr.message });
+      return;
+    }
+    // Read back through the view so the response includes derived summary fields.
     const { data, error } = await supabase
-      .from('patients')
-      .update(patch)
-      .eq('id', id)
+      .from('patient_dashboard')
       .select(PATIENT_FIELDS)
+      .eq('id', id)
       .maybeSingle();
     if (error) {
       res.status(500).json({ error: error.message });
