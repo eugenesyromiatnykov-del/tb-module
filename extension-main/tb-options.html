@@ -64,6 +64,12 @@
     <input id="pin" type="password" inputmode="numeric" placeholder="••••••••" />
     <p class="hint">Той самий PIN, що ви вводите при вході в модуль.</p>
 
+    <label style="display: flex; align-items: center; gap: 8px; font-weight: 400; margin-bottom: 12px;">
+      <input id="autoAnalyze" type="checkbox" style="width: auto; margin: 0; padding: 0;" />
+      <span>Автоматичний аналіз при відкритті пацієнта</span>
+    </label>
+    <p class="hint" style="margin-top: -8px;">Якщо вимкнено — аналіз треба запускати кнопкою «Проаналізувати» вручну.</p>
+
     <button id="save">Зберегти і перевірити</button>
     <div id="status"></div>
 

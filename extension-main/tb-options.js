@@ -1,12 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
   const moduleUrlEl = document.getElementById('moduleUrl');
   const pinEl = document.getElementById('pin');
+  const autoAnalyzeEl = document.getElementById('autoAnalyze');
   const saveBtn = document.getElementById('save');
   const statusEl = document.getElementById('status');
 
-  chrome.storage.sync.get(['tbModuleUrl', 'tbModulePin'], (v) => {
+  chrome.storage.sync.get(['tbModuleUrl', 'tbModulePin', 'tbAutoAnalyze'], (v) => {
     moduleUrlEl.value = v.tbModuleUrl || '';
     pinEl.value = v.tbModulePin || '';
+    // Default true — auto-analyze is on by default for backward compat.
+    autoAnalyzeEl.checked = v.tbAutoAnalyze !== false;
   });
 
   saveBtn.addEventListener('click', async () => {

@@ -25,12 +25,19 @@
   // ─── Config (chrome.storage.sync) ─────────────────────────────────────
   async function loadConfig() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get(['tbModuleUrl', 'tbModulePin'], (v) => {
+      chrome.storage.sync.get(['tbModuleUrl', 'tbModulePin', 'tbAutoAnalyze'], (v) => {
         resolve({
           url: (v.tbModuleUrl || '').replace(/\/$/, ''),
           pin: v.tbModulePin || '',
+          autoAnalyze: v.tbAutoAnalyze !== false, // default true
         });
       });
+    });
+  }
+
+  function setAutoAnalyzePref(value) {
+    return new Promise((resolve) => {
+      chrome.storage.sync.set({ tbAutoAnalyze: !!value }, () => resolve());
     });
   }
   function isConfigured() { return !!(STATE.config && STATE.config.url && STATE.config.pin); }
@@ -551,6 +558,12 @@
       .tb-gender-inline button:hover { background: #f1f5f9 !important; }
 
       .tb-section { margin:0 0 12px 0!important; padding:12px 14px!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:13px!important; color:#0f172a!important; box-sizing:border-box!important; }
+      .tb-auto-toggle {
+        display: inline-flex !important; align-items: center !important; gap: 4px !important;
+        margin-left: auto !important; font-size: 11px !important; color: #475569 !important;
+        cursor: pointer !important; font-weight: 400 !important;
+      }
+      .tb-auto-toggle input { width: 14px !important; height: 14px !important; margin: 0 !important; cursor: pointer !important; }
       .tb-section--ok{border-color:#86efac!important;background:#f0fdf4!important}
       .tb-section--warn{border-color:#fbbf24!important;background:#fffbeb!important}
       .tb-section--err{border-color:#fca5a5!important;background:#fef2f2!important}
@@ -591,15 +604,29 @@
     sec = document.createElement('div');
     sec.id = 'tb-module-section';
     sec.className = 'tb-section tb-section--neutral';
+    const auto = STATE.config?.autoAnalyze !== false;
     sec.innerHTML = `
       <div class="tb-section__head">
         <span class="tb-section__dot" style="background:#94a3b8;"></span>
         <h3 class="tb-section__title">📋 Модуль ТБ</h3>
+        <label class="tb-auto-toggle" title="Автоматичний аналіз при відкритті пацієнта">
+          <input type="checkbox" id="tb-auto-toggle" ${auto ? 'checked' : ''} />
+          <span>Авто-аналіз</span>
+        </label>
       </div>
       <div class="tb-section__body">…</div>
     `;
     body.insertAdjacentElement('afterbegin', sec);
     STATE.sectionEl = sec;
+    // Wire the inline toggle.
+    sec.querySelector('#tb-auto-toggle')?.addEventListener('change', async (e) => {
+      const checked = e.target.checked;
+      await setAutoAnalyzePref(checked);
+      STATE.config = { ...STATE.config, autoAnalyze: checked };
+      if (checked && !STATE.analyzing) {
+        startAutoAnalyze();
+      }
+    });
     return sec;
   }
 
@@ -932,24 +959,32 @@
   async function boot() {
     if (STATE.booted) return;
     STATE.config = await loadConfig();
-    // Step 1: Cover the screen the moment a patient page is detected,
-    // even before the indicators widget renders. Prevents accidental
-    // clicks on the page during the 1-2 sec while medics.ua streams data.
+
+    // Only cover the screen up-front if auto-analyze is on. With auto off
+    // the doctor opens the page like usual and clicks "Проаналізувати"
+    // when ready.
     const ensureOverlayUpEarly = () => {
+      if (!STATE.config.autoAnalyze) return;
       if (isPatientPage() && !document.getElementById('tb-auto-overlay') && !STATE.analyzing) {
         showOverlay();
       }
     };
     ensureOverlayUpEarly();
 
-    // Step 2: Wait for the widget, install hooks, then kick off the analyze.
     const tryInit = () => {
       ensureOverlayUpEarly();
       if (!document.getElementById('mi-patient-banner')) return false;
       installAnalyzeHook();
       STATE.booted = true;
-      // startAutoAnalyze itself waits for mi-analyze-btn + DOM stable.
-      setTimeout(() => startAutoAnalyze(), 100);
+      if (STATE.config.autoAnalyze) {
+        // startAutoAnalyze itself waits for mi-analyze-btn + DOM stable.
+        setTimeout(() => startAutoAnalyze(), 100);
+      } else {
+        // Show the TB section in "manual" state so the doctor can see status
+        // and an in-place toggle for auto-analyze.
+        revealSection();
+        refresh();
+      }
       return true;
     };
     if (tryInit()) return;
@@ -960,7 +995,7 @@
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
-    if (changes.tbModuleUrl || changes.tbModulePin || changes.tbManualMedics) {
+    if (changes.tbModuleUrl || changes.tbModulePin || changes.tbManualMedics || changes.tbAutoAnalyze) {
       loadConfig().then((cfg) => { STATE.config = cfg; STATE.currentMedicsId = null; refresh(); });
     }
   });
