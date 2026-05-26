@@ -44,10 +44,16 @@ export type Patient = {
 
   is_external: boolean;
 
-  // Derived from latest fluoro record (via patient_dashboard view).
+  // Derived columns from patient_dashboard view.
   last_fluoro_date: string | null;
   next_planned_date: string | null;
   last_result_code: FluoroResultCode | null;
+  last_sputum_date: string | null;
+  last_sputum_test_type: SputumTestType | null;
+  last_sputum_result: string | null;
+  last_quantiferon_date: string | null;
+  last_quantiferon_result_code: QuantiferonResultCode | null;
+  last_quantiferon_result: string | null;
 };
 
 export type PatientForDiff = Pick<
@@ -134,4 +140,23 @@ export type Questionnaire = {
   result: QuestionnaireResult;
   filled_by: string | null;
   notes: string | null;
+};
+
+export type QuantiferonResultCode = 'positive' | 'negative' | 'indeterminate' | 'unknown';
+
+export type QuantiferonTest = {
+  id: string;
+  patient_id: string;
+  date: string;
+  result: string | null;
+  result_code: QuantiferonResultCode;
+  notes: string | null;
+  created_at: string;
+};
+
+export const QUANTIFERON_RESULT_LABELS: Record<QuantiferonResultCode, string> = {
+  positive: 'Позитивний',
+  negative: 'Негативний',
+  indeterminate: 'Невизначений',
+  unknown: 'Невідомо',
 };

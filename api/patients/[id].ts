@@ -58,10 +58,11 @@ export default async function handler(req: Req, res: Res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'GET') {
-    const [patientRes, fluoroRes, sputumRes] = await Promise.all([
+    const [patientRes, fluoroRes, sputumRes, quantRes] = await Promise.all([
       supabase.from('patients').select(PATIENT_FIELDS).eq('id', id).maybeSingle(),
       supabase.from('fluorography').select('*').eq('patient_id', id).order('date', { ascending: false }),
       supabase.from('sputum_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
+      supabase.from('quantiferon_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
     ]);
     if (patientRes.error) {
       res.status(500).json({ error: patientRes.error.message });
@@ -75,6 +76,7 @@ export default async function handler(req: Req, res: Res) {
       patient: patientRes.data,
       fluorography: fluoroRes.data ?? [],
       sputum_tests: sputumRes.data ?? [],
+      quantiferon_tests: quantRes.data ?? [],
     });
     return;
   }

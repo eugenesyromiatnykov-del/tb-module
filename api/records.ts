@@ -14,16 +14,18 @@ type Res = {
 
 export const config = { runtime: 'nodejs' };
 
-type Kind = 'fluoro' | 'sputum';
+type Kind = 'fluoro' | 'sputum' | 'quantiferon';
 
 const TABLES: Record<Kind, string> = {
   fluoro: 'fluorography',
   sputum: 'sputum_tests',
+  quantiferon: 'quantiferon_tests',
 };
 
 const ALLOWED_FIELDS: Record<Kind, Set<string>> = {
   fluoro: new Set(['date', 'result', 'result_code', 'next_planned_date', 'notes']),
   sputum: new Set(['date', 'test_type', 'result', 'notes']),
+  quantiferon: new Set(['date', 'result', 'result_code', 'notes']),
 };
 
 function asString(v: string | string[] | undefined): string | undefined {
@@ -36,8 +38,8 @@ export default async function handler(req: Req, res: Res) {
 
   const q = req.query ?? {};
   const kind = asString(q.kind) as Kind | undefined;
-  if (kind !== 'fluoro' && kind !== 'sputum') {
-    res.status(400).json({ error: "kind must be 'fluoro' or 'sputum'" });
+  if (kind !== 'fluoro' && kind !== 'sputum' && kind !== 'quantiferon') {
+    res.status(400).json({ error: "kind must be 'fluoro' | 'sputum' | 'quantiferon'" });
     return;
   }
   const table = TABLES[kind];
@@ -58,9 +60,14 @@ export default async function handler(req: Req, res: Res) {
       row.next_planned_date = body.next_planned_date ?? null;
       row.notes = body.notes ?? null;
       row.source = 'manual';
-    } else {
+    } else if (kind === 'sputum') {
       row.test_type = body.test_type ?? 'xpert';
       row.result = body.result ?? null;
+      row.notes = body.notes ?? null;
+    } else {
+      // quantiferon
+      row.result = body.result ?? null;
+      row.result_code = body.result_code ?? 'unknown';
       row.notes = body.notes ?? null;
     }
     const { data, error } = await supabase.from(table).insert(row).select('*').maybeSingle();

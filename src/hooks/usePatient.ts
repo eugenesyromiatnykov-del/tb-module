@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import type { FluoroRecord, Patient, SputumTest } from '@/types/database';
+import type { FluoroRecord, Patient, QuantiferonTest, SputumTest } from '@/types/database';
 
 export type PatientDetail = {
   patient: Patient;
   fluorography: FluoroRecord[];
   sputum_tests: SputumTest[];
+  quantiferon_tests: QuantiferonTest[];
 };
 
 export function usePatient(id: string | undefined) {
@@ -82,6 +83,29 @@ export function useDeleteSputum(patientId: string) {
     mutationFn: (id: string) => apiFetch<void>(`/api/records?kind=sputum&id=${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+    },
+  });
+}
+
+export function useAddQuantiferon(patientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<QuantiferonTest, 'id' | 'created_at'>) =>
+      apiFetch<{ record: QuantiferonTest }>(`/api/records?kind=quantiferon`, { method: 'POST', json: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+  });
+}
+
+export function useDeleteQuantiferon(patientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/api/records?kind=quantiferon&id=${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
     },
   });
 }

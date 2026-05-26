@@ -11,9 +11,11 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import {
   useAddFluoro,
+  useAddQuantiferon,
   useAddSputum,
   useCreatePatient,
   useDeleteFluoro,
+  useDeleteQuantiferon,
   useDeleteSputum,
   usePatient,
   useUpdatePatient,
@@ -23,21 +25,24 @@ import { useQuery } from '@tanstack/react-query';
 import type { Patient } from '@/types/database';
 import { calcAge, formatDateUk } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
-import { MEDICAL_GROUPS, SOCIAL_GROUPS, labelOf } from '@/lib/risk-groups';
+import { MEDICAL_GROUPS, SOCIAL_GROUPS } from '@/lib/risk-groups';
 import {
   FLUORO_RESULT_LABELS,
   LOCATION_LABELS,
+  QUANTIFERON_RESULT_LABELS,
   SPUTUM_TEST_LABELS,
   TB_STATUS_LABELS,
   type FluoroRecord,
   type FluoroResultCode,
   type LocationId,
+  type QuantiferonResultCode,
+  type QuantiferonTest,
   type SputumTest,
   type SputumTestType,
   type TbStatus,
 } from '@/types/database';
 
-type Tab = 'overview' | 'fluoro' | 'sputum' | 'contacts' | 'questionnaires';
+type Tab = 'overview' | 'fluoro' | 'sputum' | 'quantiferon' | 'contacts' | 'questionnaires';
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,7 +70,7 @@ export function PatientDetailPage() {
     );
   }
 
-  const { patient, fluorography, sputum_tests } = data;
+  const { patient, fluorography, sputum_tests, quantiferon_tests } = data;
   const fullName = [patient.surname, patient.first_name, patient.patronymic].filter(Boolean).join(' ');
   const age = calcAge(patient.birth_date);
 
@@ -93,6 +98,9 @@ export function PatientDetailPage() {
         <TabButton active={tab === 'sputum'} onClick={() => setTab('sputum')}>
           Мокротиння ({sputum_tests.length})
         </TabButton>
+        <TabButton active={tab === 'quantiferon'} onClick={() => setTab('quantiferon')}>
+          Квантиферон ({quantiferon_tests.length})
+        </TabButton>
         {patient.tb_status === 'detected' && (
           <TabButton active={tab === 'contacts'} onClick={() => setTab('contacts')}>
             Контакти
@@ -106,6 +114,9 @@ export function PatientDetailPage() {
       {tab === 'overview' && <OverviewTab data={data} />}
       {tab === 'fluoro' && <FluoroTab patientId={patient.id} records={fluorography} />}
       {tab === 'sputum' && <SputumTab patientId={patient.id} records={sputum_tests} />}
+      {tab === 'quantiferon' && (
+        <QuantiferonTab patientId={patient.id} records={quantiferon_tests} />
+      )}
       {tab === 'contacts' && patient.tb_status === 'detected' && (
         <ContactsTab indexPatient={patient} />
       )}
@@ -229,6 +240,13 @@ function OverviewTab({
     update.mutate({ social_risk_groups: Array.from(set) });
   };
 
+  const toggleMedical = (key: string, on: boolean) => {
+    const set = new Set(patient.medical_risk_groups);
+    if (on) set.add(key);
+    else set.delete(key);
+    update.mutate({ medical_risk_groups: Array.from(set) });
+  };
+
   const setStatus = (status: TbStatus) => {
     update.mutate({ tb_status: status });
   };
@@ -340,53 +358,128 @@ function OverviewTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Соціальні групи ризику</CardTitle>
+          <CardTitle>Останні результати</CardTitle>
         </CardHeader>
-        <CardBody className="space-y-2">
-          {SOCIAL_GROUPS.map((g) => {
-            const checked = patient.social_risk_groups.includes(g.key);
-            return (
-              <label key={g.key} className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300"
-                  checked={checked}
-                  onChange={(e) => toggleSocial(g.key, e.target.checked)}
-                  disabled={update.isPending}
-                />
-                {g.label}
-              </label>
-            );
-          })}
+        <CardBody className="space-y-3 text-sm">
+          <SummaryRow
+            label="Флюоро / R-ОГК"
+            date={patient.last_fluoro_date}
+            value={
+              patient.last_result_code
+                ? FLUORO_RESULT_LABELS[patient.last_result_code]
+                : null
+            }
+            nextDate={patient.next_planned_date}
+          />
+          <SummaryRow
+            label="Мокротиння"
+            date={patient.last_sputum_date}
+            value={
+              patient.last_sputum_test_type
+                ? `${SPUTUM_TEST_LABELS[patient.last_sputum_test_type]}${patient.last_sputum_result ? ` — ${patient.last_sputum_result}` : ''}`
+                : null
+            }
+          />
+          <SummaryRow
+            label="Квантиферон (IGRA)"
+            date={patient.last_quantiferon_date}
+            value={
+              patient.last_quantiferon_result_code
+                ? QUANTIFERON_RESULT_LABELS[patient.last_quantiferon_result_code]
+                : null
+            }
+          />
         </CardBody>
       </Card>
 
       <Card className="lg:col-span-3">
         <CardHeader>
-          <CardTitle>Медичні групи ризику</CardTitle>
+          <CardTitle>Групи ризику</CardTitle>
         </CardHeader>
-        <CardBody>
-          {patient.medical_risk_groups.length === 0 ? (
-            <div className="text-sm text-slate-500">
-              Немає (визначається автоматично з діагнозів МІС у Фазі 4)
+        <CardBody className="space-y-5">
+          <div>
+            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              Медичні
+              <span className="ml-2 font-normal normal-case text-slate-400">
+                автоматично з діагнозів МІС, можна правити вручну
+              </span>
             </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {patient.medical_risk_groups.map((k) => (
-                <span
-                  key={k}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700"
-                >
-                  {labelOf(k)}
-                </span>
-              ))}
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+              {MEDICAL_GROUPS.map((g) => {
+                const checked = patient.medical_risk_groups.includes(g.key);
+                return (
+                  <label key={g.key} className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={checked}
+                      onChange={(e) => toggleMedical(g.key, e.target.checked)}
+                    />
+                    {g.label}
+                  </label>
+                );
+              })}
             </div>
-          )}
-          <div className="mt-3 text-xs text-slate-400">
-            Можливі: {MEDICAL_GROUPS.map((g) => g.label).join(' · ')}
+          </div>
+          <div>
+            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              Соціальні
+              <span className="ml-2 font-normal normal-case text-slate-400">
+                ручний вибір лікаря
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+              {SOCIAL_GROUPS.map((g) => {
+                const checked = patient.social_risk_groups.includes(g.key);
+                return (
+                  <label key={g.key} className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={checked}
+                      onChange={(e) => toggleSocial(g.key, e.target.checked)}
+                    />
+                    {g.label}
+                  </label>
+                );
+              })}
+            </div>
           </div>
         </CardBody>
       </Card>
+    </div>
+  );
+}
+
+function SummaryRow({
+  label,
+  date,
+  value,
+  nextDate,
+}: {
+  label: string;
+  date: string | null;
+  value: string | null;
+  nextDate?: string | null;
+}) {
+  if (!date) {
+    return (
+      <div>
+        <div className="text-xs font-medium text-slate-500">{label}</div>
+        <div className="text-sm text-slate-400">—</div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className="text-sm text-slate-900">
+        <span className="font-medium">{formatDateUk(date)}</span>
+        {value && <span className="text-slate-600"> · {value}</span>}
+      </div>
+      {nextDate && (
+        <div className="text-xs text-slate-500">наступна: {formatDateUk(nextDate)}</div>
+      )}
     </div>
   );
 }
@@ -639,6 +732,141 @@ function AddSputumForm({ patientId, onClose }: { patientId: string; onClose: () 
       </FormField>
       <FormField label="Результат">
         <Input value={result} onChange={(e) => setResult(e.target.value)} placeholder="напр. позитивний / негативний" />
+      </FormField>
+      {add.error && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
+          {(add.error as Error).message}
+        </div>
+      )}
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" disabled={add.isPending}>
+          {add.isPending ? 'Зберігаємо…' : 'Зберегти'}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Скасувати
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ─── Quantiferon (IGRA) ────────────────────────────────────────────────────
+
+function QuantiferonTab({ patientId, records }: { patientId: string; records: QuantiferonTest[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Квантифероновий тест (IGRA)</CardTitle>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> Додати
+          </Button>
+        </div>
+      </CardHeader>
+      <CardBody className="p-0">
+        {records.length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-slate-500">Немає записів</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Дата</th>
+                <th className="px-4 py-2 font-medium">Результат</th>
+                <th className="px-4 py-2 font-medium">Опис / нотатки</th>
+                <th className="w-10 px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <QuantiferonRow key={r.id} patientId={patientId} record={r} />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </CardBody>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent title="Додати квантифероновий тест">
+          <AddQuantiferonForm patientId={patientId} onClose={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+function QuantiferonRow({ patientId, record }: { patientId: string; record: QuantiferonTest }) {
+  const del = useDeleteQuantiferon(patientId);
+  const tone: Record<QuantiferonResultCode, string> = {
+    positive: 'bg-red-100 text-red-800',
+    negative: 'bg-green-100 text-green-800',
+    indeterminate: 'bg-orange-100 text-orange-800',
+    unknown: 'bg-slate-100 text-slate-700',
+  };
+  return (
+    <tr className="border-t border-slate-100">
+      <td className="px-4 py-2 text-slate-900">{formatDateUk(record.date)}</td>
+      <td className="px-4 py-2">
+        <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', tone[record.result_code])}>
+          {QUANTIFERON_RESULT_LABELS[record.result_code]}
+        </span>
+      </td>
+      <td className="px-4 py-2 text-slate-600">{record.result ?? record.notes ?? '—'}</td>
+      <td className="px-4 py-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm('Видалити запис?')) del.mutate(record.id);
+          }}
+          className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function AddQuantiferonForm({ patientId, onClose }: { patientId: string; onClose: () => void }) {
+  const [date, setDate] = useState(today());
+  const [resultCode, setResultCode] = useState<QuantiferonResultCode>('negative');
+  const [result, setResult] = useState('');
+  const [notes, setNotes] = useState('');
+  const add = useAddQuantiferon(patientId);
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        add.mutate(
+          {
+            patient_id: patientId,
+            date,
+            result_code: resultCode,
+            result: result.trim() || null,
+            notes: notes.trim() || null,
+          },
+          { onSuccess: onClose },
+        );
+      }}
+    >
+      <FormField label="Дата">
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+      </FormField>
+      <FormField label="Результат">
+        <Select value={resultCode} onChange={(e) => setResultCode(e.target.value as QuantiferonResultCode)}>
+          {(Object.keys(QUANTIFERON_RESULT_LABELS) as QuantiferonResultCode[]).map((c) => (
+            <option key={c} value={c}>
+              {QUANTIFERON_RESULT_LABELS[c]}
+            </option>
+          ))}
+        </Select>
+      </FormField>
+      <FormField label="Опис (опц.)">
+        <Input value={result} onChange={(e) => setResult(e.target.value)} placeholder="напр. TB1: 0.35, TB2: 0.42 МО/мл" />
+      </FormField>
+      <FormField label="Нотатки (опц.)">
+        <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
       </FormField>
       {add.error && (
         <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
