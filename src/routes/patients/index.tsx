@@ -45,6 +45,7 @@ export function PatientsPage() {
   const [location, setLocation] = useState<'' | LocationId>('');
   const [status, setStatus] = useState<'' | TbStatus>('');
   const [group, setGroup] = useState<string>('');
+  const [external, setExternal] = useState<'' | '1' | '0'>('');
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
   const search = useDebounced(searchInput, 300);
@@ -54,11 +55,12 @@ export function PatientsPage() {
       location: location || undefined,
       status: status || undefined,
       group: group || undefined,
+      external: external || undefined,
       search: search || undefined,
       archived,
       filter,
     }),
-    [location, status, group, search, archived, filter],
+    [location, status, group, external, search, archived, filter],
   );
 
   const { data, isLoading, isFetching, error } = usePatients(filters);
@@ -89,10 +91,19 @@ export function PatientsPage() {
       },
       {
         header: 'Амбулаторія',
-        accessorKey: 'location_id',
+        accessorFn: (p) => p,
         cell: (info) => {
-          const id = info.getValue<LocationId | null>();
-          return <span className="text-slate-600">{id ? LOCATION_LABELS[id] : '—'}</span>;
+          const p = info.getValue<Patient>();
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-slate-600">{p.location_id ? LOCATION_LABELS[p.location_id] : '—'}</span>
+              {p.is_external && (
+                <span className="inline-flex w-fit items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                  не декларант
+                </span>
+              )}
+            </div>
+          );
         },
       },
       {
@@ -272,6 +283,14 @@ export function PatientsPage() {
                 </option>
               ))}
             </optgroup>
+          </Select>
+        </div>
+        <div className="w-44">
+          <label className="mb-1 block text-xs font-medium text-slate-600">Декларація</label>
+          <Select value={external} onChange={(e) => setExternal(e.target.value as '' | '1' | '0')}>
+            <option value="">Усі</option>
+            <option value="0">Декларанти</option>
+            <option value="1">Не декларанти</option>
           </Select>
         </div>
         <div className="flex items-center gap-2 pb-2">

@@ -197,6 +197,7 @@ export default async function handler(req: Req, res: Res) {
   const group = asString(q.group);
   const contactOf = asString(q.contact_of);
   const includeArchived = asString(q.archived) === '1';
+  const externalParam = asString(q.external); // '1' = only external, '0' = only declarants, omit = both
   const search = (asString(q.search) ?? '').trim();
 
   let query = supabase.from('patient_dashboard').select(SELECT_FULL);
@@ -208,6 +209,8 @@ export default async function handler(req: Req, res: Res) {
   }
   if (status) query = query.eq('tb_status', status);
   if (contactOf) query = query.eq('contact_of', contactOf);
+  if (externalParam === '1') query = query.eq('is_external', true);
+  if (externalParam === '0') query = query.eq('is_external', false);
 
   if (group) {
     // PostgREST array-contains: cs.{key}. GIN indexes make this fast.

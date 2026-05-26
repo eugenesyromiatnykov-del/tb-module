@@ -14,6 +14,7 @@ export type PatientFilters = {
   location?: string;
   status?: string;
   group?: string;       // single risk-group key (medical or social)
+  external?: '1' | '0'; // '1' = only external, '0' = only declarants
   search?: string;
   archived?: boolean;
   filter?: PatientFilter;
@@ -33,6 +34,7 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.location) params.set('location', filters.location);
   if (filters.status) params.set('status', filters.status);
   if (filters.group) params.set('group', filters.group);
+  if (filters.external) params.set('external', filters.external);
   if (filters.search) params.set('search', filters.search);
   if (filters.archived) params.set('archived', '1');
   if (filters.filter) params.set('filter', filters.filter);
