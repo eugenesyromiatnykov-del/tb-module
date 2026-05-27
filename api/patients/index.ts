@@ -200,7 +200,8 @@ export default async function handler(req: Req, res: Res) {
   const includeArchived = asString(q.archived) === '1';
   const externalParam = asString(q.external); // '1' = only external, '0' = only declarants, omit = both
   const search = (asString(q.search) ?? '').trim();
-  const adpm = asString(q.adpm); // 'vaccinated' | 'contraindicated' | 'refused' | 'pending'
+  const adpm = asString(q.adpm); // 'vaccinated' | 'contraindicated' | 'refused' | 'pending' | 'this_year' | 'overdue'
+  const address = (asString(q.address) ?? '').trim();
 
   let query = supabase.from('patient_dashboard').select(SELECT_FULL);
   if (filter) {
@@ -229,6 +230,18 @@ export default async function handler(req: Req, res: Res) {
   } else if (adpm === 'pending') {
     // Neither contraindicated nor refused (vaccinated or not).
     query = query.eq('adpm_contraindication', false).eq('adpm_refused', false);
+  } else if (adpm === 'this_year') {
+    // next_adpm_date falls in the current calendar year — revaccination due.
+    const year = new Date().getFullYear();
+    query = query
+      .gte('next_adpm_date', `${year}-01-01`)
+      .lte('next_adpm_date', `${year}-12-31`);
+  } else if (adpm === 'overdue') {
+    query = query.lt('next_adpm_date', todayIso()).not('next_adpm_date', 'is', null);
+  }
+
+  if (address) {
+    query = query.ilike('address', `%${address}%`);
   }
 
   if (search) {

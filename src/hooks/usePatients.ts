@@ -10,7 +10,13 @@ export type PatientFilter =
   | 'contacts_no_fluoro'
   | 'detected';
 
-export type AdpmFilter = 'vaccinated' | 'contraindicated' | 'refused' | 'pending';
+export type AdpmFilter =
+  | 'vaccinated'
+  | 'contraindicated'
+  | 'refused'
+  | 'pending'
+  | 'this_year'
+  | 'overdue';
 
 export type PatientFilters = {
   location?: string;
@@ -21,6 +27,7 @@ export type PatientFilters = {
   archived?: boolean;
   filter?: PatientFilter;
   adpm?: AdpmFilter;
+  address?: string;     // ILIKE on address — used as settlement filter
 };
 
 export const FILTER_LABELS: Record<PatientFilter, string> = {
@@ -42,6 +49,7 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.archived) params.set('archived', '1');
   if (filters.filter) params.set('filter', filters.filter);
   if (filters.adpm) params.set('adpm', filters.adpm);
+  if (filters.address) params.set('address', filters.address);
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }
