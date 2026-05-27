@@ -26,7 +26,7 @@ export type PatientFilters = {
   search?: string;
   archived?: boolean;
   filter?: PatientFilter;
-  adpm?: AdpmFilter;
+  adpm?: AdpmFilter[];  // OR-combined statuses
   address?: string;     // ILIKE on address (street/house substring)
   villages?: string[];  // exact match on derived `village` column
 };
@@ -49,7 +49,9 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.search) params.set('search', filters.search);
   if (filters.archived) params.set('archived', '1');
   if (filters.filter) params.set('filter', filters.filter);
-  if (filters.adpm) params.set('adpm', filters.adpm);
+  if (filters.adpm && filters.adpm.length > 0) {
+    params.set('adpm', filters.adpm.join(','));
+  }
   if (filters.address) params.set('address', filters.address);
   if (filters.villages && filters.villages.length > 0) {
     params.set('village', filters.villages.join(','));

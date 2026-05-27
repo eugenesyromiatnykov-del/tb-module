@@ -19,10 +19,7 @@ import { formatDateUk, calcAge } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import { LOCATION_LABELS, type LocationId, type Patient } from '@/types/database';
 
-type AdpmStatusFilter = '' | AdpmFilter;
-
-const STATUS_OPTIONS: { value: AdpmStatusFilter; label: string }[] = [
-  { value: '', label: 'Усі' },
+const STATUS_OPTIONS: { value: AdpmFilter; label: string }[] = [
   { value: 'overdue', label: 'Просрочено' },
   { value: 'this_year', label: 'Ревакцинація цьогоріч' },
   { value: 'pending', label: 'У черзі (без статусу)' },
@@ -43,7 +40,7 @@ function useDebounced<T>(value: T, ms: number): T {
 export function VaccinationsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [location, setLocation] = useState<'' | LocationId>('');
-  const [adpmStatus, setAdpmStatus] = useState<AdpmStatusFilter>('');
+  const [adpmStatuses, setAdpmStatuses] = useState<AdpmFilter[]>([]);
   const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
   const search = useDebounced(searchInput, 300);
 
@@ -51,10 +48,10 @@ export function VaccinationsPage() {
     () => ({
       search: search || undefined,
       location: location || undefined,
-      adpm: (adpmStatus || undefined) as AdpmFilter | undefined,
+      adpm: adpmStatuses.length > 0 ? adpmStatuses : undefined,
       villages: selectedVillages.length > 0 ? selectedVillages : undefined,
     }),
-    [search, location, adpmStatus, selectedVillages],
+    [search, location, adpmStatuses, selectedVillages],
   );
 
   const { data, isLoading, isFetching } = usePatients(filters);
@@ -157,7 +154,8 @@ export function VaccinationsPage() {
     if (patients.length === 0) return;
     const today = new Date().toISOString().slice(0, 10);
     const parts = ['adpm'];
-    if (adpmStatus) parts.push(adpmStatus);
+    if (adpmStatuses.length === 1) parts.push(adpmStatuses[0]);
+    else if (adpmStatuses.length > 1) parts.push(`${adpmStatuses.length}st`);
     if (location) parts.push(location);
     if (selectedVillages.length > 0) parts.push(`${selectedVillages.length}sel`);
     parts.push(today);
@@ -206,21 +204,23 @@ export function VaccinationsPage() {
         </div>
         <div className="w-64">
           <label className="mb-1 block text-xs font-medium text-slate-600">Населений пункт</label>
-          <VillageMultiSelect
-            options={villages}
+          <MultiSelect
+            options={villages.map((v) => ({ value: v, label: v }))}
             selected={selectedVillages}
             onChange={setSelectedVillages}
+            placeholder="Усі"
+            searchable
+            searchPlaceholder="Знайти село…"
           />
         </div>
-        <div className="w-56">
+        <div className="w-64">
           <label className="mb-1 block text-xs font-medium text-slate-600">Статус АДП-М</label>
-          <Select value={adpmStatus} onChange={(e) => setAdpmStatus(e.target.value as AdpmStatusFilter)}>
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
+          <MultiSelect
+            options={STATUS_OPTIONS}
+            selected={adpmStatuses}
+            onChange={(next) => setAdpmStatuses(next as AdpmFilter[])}
+            placeholder="Усі"
+          />
         </div>
       </div>
 
@@ -291,17 +291,25 @@ export function VaccinationsPage() {
   );
 }
 
+type Option = { value: string; label: string };
+
 // Multi-select with checkbox popover. Native <select multiple> is unusable
-// for this volume of options, and we don't want to pull in a 3rd-party
-// combobox lib just for one filter.
-function VillageMultiSelect({
+// for this volume of options, and we don't want to pull in a combobox lib
+// just for a couple of filters.
+function MultiSelect({
   options,
   selected,
   onChange,
+  placeholder = 'Усі',
+  searchable = false,
+  searchPlaceholder = 'Знайти…',
 }: {
-  options: string[];
+  options: Option[];
   selected: string[];
   onChange: (next: string[]) => void;
+  placeholder?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -322,16 +330,17 @@ function VillageMultiSelect({
   const clear = () => onChange([]);
 
   const filtered = useMemo(() => {
+    if (!searchable) return options;
     const q = query.trim().toLowerCase();
     if (!q) return options;
-    return options.filter((o) => o.toLowerCase().includes(q));
-  }, [options, query]);
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query, searchable]);
 
   const label =
     selected.length === 0
-      ? 'Усі'
+      ? placeholder
       : selected.length === 1
-        ? selected[0]
+        ? options.find((o) => o.value === selected[0])?.label ?? selected[0]
         : `${selected.length} вибрано`;
 
   return (
@@ -346,14 +355,16 @@ function VillageMultiSelect({
       </button>
       {open && (
         <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
-          <div className="border-b border-slate-100 p-2">
-            <Input
-              placeholder="Знайти село…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
-          </div>
+          {searchable && (
+            <div className="border-b border-slate-100 p-2">
+              <Input
+                placeholder={searchPlaceholder}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
           {selected.length > 0 && (
             <button
               type="button"
@@ -367,13 +378,13 @@ function VillageMultiSelect({
             {filtered.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-slate-400">Нічого не знайдено</div>
             ) : (
-              filtered.map((v) => {
-                const isOn = selected.includes(v);
+              filtered.map((o) => {
+                const isOn = selected.includes(o.value);
                 return (
                   <button
                     type="button"
-                    key={v}
-                    onClick={() => toggle(v)}
+                    key={o.value}
+                    onClick={() => toggle(o.value)}
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
                   >
                     <span
@@ -384,7 +395,7 @@ function VillageMultiSelect({
                     >
                       {isOn && <Check className="h-3 w-3" />}
                     </span>
-                    {v}
+                    {o.label}
                   </button>
                 );
               })

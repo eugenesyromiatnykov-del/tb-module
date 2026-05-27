@@ -223,7 +223,8 @@ export default async function handler(req: Req, res: Res) {
   const includeArchived = asString(q.archived) === '1';
   const externalParam = asString(q.external); // '1' = only external, '0' = only declarants, omit = both
   const search = (asString(q.search) ?? '').trim();
-  const adpm = asString(q.adpm); // 'vaccinated' | 'contraindicated' | 'refused' | 'pending' | 'this_year' | 'overdue'
+  const adpmRaw = (asString(q.adpm) ?? '').trim();
+  const adpmValues = adpmRaw ? adpmRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
   const address = (asString(q.address) ?? '').trim();
   const villageParam = (asString(q.village) ?? '').trim();
   const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
@@ -245,24 +246,25 @@ export default async function handler(req: Req, res: Res) {
     query = query.or(`medical_risk_groups.cs.{${group}},social_risk_groups.cs.{${group}}`);
   }
 
-  // АДП-М status filter (server-side so list page doesn't have to pull all rows).
-  if (adpm === 'vaccinated') {
-    query = query.not('last_adpm_date', 'is', null);
-  } else if (adpm === 'contraindicated') {
-    query = query.eq('adpm_contraindication', true);
-  } else if (adpm === 'refused') {
-    query = query.eq('adpm_refused', true);
-  } else if (adpm === 'pending') {
-    // Neither contraindicated nor refused (vaccinated or not).
-    query = query.eq('adpm_contraindication', false).eq('adpm_refused', false);
-  } else if (adpm === 'this_year') {
-    // next_adpm_date falls in the current calendar year — revaccination due.
+  // АДП-М status filter — multi-select, OR-combined. Each value translates to a
+  // (possibly compound) PostgREST condition, joined inside an or(...) expression.
+  if (adpmValues.length > 0) {
     const year = new Date().getFullYear();
-    query = query
-      .gte('next_adpm_date', `${year}-01-01`)
-      .lte('next_adpm_date', `${year}-12-31`);
-  } else if (adpm === 'overdue') {
-    query = query.lt('next_adpm_date', todayIso()).not('next_adpm_date', 'is', null);
+    const today = todayIso();
+    const parts: string[] = [];
+    for (const v of adpmValues) {
+      if (v === 'vaccinated') parts.push('last_adpm_date.not.is.null');
+      else if (v === 'contraindicated') parts.push('adpm_contraindication.eq.true');
+      else if (v === 'refused') parts.push('adpm_refused.eq.true');
+      else if (v === 'pending') parts.push('and(adpm_contraindication.eq.false,adpm_refused.eq.false)');
+      else if (v === 'this_year')
+        parts.push(`and(next_adpm_date.gte.${year}-01-01,next_adpm_date.lte.${year}-12-31)`);
+      else if (v === 'overdue')
+        parts.push(`and(next_adpm_date.lt.${today},next_adpm_date.not.is.null)`);
+    }
+    if (parts.length > 0) {
+      query = query.or(parts.join(','));
+    }
   }
 
   if (address) {
