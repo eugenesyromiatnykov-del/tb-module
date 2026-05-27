@@ -25,6 +25,7 @@ export type Patient = {
   gender: 'M' | 'F' | null;
   phone: string | null;
   address: string | null;
+  village: string | null;
   location_id: LocationId | null;
 
   tb_status: TbStatus;

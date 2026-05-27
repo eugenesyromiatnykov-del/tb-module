@@ -16,7 +16,7 @@ export const config = { runtime: 'nodejs' };
 
 const SELECT_FULL = `
   id, medics_id, surname, first_name, patronymic, birth_date, gender,
-  phone, address, location_id, tb_status, contact_of,
+  phone, address, village, location_id, tb_status, contact_of,
   medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_synced_at,
   notes, archived, archived_reason, archived_at, is_external, created_at, updated_at,
   last_fluoro_date, next_planned_date, last_result_code,
@@ -90,6 +90,7 @@ const ALLOWED_CREATE_FIELDS = new Set([
   'gender',
   'phone',
   'address',
+  'village',
   'location_id',
   'tb_status',
   'contact_of',
@@ -136,6 +137,28 @@ export default async function handler(req: Req, res: Res) {
 
   const q = req.query ?? {};
   const mode = asString(q.mode);
+
+  // ── Villages mode: distinct list for the multi-select filter ────────────
+  if (mode === 'villages') {
+    const { data, error } = await supabase
+      .from('patients')
+      .select('village')
+      .not('village', 'is', null)
+      .eq('archived', false)
+      .order('village', { ascending: true })
+      .range(0, 19999);
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    const set = new Set<string>();
+    for (const row of (data ?? []) as Array<{ village: string | null }>) {
+      const v = (row.village ?? '').trim();
+      if (v) set.add(v);
+    }
+    res.status(200).json({ villages: Array.from(set).sort((a, b) => a.localeCompare(b, 'uk')) });
+    return;
+  }
 
   // ── Diff mode (lightweight, all patients incl. archived) ─────────────────
   if (mode === 'diff') {
@@ -202,6 +225,8 @@ export default async function handler(req: Req, res: Res) {
   const search = (asString(q.search) ?? '').trim();
   const adpm = asString(q.adpm); // 'vaccinated' | 'contraindicated' | 'refused' | 'pending' | 'this_year' | 'overdue'
   const address = (asString(q.address) ?? '').trim();
+  const villageParam = (asString(q.village) ?? '').trim();
+  const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
 
   let query = supabase.from('patient_dashboard').select(SELECT_FULL);
   if (filter) {
@@ -242,6 +267,10 @@ export default async function handler(req: Req, res: Res) {
 
   if (address) {
     query = query.ilike('address', `%${address}%`);
+  }
+
+  if (villages.length > 0) {
+    query = query.in('village', villages);
   }
 
   if (search) {

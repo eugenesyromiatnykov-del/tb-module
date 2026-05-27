@@ -27,7 +27,8 @@ export type PatientFilters = {
   archived?: boolean;
   filter?: PatientFilter;
   adpm?: AdpmFilter;
-  address?: string;     // ILIKE on address — used as settlement filter
+  address?: string;     // ILIKE on address (street/house substring)
+  villages?: string[];  // exact match on derived `village` column
 };
 
 export const FILTER_LABELS: Record<PatientFilter, string> = {
@@ -50,6 +51,9 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.filter) params.set('filter', filters.filter);
   if (filters.adpm) params.set('adpm', filters.adpm);
   if (filters.address) params.set('address', filters.address);
+  if (filters.villages && filters.villages.length > 0) {
+    params.set('village', filters.villages.join(','));
+  }
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }
@@ -65,4 +69,12 @@ export function usePatients(filters: PatientFilters) {
 
 export function fetchPatientsForDiff() {
   return apiFetch<{ patients: PatientForDiff[] }>(`/api/patients?mode=diff`);
+}
+
+export function useVillages() {
+  return useQuery({
+    queryKey: ['patients-villages'],
+    queryFn: () => apiFetch<{ villages: string[] }>(`/api/patients?mode=villages`),
+    staleTime: 60_000 * 5,
+  });
 }

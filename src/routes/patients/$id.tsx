@@ -341,7 +341,14 @@ function OverviewTab({
           <TextField label="Medics ID" field="medics_id" placeholder="напр. 3990123" />
           <TextField label="Телефон" field="phone" placeholder="+380…" />
           <div className="sm:col-span-2">
-            <TextField label="Адреса" field="address" />
+            <TextField label="Адреса (вулиця, №)" field="address" />
+          </div>
+          <div className="sm:col-span-2">
+            <TextField
+              label="Населений пункт"
+              field="village"
+              placeholder="напр. Білогірськ"
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>

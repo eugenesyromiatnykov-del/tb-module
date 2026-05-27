@@ -1,5 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -8,12 +7,14 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { Loader2, Search, ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, Download, Loader2, Search, X } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
+import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { usePatients, type AdpmFilter } from '@/hooks/usePatients';
+import { usePatients, useVillages, type AdpmFilter } from '@/hooks/usePatients';
+import { exportAdpmXlsx } from '@/lib/xlsx-export';
 import { formatDateUk, calcAge } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import { LOCATION_LABELS, type LocationId, type Patient } from '@/types/database';
@@ -41,24 +42,25 @@ function useDebounced<T>(value: T, ms: number): T {
 
 export function VaccinationsPage() {
   const [searchInput, setSearchInput] = useState('');
-  const [addressInput, setAddressInput] = useState('');
   const [location, setLocation] = useState<'' | LocationId>('');
   const [adpmStatus, setAdpmStatus] = useState<AdpmStatusFilter>('');
+  const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
   const search = useDebounced(searchInput, 300);
-  const address = useDebounced(addressInput, 300);
 
   const filters = useMemo(
     () => ({
       search: search || undefined,
-      address: address || undefined,
       location: location || undefined,
       adpm: (adpmStatus || undefined) as AdpmFilter | undefined,
+      villages: selectedVillages.length > 0 ? selectedVillages : undefined,
     }),
-    [search, address, location, adpmStatus],
+    [search, location, adpmStatus, selectedVillages],
   );
 
   const { data, isLoading, isFetching } = usePatients(filters);
+  const { data: villagesData } = useVillages();
   const patients = data?.patients ?? [];
+  const villages = villagesData?.villages ?? [];
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'next_adpm_date', desc: false },
@@ -71,12 +73,7 @@ export function VaccinationsPage() {
         header: 'ПІБ',
         accessorFn: (p) => `${p.surname} ${p.first_name} ${p.patronymic ?? ''}`.trim(),
         cell: (info) => (
-          <Link
-            to={`/patients/${info.row.original.id}?tab=adpm`}
-            className="font-medium text-blue-700 hover:underline"
-          >
-            {info.getValue<string>()}
-          </Link>
+          <span className="font-medium text-slate-900">{info.getValue<string>()}</span>
         ),
       },
       {
@@ -85,26 +82,20 @@ export function VaccinationsPage() {
         accessorFn: (p) => calcAge(p.birth_date) ?? -1,
         cell: (info) => {
           const v = info.getValue<number>();
-          return (
-            <span className="text-slate-600">
-              {v >= 0 ? `${v} р.` : '—'}
-            </span>
-          );
+          return <span className="text-slate-600">{v >= 0 ? `${v} р.` : '—'}</span>;
         },
+      },
+      {
+        id: 'village',
+        header: 'Населений пункт',
+        accessorFn: (p) => p.village ?? '',
+        cell: (info) => <span className="text-slate-700">{info.getValue<string>() || '—'}</span>,
       },
       {
         id: 'location',
         header: 'Амбулаторія',
         accessorFn: (p) => (p.location_id ? LOCATION_LABELS[p.location_id] : ''),
         cell: (info) => <span className="text-slate-600">{info.getValue<string>() || '—'}</span>,
-      },
-      {
-        id: 'address',
-        header: 'Адреса',
-        accessorKey: 'address',
-        cell: (info) => (
-          <span className="text-xs text-slate-600">{info.getValue<string | null>() || '—'}</span>
-        ),
       },
       {
         id: 'last_adpm_date',
@@ -123,10 +114,7 @@ export function VaccinationsPage() {
         id: 'next_adpm_date',
         header: 'Наступна',
         accessorFn: (p) => p.next_adpm_date ?? '',
-        cell: (info) => {
-          const p = info.row.original;
-          return <NextAdpmCell patient={p} />;
-        },
+        cell: (info) => <NextAdpmCell patient={info.row.original} />,
       },
       {
         id: 'status',
@@ -165,6 +153,17 @@ export function VaccinationsPage() {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  const onExport = () => {
+    if (patients.length === 0) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const parts = ['adpm'];
+    if (adpmStatus) parts.push(adpmStatus);
+    if (location) parts.push(location);
+    if (selectedVillages.length > 0) parts.push(`${selectedVillages.length}sel`);
+    parts.push(today);
+    exportAdpmXlsx(patients, `${parts.join('_')}.xlsx`);
+  };
+
   return (
     <div>
       <PageHeader
@@ -173,6 +172,11 @@ export function VaccinationsPage() {
           isLoading
             ? 'Завантаження…'
             : `Знайдено: ${patients.length}${isFetching && !isLoading ? ' · оновлення…' : ''}`
+        }
+        actions={
+          <Button onClick={onExport} disabled={patients.length === 0} variant="secondary">
+            <Download className="h-4 w-4" /> Експортувати XLSX
+          </Button>
         }
       />
 
@@ -191,10 +195,7 @@ export function VaccinationsPage() {
         </div>
         <div className="w-48">
           <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
-          <Select
-            value={location}
-            onChange={(e) => setLocation(e.target.value as '' | LocationId)}
-          >
+          <Select value={location} onChange={(e) => setLocation(e.target.value as '' | LocationId)}>
             <option value="">Усі</option>
             {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
               <option key={id} value={id}>
@@ -203,20 +204,17 @@ export function VaccinationsPage() {
             ))}
           </Select>
         </div>
-        <div className="w-56">
+        <div className="w-64">
           <label className="mb-1 block text-xs font-medium text-slate-600">Населений пункт</label>
-          <Input
-            placeholder="напр. Білогірськ"
-            value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value)}
+          <VillageMultiSelect
+            options={villages}
+            selected={selectedVillages}
+            onChange={setSelectedVillages}
           />
         </div>
         <div className="w-56">
           <label className="mb-1 block text-xs font-medium text-slate-600">Статус АДП-М</label>
-          <Select
-            value={adpmStatus}
-            onChange={(e) => setAdpmStatus(e.target.value as AdpmStatusFilter)}
-          >
+          <Select value={adpmStatus} onChange={(e) => setAdpmStatus(e.target.value as AdpmStatusFilter)}>
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -252,10 +250,7 @@ export function VaccinationsPage() {
                           >
                             {flexRender(h.column.columnDef.header, h.getContext())}
                             <ArrowUpDown
-                              className={cn(
-                                'h-3 w-3',
-                                sort ? 'text-slate-700' : 'text-slate-300',
-                              )}
+                              className={cn('h-3 w-3', sort ? 'text-slate-700' : 'text-slate-300')}
                             />
                           </button>
                         </th>
@@ -268,7 +263,17 @@ export function VaccinationsPage() {
                 {table.getRowModel().rows.map((row) => {
                   const tone = rowTone(row.original);
                   return (
-                    <tr key={row.id} className={cn('border-t border-slate-100', tone)}>
+                    <tr
+                      key={row.id}
+                      onClick={() =>
+                        window.open(`/patients/${row.original.id}?tab=adpm`, '_blank', 'noopener')
+                      }
+                      className={cn(
+                        'cursor-pointer border-t border-slate-100 hover:bg-slate-50',
+                        row.original.archived && 'opacity-60',
+                        tone,
+                      )}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-4 py-2">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -282,6 +287,111 @@ export function VaccinationsPage() {
           )}
         </CardBody>
       </Card>
+    </div>
+  );
+}
+
+// Multi-select with checkbox popover. Native <select multiple> is unusable
+// for this volume of options, and we don't want to pull in a 3rd-party
+// combobox lib just for one filter.
+function VillageMultiSelect({
+  options,
+  selected,
+  onChange,
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const toggle = (v: string) => {
+    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+  };
+  const clear = () => onChange([]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.toLowerCase().includes(q));
+  }, [options, query]);
+
+  const label =
+    selected.length === 0
+      ? 'Усі'
+      : selected.length === 1
+        ? selected[0]
+        : `${selected.length} вибрано`;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+      >
+        <span className={cn('truncate', selected.length === 0 && 'text-slate-400')}>{label}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+          <div className="border-b border-slate-100 p-2">
+            <Input
+              placeholder="Знайти село…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoFocus
+            />
+          </div>
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={clear}
+              className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+            >
+              <X className="h-3 w-3" /> Очистити вибір ({selected.length})
+            </button>
+          )}
+          <div className="max-h-64 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-slate-400">Нічого не знайдено</div>
+            ) : (
+              filtered.map((v) => {
+                const isOn = selected.includes(v);
+                return (
+                  <button
+                    type="button"
+                    key={v}
+                    onClick={() => toggle(v)}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <span
+                      className={cn(
+                        'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+                        isOn ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300',
+                      )}
+                    >
+                      {isOn && <Check className="h-3 w-3" />}
+                    </span>
+                    {v}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

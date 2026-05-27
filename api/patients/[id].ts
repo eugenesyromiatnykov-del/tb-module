@@ -19,7 +19,7 @@ export const config = { runtime: 'nodejs' };
 // with the base patient row.
 const PATIENT_FIELDS = `
   id, medics_id, surname, first_name, patronymic, birth_date, gender,
-  phone, address, location_id, tb_status, contact_of,
+  phone, address, village, location_id, tb_status, contact_of,
   medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_synced_at,
   notes, archived, archived_reason, archived_at, is_external,
   created_at, updated_at,
@@ -40,6 +40,7 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'gender',
   'phone',
   'address',
+  'village',
   'location_id',
   'tb_status',
   'social_risk_groups',
