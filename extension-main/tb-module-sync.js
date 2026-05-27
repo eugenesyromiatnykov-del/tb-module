@@ -612,8 +612,12 @@
     const header = document.getElementById('mi-header');
     if (!header) return;
     // Insert before the scale-button cluster so it sits on the left of the
-    // header controls (S/M/L + minimise).
-    const rightCluster = header.querySelector('div[style*="display: flex"][style*="gap: 6px"]');
+    // header controls (S/M/L + minimise). Anchored on a stable id rather
+    // than an inline-style substring, which broke last time the header
+    // padding/gap was tweaked.
+    const rightCluster =
+      header.querySelector('#mi-header-actions') ||
+      header.querySelector('div[style*="display: flex"][style*="gap:"]');
     if (!rightCluster) return;
 
     if (!document.getElementById('mi-tb-auto-style')) {

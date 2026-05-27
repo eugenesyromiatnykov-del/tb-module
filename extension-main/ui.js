@@ -55,9 +55,13 @@ class MedicsIndicatorUI {
             this.widget.style.setProperty('width',     widthMap[key],  'important');
             this.widget.style.setProperty('font-size', fontMap[key],   'important');
         }
-        // На S ховаємо текст заголовка щоб правий блок гарантовано влазив.
+        // На S — заголовок коротший і дрібніший, але не зникає, щоб юзер
+        // бачив що відкрите взагалі.
         const title = document.querySelector('.mi-title-text');
-        if (title) title.style.display = key === 'S' ? 'none' : '';
+        if (title) {
+            title.textContent = key === 'S' ? 'Indicators' : 'Medics Indicators';
+            title.style.fontSize = key === 'S' ? '0.88em' : '';
+        }
         // Підсвітка кнопок масштабу
         ['S','M','L'].forEach(k => {
             const btn = document.getElementById(`mi-scale-${k}`);
@@ -393,7 +397,7 @@ class MedicsIndicatorUI {
                     <span style="font-size: 1.25em !important; line-height: 1 !important;">📊</span>
                     <span class="mi-title-text" style="overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;">Medics Indicators</span>
                 </div>
-                <div style="display: flex !important; gap: 4px !important; align-items: center !important; margin: 0 !important; flex-shrink: 0 !important;">
+                <div id="mi-header-actions" style="display: flex !important; gap: 4px !important; align-items: center !important; margin: 0 !important; flex-shrink: 0 !important;">
                     <div style="display: flex !important; gap: 1px !important; background: rgba(255,255,255,0.1) !important; border-radius: 4px !important; padding: 1px !important;">
                         <button id="mi-scale-S" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">S</button>
                         <button id="mi-scale-M" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">M</button>
