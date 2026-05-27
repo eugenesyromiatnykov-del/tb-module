@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle, FileText } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Pencil, Plus, Trash2, Loader2, AlertTriangle, FileText } from 'lucide-react';
 import { useQuestionnaires } from '@/hooks/useQuestionnaires';
 import { RESULT_LABELS, type QuestionnaireResult } from '@/lib/questionnaire';
 import { PageHeader } from '@/components/PageHeader';
@@ -10,15 +10,23 @@ import { Select } from '@/components/ui/Select';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import {
+  useAddAdpm,
   useAddFluoro,
   useAddQuantiferon,
   useAddSputum,
+  useAdpmRefusalPhotoUrl,
   useCreatePatient,
+  useDeleteAdpm,
   useDeleteFluoro,
   useDeleteQuantiferon,
   useDeleteSputum,
   usePatient,
+  useUpdateAdpm,
+  useUpdateFluoro,
   useUpdatePatient,
+  useUpdateQuantiferon,
+  useUpdateSputum,
+  useUploadAdpmRefusalPhoto,
 } from '@/hooks/usePatient';
 import { apiFetch } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
@@ -33,6 +41,7 @@ import {
   QUANTIFERON_RESULT_LABELS,
   SPUTUM_TEST_LABELS,
   TB_STATUS_LABELS,
+  type AdpmVaccination,
   type FluoroRecord,
   type FluoroResultCode,
   type LocationId,
@@ -43,12 +52,25 @@ import {
   type TbStatus,
 } from '@/types/database';
 
-type Tab = 'overview' | 'fluoro' | 'sputum' | 'quantiferon' | 'contacts' | 'questionnaires';
+type Tab = 'overview' | 'fluoro' | 'sputum' | 'quantiferon' | 'adpm' | 'contacts' | 'questionnaires';
+
+const VALID_TABS: Tab[] = [
+  'overview', 'fluoro', 'sputum', 'quantiferon', 'adpm', 'contacts', 'questionnaires',
+];
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') ?? 'overview') as Tab;
+  const [tab, setTabRaw] = useState<Tab>(VALID_TABS.includes(initialTab) ? initialTab : 'overview');
+  const setTab = (t: Tab) => {
+    setTabRaw(t);
+    const next = new URLSearchParams(searchParams);
+    if (t === 'overview') next.delete('tab');
+    else next.set('tab', t);
+    setSearchParams(next, { replace: true });
+  };
   const { data, isLoading, error } = usePatient(id);
 
   if (isLoading) {
@@ -71,7 +93,7 @@ export function PatientDetailPage() {
     );
   }
 
-  const { patient, fluorography, sputum_tests, quantiferon_tests } = data;
+  const { patient, fluorography, sputum_tests, quantiferon_tests, adpm_vaccinations } = data;
   const fullName = [patient.surname, patient.first_name, patient.patronymic].filter(Boolean).join(' ');
   const age = calcAge(patient.birth_date);
 
@@ -102,6 +124,9 @@ export function PatientDetailPage() {
         <TabButton active={tab === 'quantiferon'} onClick={() => setTab('quantiferon')}>
           Квантиферон ({quantiferon_tests.length})
         </TabButton>
+        <TabButton active={tab === 'adpm'} onClick={() => setTab('adpm')}>
+          АДП-М ({adpm_vaccinations.length})
+        </TabButton>
         {showContactsTab(patient) && (
           <TabButton active={tab === 'contacts'} onClick={() => setTab('contacts')}>
             Контакти
@@ -117,6 +142,9 @@ export function PatientDetailPage() {
       {tab === 'sputum' && <SputumTab patientId={patient.id} records={sputum_tests} />}
       {tab === 'quantiferon' && (
         <QuantiferonTab patientId={patient.id} records={quantiferon_tests} />
+      )}
+      {tab === 'adpm' && (
+        <AdpmTab patient={patient} records={adpm_vaccinations} />
       )}
       {tab === 'contacts' && showContactsTab(patient) && (
         <ContactsTab indexPatient={patient} />
@@ -532,7 +560,7 @@ function FluoroTab({ patientId, records }: { patientId: string; records: FluoroR
       </CardBody>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Додати флюорографію">
-          <AddFluoroForm patientId={patientId} onClose={() => setOpen(false)} />
+          <FluoroForm patientId={patientId} onClose={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
     </Card>
@@ -540,6 +568,7 @@ function FluoroTab({ patientId, records }: { patientId: string; records: FluoroR
 }
 
 function FluoroRow({ patientId, record }: { patientId: string; record: FluoroRecord }) {
+  const [editOpen, setEditOpen] = useState(false);
   const del = useDeleteFluoro(patientId);
   return (
     <tr className="border-t border-slate-100">
@@ -550,15 +579,31 @@ function FluoroRow({ patientId, record }: { patientId: string; record: FluoroRec
       <td className="px-4 py-2 text-slate-600">{record.result ?? '—'}</td>
       <td className="px-4 py-2 text-slate-600">{formatDateUk(record.next_planned_date) || '—'}</td>
       <td className="px-4 py-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm('Видалити запис?')) del.mutate(record.id);
-          }}
-          className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="rounded-md p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+            aria-label="Редагувати"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Видалити запис?')) del.mutate(record.id);
+            }}
+            className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            aria-label="Видалити"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent title="Редагувати флюорографію">
+            <FluoroForm patientId={patientId} record={record} onClose={() => setEditOpen(false)} />
+          </DialogContent>
+        </Dialog>
       </td>
     </tr>
   );
@@ -579,29 +624,45 @@ function FluoroResultBadge({ code }: { code: FluoroResultCode }) {
   );
 }
 
-function AddFluoroForm({ patientId, onClose }: { patientId: string; onClose: () => void }) {
-  const [date, setDate] = useState(today());
-  const [resultCode, setResultCode] = useState<FluoroResultCode>('normal');
-  const [result, setResult] = useState('');
-  const [nextPlanned, setNextPlanned] = useState(addYearsIso(today(), 1));
+function FluoroForm({
+  patientId,
+  record,
+  onClose,
+}: {
+  patientId: string;
+  record?: FluoroRecord;
+  onClose: () => void;
+}) {
+  const [date, setDate] = useState(record?.date ?? today());
+  const [resultCode, setResultCode] = useState<FluoroResultCode>(record?.result_code ?? 'normal');
+  const [result, setResult] = useState(record?.result ?? '');
+  const [nextPlanned, setNextPlanned] = useState(
+    record?.next_planned_date ?? addYearsIso(today(), 1),
+  );
   const add = useAddFluoro(patientId);
+  const update = useUpdateFluoro(patientId);
+  const pending = add.isPending || update.isPending;
+  const error = (add.error ?? update.error) as Error | null;
 
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        add.mutate(
-          {
-            patient_id: patientId,
-            date,
-            result_code: resultCode,
-            result: result.trim() || null,
-            next_planned_date: nextPlanned || null,
-            notes: null,
-          },
-          { onSuccess: onClose },
-        );
+        const patch = {
+          date,
+          result_code: resultCode,
+          result: result.trim() || null,
+          next_planned_date: nextPlanned || null,
+        };
+        if (record) {
+          update.mutate({ id: record.id, patch }, { onSuccess: onClose });
+        } else {
+          add.mutate(
+            { patient_id: patientId, ...patch, notes: null },
+            { onSuccess: onClose },
+          );
+        }
       }}
     >
       <FormField label="Дата проведення">
@@ -622,14 +683,14 @@ function AddFluoroForm({ patientId, onClose }: { patientId: string; onClose: () 
       <FormField label="Наступне обстеження">
         <Input type="date" value={nextPlanned} onChange={(e) => setNextPlanned(e.target.value)} />
       </FormField>
-      {add.error && (
+      {error && (
         <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
-          {(add.error as Error).message}
+          {error.message}
         </div>
       )}
       <div className="flex gap-2 pt-2">
-        <Button type="submit" disabled={add.isPending}>
-          {add.isPending ? 'Зберігаємо…' : 'Зберегти'}
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Зберігаємо…' : 'Зберегти'}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>
           Скасувати
@@ -676,7 +737,7 @@ function SputumTab({ patientId, records }: { patientId: string; records: SputumT
       </CardBody>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Додати тест мокротиння">
-          <AddSputumForm patientId={patientId} onClose={() => setOpen(false)} />
+          <SputumForm patientId={patientId} onClose={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
     </Card>
@@ -684,6 +745,7 @@ function SputumTab({ patientId, records }: { patientId: string; records: SputumT
 }
 
 function SputumRow({ patientId, record }: { patientId: string; record: SputumTest }) {
+  const [editOpen, setEditOpen] = useState(false);
   const del = useDeleteSputum(patientId);
   return (
     <tr className="border-t border-slate-100">
@@ -691,41 +753,71 @@ function SputumRow({ patientId, record }: { patientId: string; record: SputumTes
       <td className="px-4 py-2 text-slate-700">{SPUTUM_TEST_LABELS[record.test_type]}</td>
       <td className="px-4 py-2 text-slate-600">{record.result ?? '—'}</td>
       <td className="px-4 py-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm('Видалити запис?')) del.mutate(record.id);
-          }}
-          className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="rounded-md p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+            aria-label="Редагувати"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Видалити запис?')) del.mutate(record.id);
+            }}
+            className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            aria-label="Видалити"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent title="Редагувати тест мокротиння">
+            <SputumForm patientId={patientId} record={record} onClose={() => setEditOpen(false)} />
+          </DialogContent>
+        </Dialog>
       </td>
     </tr>
   );
 }
 
-function AddSputumForm({ patientId, onClose }: { patientId: string; onClose: () => void }) {
-  const [date, setDate] = useState(today());
-  const [testType, setTestType] = useState<SputumTestType>('xpert');
-  const [result, setResult] = useState('');
+function SputumForm({
+  patientId,
+  record,
+  onClose,
+}: {
+  patientId: string;
+  record?: SputumTest;
+  onClose: () => void;
+}) {
+  const [date, setDate] = useState(record?.date ?? today());
+  const [testType, setTestType] = useState<SputumTestType>(record?.test_type ?? 'xpert');
+  const [result, setResult] = useState(record?.result ?? '');
   const add = useAddSputum(patientId);
+  const update = useUpdateSputum(patientId);
+  const pending = add.isPending || update.isPending;
+  const error = (add.error ?? update.error) as Error | null;
 
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        add.mutate(
-          {
-            patient_id: patientId,
-            date,
-            test_type: testType,
-            result: result.trim() || null,
-            notes: null,
-          },
-          { onSuccess: onClose },
-        );
+        const patch = {
+          date,
+          test_type: testType,
+          result: result.trim() || null,
+        };
+        if (record) {
+          update.mutate({ id: record.id, patch }, { onSuccess: onClose });
+        } else {
+          add.mutate(
+            { patient_id: patientId, ...patch, notes: null },
+            { onSuccess: onClose },
+          );
+        }
       }}
     >
       <FormField label="Дата">
@@ -743,14 +835,14 @@ function AddSputumForm({ patientId, onClose }: { patientId: string; onClose: () 
       <FormField label="Результат">
         <Input value={result} onChange={(e) => setResult(e.target.value)} placeholder="напр. позитивний / негативний" />
       </FormField>
-      {add.error && (
+      {error && (
         <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
-          {(add.error as Error).message}
+          {error.message}
         </div>
       )}
       <div className="flex gap-2 pt-2">
-        <Button type="submit" disabled={add.isPending}>
-          {add.isPending ? 'Зберігаємо…' : 'Зберегти'}
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Зберігаємо…' : 'Зберегти'}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>
           Скасувати
@@ -797,7 +889,7 @@ function QuantiferonTab({ patientId, records }: { patientId: string; records: Qu
       </CardBody>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Додати квантифероновий тест">
-          <AddQuantiferonForm patientId={patientId} onClose={() => setOpen(false)} />
+          <QuantiferonForm patientId={patientId} onClose={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
     </Card>
@@ -805,6 +897,7 @@ function QuantiferonTab({ patientId, records }: { patientId: string; records: Qu
 }
 
 function QuantiferonRow({ patientId, record }: { patientId: string; record: QuantiferonTest }) {
+  const [editOpen, setEditOpen] = useState(false);
   const del = useDeleteQuantiferon(patientId);
   const tone: Record<QuantiferonResultCode, string> = {
     positive: 'bg-red-100 text-red-800',
@@ -822,42 +915,76 @@ function QuantiferonRow({ patientId, record }: { patientId: string; record: Quan
       </td>
       <td className="px-4 py-2 text-slate-600">{record.result ?? record.notes ?? '—'}</td>
       <td className="px-4 py-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm('Видалити запис?')) del.mutate(record.id);
-          }}
-          className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="rounded-md p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+            aria-label="Редагувати"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Видалити запис?')) del.mutate(record.id);
+            }}
+            className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            aria-label="Видалити"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent title="Редагувати квантифероновий тест">
+            <QuantiferonForm
+              patientId={patientId}
+              record={record}
+              onClose={() => setEditOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </td>
     </tr>
   );
 }
 
-function AddQuantiferonForm({ patientId, onClose }: { patientId: string; onClose: () => void }) {
-  const [date, setDate] = useState(today());
-  const [resultCode, setResultCode] = useState<QuantiferonResultCode>('negative');
-  const [result, setResult] = useState('');
-  const [notes, setNotes] = useState('');
+function QuantiferonForm({
+  patientId,
+  record,
+  onClose,
+}: {
+  patientId: string;
+  record?: QuantiferonTest;
+  onClose: () => void;
+}) {
+  const [date, setDate] = useState(record?.date ?? today());
+  const [resultCode, setResultCode] = useState<QuantiferonResultCode>(
+    record?.result_code ?? 'negative',
+  );
+  const [result, setResult] = useState(record?.result ?? '');
+  const [notes, setNotes] = useState(record?.notes ?? '');
   const add = useAddQuantiferon(patientId);
+  const update = useUpdateQuantiferon(patientId);
+  const pending = add.isPending || update.isPending;
+  const error = (add.error ?? update.error) as Error | null;
 
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        add.mutate(
-          {
-            patient_id: patientId,
-            date,
-            result_code: resultCode,
-            result: result.trim() || null,
-            notes: notes.trim() || null,
-          },
-          { onSuccess: onClose },
-        );
+        const patch = {
+          date,
+          result_code: resultCode,
+          result: result.trim() || null,
+          notes: notes.trim() || null,
+        };
+        if (record) {
+          update.mutate({ id: record.id, patch }, { onSuccess: onClose });
+        } else {
+          add.mutate({ patient_id: patientId, ...patch }, { onSuccess: onClose });
+        }
       }}
     >
       <FormField label="Дата">
@@ -878,14 +1005,426 @@ function AddQuantiferonForm({ patientId, onClose }: { patientId: string; onClose
       <FormField label="Нотатки (опц.)">
         <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
       </FormField>
-      {add.error && (
+      {error && (
         <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
-          {(add.error as Error).message}
+          {error.message}
         </div>
       )}
       <div className="flex gap-2 pt-2">
-        <Button type="submit" disabled={add.isPending}>
-          {add.isPending ? 'Зберігаємо…' : 'Зберегти'}
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Зберігаємо…' : 'Зберегти'}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Скасувати
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ─── АДП-М ─────────────────────────────────────────────────────────────────
+
+function AdpmTab({ patient, records }: { patient: Patient; records: AdpmVaccination[] }) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [contraOpen, setContraOpen] = useState(false);
+  const [refuseOpen, setRefuseOpen] = useState(false);
+  const update = useUpdatePatient(patient.id);
+
+  const status = patient.adpm_contraindication
+    ? 'contraindicated'
+    : patient.adpm_refused
+    ? 'refused'
+    : null;
+
+  const clear = () => {
+    if (!confirm('Скинути статус (повернути в чергу на вакцинацію)?')) return;
+    update.mutate({
+      adpm_contraindication: false,
+      adpm_contraindication_reason: null,
+      adpm_refused: false,
+      adpm_refusal_date: null,
+      adpm_refusal_photo_path: null,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Статус щодо АДП-М</CardTitle>
+          </div>
+        </CardHeader>
+        <CardBody className="space-y-3 text-sm">
+          {status === 'contraindicated' && (
+            <div className="rounded-md border border-orange-200 bg-orange-50 p-3">
+              <div className="font-medium text-orange-900">Протипоказання</div>
+              {patient.adpm_contraindication_reason && (
+                <div className="mt-1 text-orange-800">{patient.adpm_contraindication_reason}</div>
+              )}
+              <button
+                type="button"
+                onClick={clear}
+                className="mt-2 text-xs text-orange-700 underline hover:text-orange-900"
+              >
+                Скинути статус
+              </button>
+            </div>
+          )}
+          {status === 'refused' && (
+            <RefusalCard patient={patient} onClear={clear} />
+          )}
+          {status === null && (
+            <div className="text-slate-600">
+              Пацієнт у черзі на вакцинацію (якщо не вакцинований ≥10 років).
+            </div>
+          )}
+          {status === null && (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="secondary" onClick={() => setContraOpen(true)}>
+                Позначити протипоказання
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setRefuseOpen(true)}>
+                Позначити відмову
+              </Button>
+            </div>
+          )}
+          <AdpmSummary patient={patient} />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Вакцинації АДП-М</CardTitle>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" /> Додати
+            </Button>
+          </div>
+        </CardHeader>
+        <CardBody className="p-0">
+          {records.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-slate-500">Немає записів</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Дата</th>
+                  <th className="px-4 py-2 font-medium">Вакцина</th>
+                  <th className="px-4 py-2 font-medium">Серія</th>
+                  <th className="px-4 py-2 font-medium">Виробник</th>
+                  <th className="w-10 px-4 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((r) => (
+                  <AdpmRow key={r.id} patientId={patient.id} record={r} />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardBody>
+      </Card>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent title="Додати вакцинацію АДП-М">
+          <AdpmForm patientId={patient.id} onClose={() => setAddOpen(false)} />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={contraOpen} onOpenChange={setContraOpen}>
+        <DialogContent title="Протипоказання до АДП-М">
+          <ContraindicationForm patient={patient} onClose={() => setContraOpen(false)} />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={refuseOpen} onOpenChange={setRefuseOpen}>
+        <DialogContent title="Відмова від АДП-М">
+          <RefusalForm patient={patient} onClose={() => setRefuseOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function AdpmSummary({ patient }: { patient: Patient }) {
+  if (patient.adpm_contraindication || patient.adpm_refused) return null;
+  if (!patient.last_adpm_date) {
+    return <div className="text-xs text-slate-500">Дата останньої вакцинації не відома.</div>;
+  }
+  const next = patient.next_adpm_date;
+  let tone = 'text-slate-700';
+  let suffix = '';
+  if (next) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const m = next.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      const d = new Date(+m[1], +m[2] - 1, +m[3]);
+      const days = Math.round((today.getTime() - d.getTime()) / 86400000);
+      if (days > 0) {
+        tone = 'text-red-700 font-medium';
+        suffix = ' · просрочено';
+      } else if (d.getFullYear() === today.getFullYear()) {
+        tone = 'text-orange-700 font-medium';
+        suffix = ' · цьогоріч';
+      }
+    }
+  }
+  return (
+    <div className={cn('text-xs', tone)}>
+      Остання: {formatDateUk(patient.last_adpm_date)}
+      {next && <> · наступна: {formatDateUk(next)}{suffix}</>}
+    </div>
+  );
+}
+
+function RefusalCard({ patient, onClear }: { patient: Patient; onClear: () => void }) {
+  const photo = useAdpmRefusalPhotoUrl(patient.id, !!patient.adpm_refusal_photo_path);
+  return (
+    <div className="rounded-md border border-red-200 bg-red-50 p-3">
+      <div className="font-medium text-red-900">
+        Відмова{patient.adpm_refusal_date ? ` від ${formatDateUk(patient.adpm_refusal_date)}` : ''}
+      </div>
+      {patient.adpm_refusal_photo_path && (
+        photo.data?.url ? (
+          <a
+            href={photo.data.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block"
+          >
+            <img
+              src={photo.data.url}
+              alt="Підтвердження відмови"
+              className="max-h-40 rounded border border-red-200"
+            />
+          </a>
+        ) : (
+          <div className="mt-1 text-xs text-red-700">Завантаження фото…</div>
+        )
+      )}
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-xs text-red-700 underline hover:text-red-900"
+        >
+          Скинути статус
+        </button>
+        <UploadRefusalPhoto patientId={patient.id} label={patient.adpm_refusal_photo_path ? 'Замінити фото' : 'Додати фото'} />
+      </div>
+    </div>
+  );
+}
+
+function UploadRefusalPhoto({ patientId, label }: { patientId: string; label: string }) {
+  const upload = useUploadAdpmRefusalPhoto(patientId);
+  return (
+    <label className="cursor-pointer text-xs text-red-700 underline hover:text-red-900">
+      {upload.isPending ? 'Завантаження…' : label}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        disabled={upload.isPending}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) upload.mutate(file);
+          e.target.value = '';
+        }}
+      />
+    </label>
+  );
+}
+
+function AdpmRow({ patientId, record }: { patientId: string; record: AdpmVaccination }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const del = useDeleteAdpm(patientId);
+  return (
+    <tr className="border-t border-slate-100">
+      <td className="px-4 py-2 text-slate-900">{formatDateUk(record.date)}</td>
+      <td className="px-4 py-2 text-slate-700">{record.vaccine_name ?? '—'}</td>
+      <td className="px-4 py-2 text-slate-600">{record.lot_number ?? '—'}</td>
+      <td className="px-4 py-2 text-slate-600">{record.manufacturer ?? '—'}</td>
+      <td className="px-4 py-2">
+        <div className="flex justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="rounded-md p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+            aria-label="Редагувати"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Видалити запис?')) del.mutate(record.id);
+            }}
+            className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            aria-label="Видалити"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent title="Редагувати АДП-М">
+            <AdpmForm patientId={patientId} record={record} onClose={() => setEditOpen(false)} />
+          </DialogContent>
+        </Dialog>
+      </td>
+    </tr>
+  );
+}
+
+function AdpmForm({
+  patientId,
+  record,
+  onClose,
+}: {
+  patientId: string;
+  record?: AdpmVaccination;
+  onClose: () => void;
+}) {
+  const [date, setDate] = useState(record?.date ?? today());
+  const [vaccineName, setVaccineName] = useState(record?.vaccine_name ?? '');
+  const [manufacturer, setManufacturer] = useState(record?.manufacturer ?? '');
+  const [lotNumber, setLotNumber] = useState(record?.lot_number ?? '');
+  const [notes, setNotes] = useState(record?.notes ?? '');
+  const add = useAddAdpm(patientId);
+  const update = useUpdateAdpm(patientId);
+  const pending = add.isPending || update.isPending;
+  const error = (add.error ?? update.error) as Error | null;
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const patch = {
+          date,
+          vaccine_name: vaccineName.trim() || null,
+          manufacturer: manufacturer.trim() || null,
+          lot_number: lotNumber.trim() || null,
+          notes: notes.trim() || null,
+        };
+        if (record) {
+          update.mutate({ id: record.id, patch }, { onSuccess: onClose });
+        } else {
+          add.mutate({ patient_id: patientId, ...patch }, { onSuccess: onClose });
+        }
+      }}
+    >
+      <FormField label="Дата вакцинації">
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+      </FormField>
+      <FormField label="Назва вакцини (опц.)">
+        <Input value={vaccineName} onChange={(e) => setVaccineName(e.target.value)} placeholder="АДП-М" />
+      </FormField>
+      <FormField label="Виробник (опц.)">
+        <Input value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} />
+      </FormField>
+      <FormField label="Серія (опц.)">
+        <Input value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} />
+      </FormField>
+      <FormField label="Нотатки (опц.)">
+        <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </FormField>
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
+          {error.message}
+        </div>
+      )}
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Зберігаємо…' : 'Зберегти'}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Скасувати
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function ContraindicationForm({ patient, onClose }: { patient: Patient; onClose: () => void }) {
+  const [reason, setReason] = useState(patient.adpm_contraindication_reason ?? '');
+  const update = useUpdatePatient(patient.id);
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        update.mutate(
+          {
+            adpm_contraindication: true,
+            adpm_contraindication_reason: reason.trim() || null,
+            adpm_refused: false,
+            adpm_refusal_date: null,
+            adpm_refusal_photo_path: null,
+          },
+          { onSuccess: onClose },
+        );
+      }}
+    >
+      <FormField label="Причина протипоказання">
+        <textarea
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="напр. алергія на компонент, важка реакція в анамнезі…"
+        />
+      </FormField>
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" disabled={update.isPending}>
+          {update.isPending ? 'Зберігаємо…' : 'Зберегти'}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Скасувати
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function RefusalForm({ patient, onClose }: { patient: Patient; onClose: () => void }) {
+  const [date, setDate] = useState(patient.adpm_refusal_date ?? today());
+  const [file, setFile] = useState<File | null>(null);
+  const update = useUpdatePatient(patient.id);
+  const upload = useUploadAdpmRefusalPhoto(patient.id);
+  const pending = update.isPending || upload.isPending;
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        await update.mutateAsync({
+          adpm_refused: true,
+          adpm_refusal_date: date || null,
+          adpm_contraindication: false,
+          adpm_contraindication_reason: null,
+        });
+        if (file) {
+          await upload.mutateAsync(file);
+        }
+        onClose();
+      }}
+    >
+      <FormField label="Дата відмови">
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+      </FormField>
+      <FormField label="Фото підтвердження (опц., можна додати пізніше)">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+        />
+      </FormField>
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Зберігаємо…' : 'Зберегти'}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>
           Скасувати

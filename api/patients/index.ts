@@ -19,7 +19,8 @@ const SELECT_FULL = `
   phone, address, location_id, tb_status, contact_of,
   medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_synced_at,
   notes, archived, archived_reason, archived_at, is_external, created_at, updated_at,
-  last_fluoro_date, next_planned_date, last_result_code
+  last_fluoro_date, next_planned_date, last_result_code,
+  last_adpm_date, next_adpm_date, adpm_contraindication, adpm_refused
 `;
 
 const SELECT_FOR_DIFF = `
@@ -199,6 +200,7 @@ export default async function handler(req: Req, res: Res) {
   const includeArchived = asString(q.archived) === '1';
   const externalParam = asString(q.external); // '1' = only external, '0' = only declarants, omit = both
   const search = (asString(q.search) ?? '').trim();
+  const adpm = asString(q.adpm); // 'vaccinated' | 'contraindicated' | 'refused' | 'pending'
 
   let query = supabase.from('patient_dashboard').select(SELECT_FULL);
   if (filter) {
@@ -215,6 +217,18 @@ export default async function handler(req: Req, res: Res) {
   if (group) {
     // PostgREST array-contains: cs.{key}. GIN indexes make this fast.
     query = query.or(`medical_risk_groups.cs.{${group}},social_risk_groups.cs.{${group}}`);
+  }
+
+  // АДП-М status filter (server-side so list page doesn't have to pull all rows).
+  if (adpm === 'vaccinated') {
+    query = query.not('last_adpm_date', 'is', null);
+  } else if (adpm === 'contraindicated') {
+    query = query.eq('adpm_contraindication', true);
+  } else if (adpm === 'refused') {
+    query = query.eq('adpm_refused', true);
+  } else if (adpm === 'pending') {
+    // Neither contraindicated nor refused (vaccinated or not).
+    query = query.eq('adpm_contraindication', false).eq('adpm_refused', false);
   }
 
   if (search) {

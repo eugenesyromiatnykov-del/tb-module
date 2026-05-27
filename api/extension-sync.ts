@@ -78,7 +78,9 @@ export default async function handler(req: Req, res: Res) {
         id, medics_id, surname, first_name, patronymic, birth_date, gender,
         phone, address, location_id, tb_status, archived,
         medical_risk_groups, social_risk_groups,
-        last_fluoro_date, next_planned_date, last_result_code
+        last_fluoro_date, next_planned_date, last_result_code,
+        last_adpm_date, next_adpm_date,
+        adpm_contraindication, adpm_refused
       `)
       .eq('medics_id', medics)
       .maybeSingle();
@@ -114,6 +116,13 @@ export default async function handler(req: Req, res: Res) {
         result?: string | null;
         result_code?: string;
         next_planned_date?: string | null;
+      };
+      adpm?: {
+        date: string;
+        vaccine_name?: string | null;
+        manufacturer?: string | null;
+        lot_number?: string | null;
+        notes?: string | null;
       };
     };
 
@@ -233,7 +242,34 @@ export default async function handler(req: Req, res: Res) {
       }
     }
 
-    res.status(200).json({ ok: true, patient_id: patientId, created: !existing, fluoroAdded });
+    // Optional АДП-М record. Skip dupe on (patient_id + date).
+    let adpmAdded = false;
+    if (body.adpm && body.adpm.date) {
+      const { data: dup } = await supabase
+        .from('adpm_vaccinations')
+        .select('id')
+        .eq('patient_id', patientId)
+        .eq('date', body.adpm.date)
+        .maybeSingle();
+      if (!dup) {
+        const { error } = await supabase.from('adpm_vaccinations').insert({
+          patient_id: patientId,
+          date: body.adpm.date,
+          vaccine_name: body.adpm.vaccine_name ?? null,
+          manufacturer: body.adpm.manufacturer ?? null,
+          lot_number: body.adpm.lot_number ?? null,
+          notes: body.adpm.notes ?? null,
+          source: 'extension',
+        });
+        if (error) {
+          res.status(500).json({ error: `adpm: ${error.message}` });
+          return;
+        }
+        adpmAdded = true;
+      }
+    }
+
+    res.status(200).json({ ok: true, patient_id: patientId, created: !existing, fluoroAdded, adpmAdded });
     return;
   }
 

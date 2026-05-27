@@ -14,18 +14,20 @@ type Res = {
 
 export const config = { runtime: 'nodejs' };
 
-type Kind = 'fluoro' | 'sputum' | 'quantiferon';
+type Kind = 'fluoro' | 'sputum' | 'quantiferon' | 'adpm';
 
 const TABLES: Record<Kind, string> = {
   fluoro: 'fluorography',
   sputum: 'sputum_tests',
   quantiferon: 'quantiferon_tests',
+  adpm: 'adpm_vaccinations',
 };
 
 const ALLOWED_FIELDS: Record<Kind, Set<string>> = {
   fluoro: new Set(['date', 'result', 'result_code', 'next_planned_date', 'notes']),
   sputum: new Set(['date', 'test_type', 'result', 'notes']),
   quantiferon: new Set(['date', 'result', 'result_code', 'notes']),
+  adpm: new Set(['date', 'vaccine_name', 'manufacturer', 'lot_number', 'notes']),
 };
 
 function asString(v: string | string[] | undefined): string | undefined {
@@ -38,8 +40,13 @@ export default async function handler(req: Req, res: Res) {
 
   const q = req.query ?? {};
   const kind = asString(q.kind) as Kind | undefined;
-  if (kind !== 'fluoro' && kind !== 'sputum' && kind !== 'quantiferon') {
-    res.status(400).json({ error: "kind must be 'fluoro' | 'sputum' | 'quantiferon'" });
+  if (
+    kind !== 'fluoro' &&
+    kind !== 'sputum' &&
+    kind !== 'quantiferon' &&
+    kind !== 'adpm'
+  ) {
+    res.status(400).json({ error: "kind must be 'fluoro' | 'sputum' | 'quantiferon' | 'adpm'" });
     return;
   }
   const table = TABLES[kind];
@@ -64,11 +71,17 @@ export default async function handler(req: Req, res: Res) {
       row.test_type = body.test_type ?? 'xpert';
       row.result = body.result ?? null;
       row.notes = body.notes ?? null;
-    } else {
-      // quantiferon
+    } else if (kind === 'quantiferon') {
       row.result = body.result ?? null;
       row.result_code = body.result_code ?? 'unknown';
       row.notes = body.notes ?? null;
+    } else {
+      // adpm
+      row.vaccine_name = body.vaccine_name ?? null;
+      row.manufacturer = body.manufacturer ?? null;
+      row.lot_number = body.lot_number ?? null;
+      row.notes = body.notes ?? null;
+      row.source = 'manual';
     }
     const { data, error } = await supabase.from(table).insert(row).select('*').maybeSingle();
     if (error) {

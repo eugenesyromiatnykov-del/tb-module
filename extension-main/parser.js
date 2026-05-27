@@ -16,6 +16,8 @@ class MedicsParser {
         age: null,
         gender: this.parseGender(),
         diagnoses: this.parseDiagnoses(),
+        immunizations: this.parseImmunizations(),
+        lastAdpM: null,
         hasRiskFactors: false,
       };
 
@@ -24,9 +26,10 @@ class MedicsParser {
       }
 
       this.patientData.hasRiskFactors = this.checkRiskFactors(this.patientData.diagnoses);
+      this.patientData.lastAdpM = this.getLastAdpM();
 
       log('Парсинг завершено', 'success');
-      log(`Вік=${this.patientData.age}, Стать=${this.patientData.gender}, Діагнозів=${this.patientData.diagnoses.length}`, 'info');
+      log(`Вік=${this.patientData.age}, Стать=${this.patientData.gender}, Діагнозів=${this.patientData.diagnoses.length}, Імунізацій=${this.patientData.immunizations.length}`, 'info');
 
       return this.patientData;
     } catch (error) {
@@ -155,6 +158,116 @@ class MedicsParser {
 
     console.log(`[Parser] Знайдено діагнозів: ${diagnoses.length}`);
     return diagnoses;
+  }
+
+  // ── Імунізації ─────────────────────────────────────────────────────────
+  // Структура у деталях взаємодії:
+  //   div.c-collapse--output-item[ng-repeat="immunization in encounter.immunizations"]
+  //     [Статус:][Назва вакцини:][Виробник:][...][Дата проведення вакцинації:]
+  //     div[ng-repeat*="protocol"]  ← вкладені описи протоколів (парсимо окремо)
+  parseImmunizations() {
+    const blocks = document.querySelectorAll(
+      'div.c-collapse--output-item[ng-repeat*="immunization"]'
+    );
+    console.log(`[Parser] parseImmunizations — блоків ${blocks.length}`);
+
+    const immunizations = [];
+    blocks.forEach((block) => {
+      const main = this._parseImmFields(block, { skipProtocols: true });
+      const protocols = Array.from(
+        block.querySelectorAll('div[ng-repeat*="protocol"]')
+      ).map((pb) => this._parseImmFields(pb, { skipProtocols: false }));
+
+      const imm = {
+        performer: main['Виконав:'] || null,
+        status: main['Статус:'] || null,
+        vaccine_name: main['Назва вакцини:'] || null,
+        manufacturer: main['Виробник:'] || null,
+        lot_number: main['Серія вакцини:'] || null,
+        expiration_date: parseDate(main['Термін придатності:'] || ''),
+        dose_quantity: main['Доза:'] || null,
+        site: main['Місце введення:'] || null,
+        route: main['Шлях введення вакцини:'] || null,
+        result: main['Результат:'] || null,
+        reasons: main['Причини вакцинації:'] || null,
+        date: parseDate(main['Дата проведення вакцинації:'] || ''),
+        protocols: protocols.map((p) => ({
+          dose_sequence: p['Порядковий номер дози:'] || null,
+          description: p['Опис протоколу:'] || null,
+          authority: p['Автор протоколу:'] || null,
+          series: p['Етап вакцинації:'] || null,
+          series_doses: p['Кількість доз по протоколу:'] || null,
+          target_diseases: p['Протидія загрозам:'] || null,
+        })),
+      };
+
+      if (!imm.vaccine_name && !imm.date) return;
+      immunizations.push(imm);
+      console.log(
+        `[Parser] ✅ Імунізація: ${imm.vaccine_name ?? '?'} — ${main['Дата проведення вакцинації:'] || '?'}`
+      );
+    });
+
+    immunizations.sort((a, b) => {
+      const ta = a.date ? a.date.getTime() : -Infinity;
+      const tb = b.date ? b.date.getTime() : -Infinity;
+      return tb - ta;
+    });
+
+    return immunizations;
+  }
+
+  // Збираємо пари «output-title : output-text» в межах root. Якщо skipProtocols —
+  // ігноруємо титли, що сидять усередині вкладених protocol-блоків (інакше
+  // поля протоколу затирали б основні поля імунізації).
+  _parseImmFields(root, { skipProtocols }) {
+    const pairs = {};
+    root.querySelectorAll('.c-collapse--output-title').forEach((title) => {
+      if (skipProtocols) {
+        const proto = title.closest('div[ng-repeat*="protocol"]');
+        if (proto && root.contains(proto)) return;
+      }
+      const label = title.textContent.trim();
+      if (
+        !label ||
+        label === 'Імунізації:' ||
+        label === 'Опис протоколу вакцинації:'
+      ) {
+        return;
+      }
+      const values = [];
+      let sib = title.nextElementSibling;
+      while (sib && !sib.classList?.contains?.('c-collapse--output-title')) {
+        if (sib.classList?.contains?.('c-collapse--output-text')) {
+          const t = sib.textContent
+            .replace(/ /g, ' ')
+            .trim()
+            .replace(/;\s*$/, '')
+            .trim();
+          if (t) values.push(t);
+        }
+        sib = sib.nextElementSibling;
+      }
+      if (values.length > 0) {
+        pairs[label] = values.length === 1 ? values[0] : values;
+      }
+    });
+    return pairs;
+  }
+
+  // Остання валідна АДП-М (вакцина проти дифтерії та правця, зменшений вміст
+  // антигену). entered_in_error пропускаємо: на сторінці такий запис має
+  // інший текст статусу та клас text-orange — фільтруємо за status === 'Виконана'.
+  getLastAdpM() {
+    const list = this.patientData?.immunizations ?? [];
+    const re = /АДП[\s\-]?[Мм]/i;
+    for (const imm of list) {
+      if (!imm.date) continue;
+      if (!imm.vaccine_name || !re.test(imm.vaccine_name)) continue;
+      if (imm.status && imm.status !== 'Виконана') continue;
+      return imm;
+    }
+    return null;
   }
 
   checkRiskFactors(diagnoses) {

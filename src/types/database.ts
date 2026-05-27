@@ -54,6 +54,27 @@ export type Patient = {
   last_quantiferon_date: string | null;
   last_quantiferon_result_code: QuantiferonResultCode | null;
   last_quantiferon_result: string | null;
+
+  // АДП-М
+  last_adpm_date: string | null;
+  next_adpm_date: string | null;
+  adpm_contraindication: boolean;
+  adpm_contraindication_reason: string | null;
+  adpm_refused: boolean;
+  adpm_refusal_date: string | null;
+  adpm_refusal_photo_path: string | null;
+};
+
+export type AdpmVaccination = {
+  id: string;
+  patient_id: string;
+  date: string;
+  vaccine_name: string | null;
+  manufacturer: string | null;
+  lot_number: string | null;
+  notes: string | null;
+  source: DataSource;
+  created_at: string;
 };
 
 export type PatientForDiff = Pick<

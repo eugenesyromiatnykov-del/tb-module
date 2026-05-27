@@ -25,7 +25,10 @@ const PATIENT_FIELDS = `
   created_at, updated_at,
   last_fluoro_date, next_planned_date, last_result_code,
   last_sputum_date, last_sputum_test_type, last_sputum_result,
-  last_quantiferon_date, last_quantiferon_result_code, last_quantiferon_result
+  last_quantiferon_date, last_quantiferon_result_code, last_quantiferon_result,
+  last_adpm_date, next_adpm_date,
+  adpm_contraindication, adpm_contraindication_reason,
+  adpm_refused, adpm_refusal_date, adpm_refusal_photo_path
 `;
 
 const ALLOWED_PATCH_FIELDS = new Set([
@@ -46,7 +49,14 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'contact_of',
   'archived',
   'archived_reason',
+  'adpm_contraindication',
+  'adpm_contraindication_reason',
+  'adpm_refused',
+  'adpm_refusal_date',
+  'adpm_refusal_photo_path',
 ]);
+
+const REFUSAL_BUCKET = 'adpm-refusals';
 
 function asString(v: string | string[] | undefined): string | undefined {
   if (Array.isArray(v)) return v[0];
@@ -64,12 +74,66 @@ export default async function handler(req: Req, res: Res) {
 
   const supabase = getSupabaseAdmin();
 
+  const action = asString(req.query?.action);
+
+  // ── Special actions: signed upload/download URLs for refusal photo ────────
+  // Done as ?action=... dispatch to stay under Vercel Hobby 12-fn budget.
+  if (action === 'adpm_refusal_upload') {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'POST required' });
+      return;
+    }
+    const body = (req.body ?? {}) as { content_type?: string; ext?: string };
+    const ext = (body.ext || 'jpg').replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'jpg';
+    const path = `${id}/${Date.now()}.${ext}`;
+    const { data, error } = await supabase.storage
+      .from(REFUSAL_BUCKET)
+      .createSignedUploadUrl(path);
+    if (error || !data) {
+      res.status(500).json({ error: error?.message ?? 'upload url failed' });
+      return;
+    }
+    res.status(200).json({
+      path,
+      upload_url: data.signedUrl,
+      token: data.token,
+      content_type: body.content_type ?? 'image/jpeg',
+    });
+    return;
+  }
+
+  if (action === 'adpm_refusal_photo') {
+    if (req.method !== 'GET') {
+      res.status(405).json({ error: 'GET required' });
+      return;
+    }
+    const { data: patient } = await supabase
+      .from('patients')
+      .select('adpm_refusal_photo_path')
+      .eq('id', id)
+      .maybeSingle();
+    if (!patient?.adpm_refusal_photo_path) {
+      res.status(404).json({ error: 'Фото відсутнє' });
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from(REFUSAL_BUCKET)
+      .createSignedUrl(patient.adpm_refusal_photo_path, 60 * 10); // 10 min
+    if (error || !data) {
+      res.status(500).json({ error: error?.message ?? 'sign failed' });
+      return;
+    }
+    res.status(200).json({ url: data.signedUrl });
+    return;
+  }
+
   if (req.method === 'GET') {
-    const [patientRes, fluoroRes, sputumRes, quantRes] = await Promise.all([
+    const [patientRes, fluoroRes, sputumRes, quantRes, adpmRes] = await Promise.all([
       supabase.from('patient_dashboard').select(PATIENT_FIELDS).eq('id', id).maybeSingle(),
       supabase.from('fluorography').select('*').eq('patient_id', id).order('date', { ascending: false }),
       supabase.from('sputum_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
       supabase.from('quantiferon_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
+      supabase.from('adpm_vaccinations').select('*').eq('patient_id', id).order('date', { ascending: false }),
     ]);
     if (patientRes.error) {
       res.status(500).json({ error: patientRes.error.message });
@@ -84,6 +148,7 @@ export default async function handler(req: Req, res: Res) {
       fluorography: fluoroRes.data ?? [],
       sputum_tests: sputumRes.data ?? [],
       quantiferon_tests: quantRes.data ?? [],
+      adpm_vaccinations: adpmRes.data ?? [],
     });
     return;
   }

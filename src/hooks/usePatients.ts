@@ -10,6 +10,8 @@ export type PatientFilter =
   | 'contacts_no_fluoro'
   | 'detected';
 
+export type AdpmFilter = 'vaccinated' | 'contraindicated' | 'refused' | 'pending';
+
 export type PatientFilters = {
   location?: string;
   status?: string;
@@ -18,6 +20,7 @@ export type PatientFilters = {
   search?: string;
   archived?: boolean;
   filter?: PatientFilter;
+  adpm?: AdpmFilter;
 };
 
 export const FILTER_LABELS: Record<PatientFilter, string> = {
@@ -38,6 +41,7 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.search) params.set('search', filters.search);
   if (filters.archived) params.set('archived', '1');
   if (filters.filter) params.set('filter', filters.filter);
+  if (filters.adpm) params.set('adpm', filters.adpm);
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }

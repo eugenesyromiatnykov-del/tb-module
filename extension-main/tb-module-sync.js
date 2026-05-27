@@ -20,6 +20,7 @@
     analyzing: false,    // overlay is up and we're waiting for displayResults
     lastBannerName: '',  // for SPA navigation detection
     overlayTimeout: null,
+    lastAdpM: null,      // { date: 'YYYY-MM-DD', vaccine_name } | null — parsed from page, not from TB module backend yet
   };
 
   // ─── Config (chrome.storage.sync) ─────────────────────────────────────
@@ -598,13 +599,7 @@
     sec = document.createElement('div');
     sec.id = 'tb-module-section';
     sec.className = 'tb-section tb-section--neutral';
-    sec.innerHTML = `
-      <div class="tb-section__head">
-        <span class="tb-section__dot" style="background:#94a3b8;"></span>
-        <h3 class="tb-section__title">📋 Модуль ТБ</h3>
-      </div>
-      <div class="tb-section__body">…</div>
-    `;
+    sec.innerHTML = `<div class="tb-section__body">…</div>`;
     body.insertAdjacentElement('afterbegin', sec);
     STATE.sectionEl = sec;
     return sec;
@@ -697,11 +692,6 @@
     if (!sec) return;
     sec.style.display = STATE.analyzedOnce ? '' : 'none';
     sec.className = `tb-section tb-section--${state}`;
-    const dot = sec.querySelector('.tb-section__dot');
-    if (dot) {
-      const colors = { ok: '#22c55e', warn: '#f59e0b', err: '#ef4444', info: '#3b82f6', neutral: '#94a3b8' };
-      dot.style.background = colors[state] || colors.neutral;
-    }
     const body = sec.querySelector('.tb-section__body');
     if (body) body.innerHTML = html;
   }
@@ -719,21 +709,48 @@
     const m = (iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
     return m ? `${m[3]}.${m[2]}.${m[1]}` : '—';
   }
-  function statusLabel(s) {
-    return ({ observed: 'Спостереження', risk: 'В групі ризику', detected: 'Виявлений', contact: 'Контактний', cleared: 'Знятий з обліку', external: 'Не декларант', archived: 'Архівний' })[s] || s;
-  }
-  function statusTone(s) {
-    return ({
-      observed: 'background:#f8fafc;color:#475569',
-      risk: 'background:#fed7aa;color:#9a3412',
-      detected: 'background:#fef3c7;color:#92400e',
-      contact: 'background:#dbeafe;color:#1e40af',
-      cleared: 'background:#d1fae5;color:#065f46',
-      external: 'background:#ede9fe;color:#6d28d9',
-      archived: 'background:#f1f5f9;color:#94a3b8',
-    })[s] || 'background:#f1f5f9;color:#334155';
+
+  // Українська плюралізація: 1 рік / 2 роки / 5 років
+  function pluralUk(n, one, few, many) {
+    const m10 = n % 10;
+    const m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+    return many;
   }
 
+  // Кількість днів → читабельний рядок «X р. Y міс.» / «N міс.» / «N днів».
+  function formatDuration(days) {
+    if (days < 30) return `${days} ${pluralUk(days, 'день', 'дні', 'днів')}`;
+    if (days < 365) {
+      const months = Math.max(1, Math.round(days / 30));
+      return `${months} ${pluralUk(months, 'місяць', 'місяці', 'місяців')}`;
+    }
+    const years = Math.floor(days / 365);
+    const months = Math.round((days - years * 365) / 30);
+    const yLbl = `${years} ${pluralUk(years, 'рік', 'роки', 'років')}`;
+    if (months === 0) return yLbl;
+    return `${yLbl} ${months} ${pluralUk(months, 'місяць', 'місяці', 'місяців')}`;
+  }
+
+  // Додає років до ISO-дати, повертає ISO 'YYYY-MM-DD' (або null).
+  function addYearsIso(iso, years) {
+    const m = (iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    d.setFullYear(d.getFullYear() + years);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // Скільки днів минуло з ISO-дати до сьогодні. Якщо дата майбутня — від'ємне.
+  function daysSinceIso(iso) {
+    const m = (iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((today - d) / 86400000);
+  }
   function renderUnconfigured() {
     setSection('warn', `
       <div>Не налаштовано. Введіть URL модуля та PIN в опціях розширення.</div>
@@ -790,42 +807,104 @@
     document.getElementById('tb-change-medics')?.addEventListener('click', renderNeedMedicsId);
   }
 
-  function renderExisting(p, source) {
-    const srcLbl = source === 'manual' ? ' (введено вручну)' : '';
-    let nextRow = '';
-    if (p.next_planned_date) {
-      const m = p.next_planned_date.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      let extra = '';
-      if (m) {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const d = new Date(+m[1], +m[2] - 1, +m[3]);
-        const days = Math.round((today - d) / 86400000);
-        if (days > 0) extra = ` <span style="color:#dc2626;font-weight:600;">просрочено ${days} дн.</span>`;
-        else if (days >= -7) extra = ` <span style="color:#ea580c;">через ${-days} дн.</span>`;
-      }
-      nextRow = `<div class="tb-section__row"><span>Наступна:</span><strong>${formatDate(p.next_planned_date)}${extra}</strong></div>`;
-    }
-    const groups = [...(p.medical_risk_groups || []), ...(p.social_risk_groups || [])];
+  function renderExisting(p, _source) {
+    // Пацієнт у групі ризику по ТБ, якщо ХОЧА Б ОДНЕ з:
+    //   • tb_status у реєстрі — 'risk' або 'detected' (виставляється
+    //     вручну лікарем або автосинхронізацією);
+    //   • є хоч одна медична група ризику (парсер додає з діагнозів МІС,
+    //     бекенд робить union з існуючими);
+    //   • є хоч одна соціальна група — їх парсер не визначає, вони
+    //     додаються вручну у вебдодатку, але після sync доступні в `p`.
+    // Тобто рішення враховує і свіжі дані парсингу, і всю історію реєстру.
+    const inRiskGroup =
+      p.tb_status === 'risk' ||
+      p.tb_status === 'detected' ||
+      (p.medical_risk_groups?.length || 0) > 0 ||
+      (p.social_risk_groups?.length || 0) > 0;
+    const needsFluoro = inRiskGroup && p.tb_status !== 'archived';
+    const BAD = (s) => `<span style="color:#dc2626;font-weight:600;">${s}</span>`;
 
-    setSection('ok', `
-      <div class="tb-section__meta">
-        Medics ID: ${escHtml(p.medics_id || '')}${srcLbl} ·
-        <span class="tb-section__status" style="${statusTone(p.tb_status)}">${statusLabel(p.tb_status)}</span>
-      </div>
-      <div class="tb-section__row"><span>Остання флюоро:</span><strong>${p.last_fluoro_date ? formatDate(p.last_fluoro_date) : '—'}</strong></div>
-      ${nextRow}
-      ${groups.length > 0 ? `<div class="tb-section__groups">${groups.map((g) => `<span class="tb-section__group">${escHtml(g)}</span>`).join('')}</div>` : ''}
-      ${STATE.lastSyncedAt
-        ? `<div class="tb-section__hint">Синхронізовано ${new Date(STATE.lastSyncedAt).toLocaleTimeString('uk-UA')}</div>`
-        : `<div class="tb-section__hint">Оновлюється після «Проаналізувати».</div>`}
-      <div class="tb-section__actions">
+    // ── Флюоро ────────────────────────────────────────────────────────────
+    let fluoroOk = true;
+    let fluoroLabel;
+    if (!needsFluoro && !p.last_fluoro_date) {
+      // Не в групі ризику й даних немає — м'яко інформуємо, без алярму.
+      fluoroLabel = `<em style="color:#64748b;">не в групі ризику</em>`;
+    } else if (p.last_fluoro_date) {
+      fluoroLabel = `<strong>${formatDate(p.last_fluoro_date)}</strong>`;
+      if (needsFluoro && p.next_planned_date) {
+        const overdueDays = daysSinceIso(p.next_planned_date);
+        if (overdueDays != null && overdueDays > 0) {
+          fluoroOk = false;
+          fluoroLabel += ` — ${BAD('просрочено ' + formatDuration(overdueDays))}`;
+        }
+      }
+    } else {
+      fluoroOk = false;
+      fluoroLabel = BAD('не зроблено');
+    }
+
+    // ── АДП-М ─────────────────────────────────────────────────────────────
+    // Перевага у бекенд-полях `p.last_adpm_date`, `p.next_adpm_date` (там вже
+    // змержені всі вакцинації з бази + щойно синхронізована з парсера).
+    // STATE.lastAdpM — лише як свіжий fallback до того, як прийде refresh.
+    let adpmOk = true;
+    let adpmWarn = false; // помаранчевий, але не червоний
+    let adpmRow = '';
+    const ORG = (s) => `<span style="color:#ea580c;font-weight:600;">${s}</span>`;
+
+    if (p.adpm_contraindication) {
+      adpmRow = `
+      <div class="tb-section__row">
+        <span>АДП-М: <em style="color:#64748b;">протипоказання</em></span>
+      </div>`;
+    } else if (p.adpm_refused) {
+      adpmRow = `
+      <div class="tb-section__row">
+        <span>АДП-М: <em style="color:#64748b;">відмова</em></span>
+      </div>`;
+    } else {
+      const lastIso =
+        p.last_adpm_date ||
+        (STATE.lastAdpM?.date ?? null);
+      const nextIso = p.next_adpm_date || (lastIso ? addYearsIso(lastIso, 10) : null);
+
+      if (lastIso) {
+        let extra = '';
+        if (nextIso) {
+          const overdueDays = daysSinceIso(nextIso);
+          if (overdueDays != null && overdueDays > 0) {
+            adpmOk = false;
+            extra = ` — ${BAD('просрочено ' + formatDuration(overdueDays))}`;
+          } else if (overdueDays != null) {
+            const m = nextIso.match(/^(\d{4})-/);
+            const thisYear = new Date().getFullYear();
+            if (m && +m[1] === thisYear) {
+              adpmWarn = true;
+              extra = ` — ${ORG('цьогоріч')}`;
+            }
+          }
+        }
+        adpmRow = `
+      <div class="tb-section__row">
+        <span>Остання АДП-М: <strong>${formatDate(lastIso)}</strong>${extra}</span>
+      </div>`;
+      } else if (STATE.analyzedOnce) {
+        adpmOk = false;
+        adpmRow = `
+      <div class="tb-section__row">
+        <span>Остання АДП-М: ${BAD('не внесено')}</span>
+      </div>`;
+      }
+    }
+
+    const state = !fluoroOk || !adpmOk ? 'err' : adpmWarn ? 'warn' : 'ok';
+    setSection(state, `
+      <div class="tb-section__row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>Остання флюоро: ${fluoroLabel}</span>
         <a class="tb-btn tb-btn--ghost" href="${STATE.config.url}/patients/${p.id}" target="_blank">Картка ↗</a>
-        ${source === 'manual' ? '<button class="tb-btn tb-btn--ghost" id="tb-forget" type="button">Забути ID</button>' : ''}
-      </div>
+      </div>${adpmRow}
     `);
-    document.getElementById('tb-forget')?.addEventListener('click', async () => {
-      await deleteManualMapping(pageKey()); STATE.currentMedicsId = null; await refresh();
-    });
   }
 
   // ─── Main flow ────────────────────────────────────────────────────────
@@ -875,6 +954,13 @@
     // R-ОГК last record + planned next.
     const fluoro = analyzedData ? extractLastFluoro(analyzedData) : null;
 
+    // АДП-М from page — UI only for now, no backend storage yet.
+    const adpm = analyzedData?.patient?.lastAdpM;
+    STATE.lastAdpM = adpm?.date instanceof Date ? {
+      date: adpm.date.toISOString().slice(0, 10),
+      vaccine_name: adpm.vaccine_name || null,
+    } : null;
+
     setSection('info', '<div>Синхронізуємо…</div>');
     // Age-based social group: 60+ auto-tagged on creation. (The server
     // /api/extension-sync only appends to medical_risk_groups, so we
@@ -895,6 +981,19 @@
       social_risk_groups: autoSocial,
     };
     if (fluoro) payload.fluoro = fluoro;
+
+    // АДП-М: send the latest valid record (status 'Виконана') if parsed.
+    // Backend dedupes on (patient_id + date).
+    const adpmFull = analyzedData?.patient?.lastAdpM;
+    if (adpmFull?.date instanceof Date) {
+      payload.adpm = {
+        date: adpmFull.date.toISOString().slice(0, 10),
+        vaccine_name: adpmFull.vaccine_name || null,
+        manufacturer: adpmFull.manufacturer || null,
+        lot_number: adpmFull.lot_number || null,
+        notes: adpmFull.reasons || null,
+      };
+    }
 
     console.log('[TB Module] sync payload:', payload);
     try {
@@ -962,6 +1061,7 @@
         ) {
           STATE.currentMedicsId = null;
           STATE.analyzedOnce = false;
+          STATE.lastAdpM = null;
           const sec = document.getElementById('tb-module-section');
           if (sec) sec.style.display = 'none';
           // Cover the screen instantly; startAutoAnalyze waits for DOM stable.

@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
+  Syringe,
   Settings as SettingsIcon,
   LogOut,
 } from 'lucide-react';
@@ -14,6 +15,7 @@ type Item = { to: string; label: string; icon: React.ComponentType<{ className?:
 const items: Item[] = [
   { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { to: '/patients', label: 'Пацієнти', icon: Users },
+  { to: '/vaccinations', label: 'Вакцинація', icon: Syringe },
   { to: '/orders', label: 'Накази', icon: BookOpen },
   { to: '/settings', label: 'Налаштування', icon: SettingsIcon },
 ];
