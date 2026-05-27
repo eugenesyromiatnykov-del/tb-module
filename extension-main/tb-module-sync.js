@@ -558,7 +558,7 @@
       .tb-gender-inline button.is-active-f { background: #db2777 !important; border-color: #db2777 !important; color: #fff !important; }
       .tb-gender-inline button:hover { background: #f1f5f9 !important; }
 
-      .tb-section { margin:0 0 12px 0!important; padding:12px 14px!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:13px!important; color:#0f172a!important; box-sizing:border-box!important; }
+      .tb-section { margin:0 0 0.85em 0!important; padding:0.75em 0.9em!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:0.92em!important; color:#0f172a!important; box-sizing:border-box!important; }
       .tb-section--ok{border-color:#86efac!important;background:#f0fdf4!important}
       .tb-section--warn{border-color:#fbbf24!important;background:#fffbeb!important}
       .tb-section--err{border-color:#fca5a5!important;background:#fef2f2!important}
@@ -621,41 +621,31 @@
       st.id = 'mi-tb-auto-style';
       st.textContent = `
         #mi-tb-auto-toggle {
-          display: inline-flex !important; align-items: center !important; gap: 8px !important;
-          padding: 4px 6px 4px 10px !important;
+          display: inline-flex !important; align-items: center !important; gap: 5px !important;
+          padding: 2px 8px !important;
           background: rgba(255,255,255,0.08) !important;
           border: 1px solid rgba(255,255,255,0.18) !important;
           border-radius: 999px !important;
-          font-size: 11px !important; font-weight: 600 !important;
+          font-size: 0.72em !important; font-weight: 700 !important;
+          letter-spacing: 0.06em !important;
           cursor: pointer !important;
           font-family: inherit !important;
           user-select: none !important;
-          color: rgba(255,255,255,0.9) !important;
-        }
-        #mi-tb-auto-toggle .tb-auto-label {
-          letter-spacing: 0.04em !important;
-          text-transform: uppercase !important;
-          font-size: 10px !important;
-        }
-        #mi-tb-auto-toggle .tb-auto-pill {
-          display: inline-flex !important; align-items: center !important;
-          padding: 2px 8px !important;
-          border-radius: 999px !important;
-          font-weight: 700 !important;
-          font-size: 10px !important;
-          letter-spacing: 0.05em !important;
-          min-width: 44px !important;
-          justify-content: center !important;
-          transition: background 0.15s ease, color 0.15s ease !important;
-        }
-        #mi-tb-auto-toggle[data-on="true"] .tb-auto-pill {
-          background: #10b981 !important;
-          color: #ffffff !important;
-          box-shadow: 0 0 0 1px rgba(16,185,129,0.4) !important;
-        }
-        #mi-tb-auto-toggle[data-on="false"] .tb-auto-pill {
-          background: rgba(148,163,184,0.35) !important;
           color: rgba(255,255,255,0.85) !important;
+          line-height: 1.5 !important;
+          flex-shrink: 0 !important;
+        }
+        #mi-tb-auto-toggle .tb-auto-dot {
+          width: 7px !important; height: 7px !important;
+          border-radius: 50% !important;
+          transition: background 0.15s ease, box-shadow 0.15s ease !important;
+        }
+        #mi-tb-auto-toggle[data-on="true"] .tb-auto-dot {
+          background: #10b981 !important;
+          box-shadow: 0 0 0 2px rgba(16,185,129,0.25) !important;
+        }
+        #mi-tb-auto-toggle[data-on="false"] .tb-auto-dot {
+          background: rgba(148,163,184,0.55) !important;
         }
         #mi-tb-auto-toggle:hover { background: rgba(255,255,255,0.14) !important; }
       `;
@@ -666,19 +656,20 @@
     const wrap = document.createElement('button');
     wrap.type = 'button';
     wrap.id = 'mi-tb-auto-toggle';
-    wrap.title = 'Автоматичний аналіз при відкритті пацієнта';
+    wrap.title = checked
+      ? 'Авто-аналіз увімкнено (клік щоб вимкнути)'
+      : 'Авто-аналіз вимкнено (клік щоб увімкнути)';
     wrap.dataset.on = String(checked);
-    wrap.innerHTML = `
-      <span class="tb-auto-label">Авто-аналіз</span>
-      <span class="tb-auto-pill">${checked ? 'УВІМК' : 'ВИМК'}</span>
-    `;
+    wrap.innerHTML = `<span class="tb-auto-dot"></span><span>АВТО</span>`;
     rightCluster.insertAdjacentElement('afterbegin', wrap);
 
     wrap.addEventListener('click', async (e) => {
       e.stopPropagation();
       const on = wrap.dataset.on !== 'true';
       wrap.dataset.on = String(on);
-      wrap.querySelector('.tb-auto-pill').textContent = on ? 'УВІМК' : 'ВИМК';
+      wrap.title = on
+        ? 'Авто-аналіз увімкнено (клік щоб вимкнути)'
+        : 'Авто-аналіз вимкнено (клік щоб увімкнути)';
       await setAutoAnalyzePref(on);
       STATE.config = { ...STATE.config, autoAnalyze: on };
       if (on && !STATE.analyzing) {

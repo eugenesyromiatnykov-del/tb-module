@@ -14,10 +14,17 @@ class MedicsIndicatorUI {
         this.isExpanded = true;
         this.isAnalyzing = false;
         this.analysisProgress = 0;
-        // Масштаб: 'S'=0.72, 'M'=1.0, 'L'=1.18
+        // Масштаб: 'S'=0.72, 'M'=1.0, 'L'=1.18.
+        // Якщо користувач сам не вибрав — підбираємо за шириною вьюпорту,
+        // щоб на ноутбуках 13-14" не вилазив за межі і не зливався.
         const scaleMap = { S: 0.72, M: 1.0, L: 1.18 };
-        const saved = localStorage.getItem('mi-scale') || 'M';
-        this.scaleKey = scaleMap[saved] ? saved : 'M';
+        const saved = localStorage.getItem('mi-scale');
+        if (saved && scaleMap[saved]) {
+            this.scaleKey = saved;
+        } else {
+            const vw = window.innerWidth || 1400;
+            this.scaleKey = vw < 1280 ? 'S' : vw < 1680 ? 'M' : 'L';
+        }
         this.scaleMap = scaleMap;
     }
 
@@ -40,14 +47,18 @@ class MedicsIndicatorUI {
     applyScale(key) {
         this.scaleKey = key;
         localStorage.setItem('mi-scale', key);
-        // Масштаб змінює ТІЛЬКИ ширину і розмір шрифту, НЕ висоту
-        const widthMap  = { S: '320px', M: '420px', L: '520px' };
-        const fontMap   = { S: '12px',  M: '14px',  L: '16px'  };
+        // Масштаб змінює ширину і базовий font-size; усе всередині задано
+        // в em, тому паддинги/іконки масштабуються разом з font-size.
+        const widthMap = { S: '320px', M: '420px', L: '520px' };
+        const fontMap  = { S: '12px',  M: '14px',  L: '16px'  };
         if (this.widget) {
             this.widget.style.setProperty('width',     widthMap[key],  'important');
             this.widget.style.setProperty('font-size', fontMap[key],   'important');
         }
-        // Оновлюємо підсвітку кнопок
+        // На S ховаємо текст заголовка щоб правий блок гарантовано влазив.
+        const title = document.querySelector('.mi-title-text');
+        if (title) title.style.display = key === 'S' ? 'none' : '';
+        // Підсвітка кнопок масштабу
         ['S','M','L'].forEach(k => {
             const btn = document.getElementById(`mi-scale-${k}`);
             if (!btn) return;
@@ -183,15 +194,16 @@ class MedicsIndicatorUI {
             .mi-patient-banner {
                 display: flex !important;
                 align-items: center !important;
-                gap: 8px !important;
-                padding: 8px 16px !important;
+                gap: 0.5em !important;
+                padding: 0.5em 1em !important;
                 background: #f8f9fb !important;
                 border-bottom: 1px solid #e9ecef !important;
-                font-size: 13px !important;
+                font-size: 0.92em !important;
                 color: #344054 !important;
                 line-height: 1.3 !important;
                 margin: 0 !important;
                 flex-shrink: 0 !important;
+                flex-wrap: wrap !important;
             }
             .mi-patient-banner-name {
                 font-weight: 600 !important;
@@ -376,18 +388,18 @@ class MedicsIndicatorUI {
         widget.style.cssText = `position: fixed !important; bottom: 2vh !important; right: 2vw !important; width: 420px !important; max-width: calc(100vw - 40px) !important; height: auto !important; background: #ffffff !important; border-radius: 14px !important; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06) !important; z-index: 999999 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; font-size: 14px !important; line-height: 1.5 !important; color: #0f172a !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 0 !important; transition: height 0.25s ease !important;`;
 
         widget.innerHTML = `
-            <div id="mi-header" style="display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 14px 18px !important; background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important; color: white !important; border-radius: 14px 14px 0 0 !important; cursor: move !important; flex-shrink: 0 !important; margin: 0 !important;">
-                <div style="display: flex !important; align-items: center !important; gap: 10px !important; font-weight: 600 !important; font-size: 16px !important; margin: 0 !important;">
-                    <span style="font-size: 20px !important;">📊</span>
-                    <span>Medics Indicators</span>
+            <div id="mi-header" style="display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 8px !important; padding: 0.75em 1em !important; background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important; color: white !important; border-radius: 14px 14px 0 0 !important; cursor: move !important; flex-shrink: 0 !important; margin: 0 !important;">
+                <div style="display: flex !important; align-items: center !important; gap: 0.5em !important; font-weight: 600 !important; font-size: 1.05em !important; margin: 0 !important; min-width: 0 !important;">
+                    <span style="font-size: 1.25em !important; line-height: 1 !important;">📊</span>
+                    <span class="mi-title-text" style="overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;">Medics Indicators</span>
                 </div>
-                <div style="display: flex !important; gap: 6px !important; align-items: center !important; margin: 0 !important;">
-                    <div style="display: flex !important; gap: 2px !important; background: rgba(255,255,255,0.1) !important; border-radius: 5px !important; padding: 2px !important;">
-                        <button id="mi-scale-S" style="padding: 2px 6px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">S</button>
-                        <button id="mi-scale-M" style="padding: 2px 6px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">M</button>
-                        <button id="mi-scale-L" style="padding: 2px 6px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">L</button>
+                <div style="display: flex !important; gap: 4px !important; align-items: center !important; margin: 0 !important; flex-shrink: 0 !important;">
+                    <div style="display: flex !important; gap: 1px !important; background: rgba(255,255,255,0.1) !important; border-radius: 4px !important; padding: 1px !important;">
+                        <button id="mi-scale-S" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">S</button>
+                        <button id="mi-scale-M" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">M</button>
+                        <button id="mi-scale-L" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">L</button>
                     </div>
-                    <button id="mi-toggle-btn" style="padding: 4px 8px !important; background: rgba(255, 255, 255, 0.2) !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; font-size: 12px !important; margin: 0 !important; transition: background 0.2s !important;">_</button>
+                    <button id="mi-toggle-btn" style="padding: 2px 8px !important; background: rgba(255, 255, 255, 0.2) !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; font-size: 0.85em !important; line-height: 1.2 !important; margin: 0 !important; transition: background 0.2s !important; flex-shrink: 0 !important;">_</button>
                 </div>
             </div>
 
@@ -397,7 +409,7 @@ class MedicsIndicatorUI {
                 <span id="mi-patient-meta" class="mi-patient-banner-meta"></span>
             </div>
 
-            <div id="mi-progress-container" style="display: none !important; padding: 14px 20px !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
+            <div id="mi-progress-container" style="display: none !important; padding: 0.8em 1.15em !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
                 <div style="display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 8px !important;">
                     <span style="font-size: 13px !important; font-weight: 600 !important; color: #0f172a !important;">Аналіз…</span>
                     <span id="mi-progress-percent" style="font-size: 12px !important; color: #64748b !important; margin-left: auto !important;">0%</span>
@@ -407,7 +419,7 @@ class MedicsIndicatorUI {
                 </div>
             </div>
             
-            <div id="mi-completion-bar" style="display: none !important; padding: 12px 20px !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
+            <div id="mi-completion-bar" style="display: none !important; padding: 0.7em 1.15em !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
                 <div style="display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 8px !important;">
                     <span style="font-size: 13px !important; font-weight: 600 !important; color: #334155 !important;">Виконання індикаторів</span>
                     <span id="mi-completion-percent" style="font-size: 13px !important; font-weight: 700 !important; color: #10b981 !important; margin-left: auto !important;">0%</span>
@@ -417,7 +429,7 @@ class MedicsIndicatorUI {
                 </div>
             </div>
             
-            <div id="mi-widget-body" style="padding: 20px !important; overflow-y: auto !important; overflow-x: hidden !important; flex: 1 !important; background: #ffffff !important; margin: 0 !important; min-height: 0 !important;">
+            <div id="mi-widget-body" style="padding: 1.15em !important; overflow-y: auto !important; overflow-x: hidden !important; flex: 1 !important; background: #ffffff !important; margin: 0 !important; min-height: 0 !important;">
                 <div id="mi-instruction" style="margin-bottom: 16px !important; padding: 14px 16px !important; background: #f8fafc !important; border-radius: 10px !important; border: 1px solid #e2e8f0 !important; margin: 0 0 16px 0 !important;">
                     <p style="margin: 0 0 4px 0 !important; color: #0f172a !important;">📋 <strong>Інструкція</strong></p>
                     <p style="font-size: 13px !important; color: #64748b !important; margin: 0 !important;">Натисніть «Проаналізувати»</p>
