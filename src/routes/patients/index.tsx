@@ -12,7 +12,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { usePatients, FILTER_LABELS, type PatientFilters, type PatientFilter } from '@/hooks/usePatients';
+import { usePatients, useVillages, FILTER_LABELS, type PatientFilters, type PatientFilter } from '@/hooks/usePatients';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { exportPatientsXlsx } from '@/lib/xlsx-export';
 import { calcAge, formatDateUk, fluoroBucket, daysSince } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -48,6 +49,7 @@ export function PatientsPage() {
   const [external, setExternal] = useState<'' | '1' | '0'>('');
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
+  const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
   const search = useDebounced(searchInput, 300);
 
   const filters: PatientFilters = useMemo(
@@ -57,14 +59,17 @@ export function PatientsPage() {
       group: group || undefined,
       external: external || undefined,
       search: search || undefined,
+      villages: selectedVillages.length > 0 ? selectedVillages : undefined,
       archived,
       filter,
     }),
-    [location, status, group, external, search, archived, filter],
+    [location, status, group, external, search, selectedVillages, archived, filter],
   );
 
   const { data, isLoading, isFetching, error } = usePatients(filters);
+  const { data: villagesData } = useVillages();
   const patients = data?.patients ?? [];
+  const villages = villagesData?.villages ?? [];
 
   const clearUrlFilter = () => {
     const next = new URLSearchParams(searchParams);
@@ -253,6 +258,17 @@ export function PatientsPage() {
               </option>
             ))}
           </Select>
+        </div>
+        <div className="w-56">
+          <label className="mb-1 block text-xs font-medium text-slate-600">Населений пункт</label>
+          <MultiSelect
+            options={villages.map((v) => ({ value: v, label: v }))}
+            selected={selectedVillages}
+            onChange={setSelectedVillages}
+            placeholder="Усі"
+            searchable
+            searchPlaceholder="Знайти село…"
+          />
         </div>
         <div className="w-44">
           <label className="mb-1 block text-xs font-medium text-slate-600">Статус</label>
