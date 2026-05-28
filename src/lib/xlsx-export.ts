@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import type { Patient } from '@/types/database';
 import { LOCATION_LABELS, TB_STATUS_LABELS } from '@/types/database';
 import { calcAge, formatDateUk } from './date-utils';
+import { labelOf } from './risk-groups';
 
 export function exportAdpmXlsx(patients: Patient[], filename: string): void {
   const rows = patients.map((p) => ({
@@ -38,12 +39,14 @@ export function exportPatientsXlsx(patients: Patient[], filename: string): void 
     'Дата народження': formatDateUk(p.birth_date),
     'Вік': calcAge(p.birth_date) ?? '',
     'Телефон': p.phone ?? '',
+    'Населений пункт': p.village ?? '',
     'Адреса': p.address ?? '',
     'Амбулаторія': p.location_id ? LOCATION_LABELS[p.location_id] : '',
     'Статус': TB_STATUS_LABELS[p.tb_status],
-    'Медичні групи ризику': p.medical_risk_groups.join(', '),
-    'Соціальні групи ризику': p.social_risk_groups.join(', '),
-    'Архівний': p.archived ? 'так' : 'ні',
+    'Медичні групи ризику': p.medical_risk_groups.map(labelOf).join(', '),
+    'Соціальні групи ризику': p.social_risk_groups.map(labelOf).join(', '),
+    'Остання флюоро': p.last_fluoro_date ? formatDateUk(p.last_fluoro_date) : '',
+    'Наступна флюоро': p.next_planned_date ? formatDateUk(p.next_planned_date) : '',
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
