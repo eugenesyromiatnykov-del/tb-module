@@ -10,7 +10,12 @@ export type LocationId = 'bilohirska' | 'zaluzhe';
 // Old enum values ('observed', 'contact', 'cleared', 'external') exist in
 // the PG type for backward compat but are never written by the app.
 // 'external' (не декларант) is now the boolean is_external column.
-export type TbStatus = 'risk' | 'detected' | 'archived';
+// 'cleared' was deprecated in 0006 but the PG enum value still exists. We
+// reintroduced it for a narrow case: when the extension analyzes a patient
+// previously imported as 'risk' but finds no medical or social risk factors
+// at all, we demote them to 'cleared' so the fluoro registry stops nagging
+// while they still appear in the vaccination registry.
+export type TbStatus = 'risk' | 'detected' | 'cleared' | 'archived';
 export type FluoroResultCode = 'normal' | 'pathology' | 'pending' | 'refused' | 'unknown';
 export type SputumTestType = 'xpert' | 'microscopy' | 'culture' | 'pcr';
 export type DataSource = 'manual' | 'extension' | 'imported_xlsx' | 'mis_sync';
@@ -112,6 +117,7 @@ export const LOCATION_LABELS: Record<LocationId, string> = {
 export const TB_STATUS_LABELS: Record<TbStatus, string> = {
   risk: 'В групі ризику',
   detected: 'Виявлений',
+  cleared: 'Без ризику ТБ',
   archived: 'Архівний',
 };
 

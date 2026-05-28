@@ -29,6 +29,7 @@ export type PatientFilters = {
   adpm?: AdpmFilter[];  // OR-combined statuses
   address?: string;     // ILIKE on address (street/house substring)
   villages?: string[];  // exact match on derived `village` column
+  cleared?: 'include' | 'only'; // default: exclude tb_status='cleared'
 };
 
 export const FILTER_LABELS: Record<PatientFilter, string> = {
@@ -56,6 +57,7 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.villages && filters.villages.length > 0) {
     params.set('village', filters.villages.join(','));
   }
+  if (filters.cleared) params.set('cleared', filters.cleared);
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }

@@ -51,6 +51,9 @@ export function VaccinationsPage() {
       location: location || undefined,
       adpm: adpmStatuses.length > 0 ? adpmStatuses : undefined,
       villages: selectedVillages.length > 0 ? selectedVillages : undefined,
+      // АДП-М робиться всім, незалежно від ризику по ТБ — показуємо й
+      // пацієнтів зі статусом 'cleared', яких реєстр флюоро вже не показує.
+      cleared: 'include' as const,
     }),
     [search, location, adpmStatuses, selectedVillages],
   );

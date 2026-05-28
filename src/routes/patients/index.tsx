@@ -398,6 +398,7 @@ function StatusBadge({ status }: { status: TbStatus }) {
   const tone: Record<TbStatus, string> = {
     risk: 'bg-orange-100 text-orange-800',
     detected: 'bg-yellow-100 text-yellow-800',
+    cleared: 'bg-slate-100 text-slate-600',
     archived: 'bg-slate-100 text-slate-500',
   };
   return (

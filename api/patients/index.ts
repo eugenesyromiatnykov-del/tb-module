@@ -45,12 +45,14 @@ function daysFromNow(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function applyFilter<Q extends { eq: Function; lt: Function; gt: Function; gte: Function; lte: Function; is: Function; not: Function; contains: Function }>(
+function applyFilter<Q extends { eq: Function; neq: Function; lt: Function; gt: Function; gte: Function; lte: Function; is: Function; not: Function; contains: Function }>(
   q: Q,
   filter: Filter | undefined,
   location?: string,
 ): Q {
-  let out = q.eq('archived', false) as Q;
+  // Cleared patients are out of the fluoro registry — never count them in
+  // overdue / this_week / no_fluoro / etc. quick filters or dashboard stats.
+  let out = q.eq('archived', false).neq('tb_status', 'cleared') as Q;
   if (location) out = out.eq('location_id', location) as Q;
 
   const today = todayIso();
@@ -228,6 +230,10 @@ export default async function handler(req: Req, res: Res) {
   const address = (asString(q.address) ?? '').trim();
   const villageParam = (asString(q.village) ?? '').trim();
   const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
+  // 'cleared' patients are confirmed not to need fluoro monitoring; hide
+  // them from the registry by default. The vaccinations page passes
+  // ?cleared=include to keep them.
+  const clearedParam = asString(q.cleared); // undefined | 'include' | 'only'
 
   let query = supabase.from('patient_dashboard').select(SELECT_FULL);
   if (filter) {
@@ -237,6 +243,8 @@ export default async function handler(req: Req, res: Res) {
     if (location) query = query.eq('location_id', location);
   }
   if (status) query = query.eq('tb_status', status);
+  else if (clearedParam === 'only') query = query.eq('tb_status', 'cleared');
+  else if (clearedParam !== 'include') query = query.neq('tb_status', 'cleared');
   if (contactOf) query = query.eq('contact_of', contactOf);
   if (externalParam === '1') query = query.eq('is_external', true);
   if (externalParam === '0') query = query.eq('is_external', false);

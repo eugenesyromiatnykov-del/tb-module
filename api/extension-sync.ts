@@ -134,7 +134,7 @@ export default async function handler(req: Req, res: Res) {
     // Look up existing patient.
     const { data: existing, error: lookupErr } = await supabase
       .from('patients')
-      .select('id, medical_risk_groups, social_risk_groups, diagnoses_codes')
+      .select('id, medical_risk_groups, social_risk_groups, diagnoses_codes, tb_status')
       .eq('medics_id', body.medics_id)
       .maybeSingle();
     if (lookupErr) {
@@ -172,6 +172,24 @@ export default async function handler(req: Req, res: Res) {
         );
         patch.social_risk_groups = merged;
       }
+
+      // Auto-demote / re-promote based on the post-merge risk-group state.
+      // Only acts when the extension actually analyzed (sent medical_risk_groups
+      // as an array, even if empty). Never touches 'detected' or 'archived'.
+      if (Array.isArray(body.medical_risk_groups)) {
+        const postMedical =
+          (patch.medical_risk_groups as string[] | undefined) ?? existing.medical_risk_groups ?? [];
+        const postSocial =
+          (patch.social_risk_groups as string[] | undefined) ?? existing.social_risk_groups ?? [];
+        const hasAnyRisk = postMedical.length > 0 || postSocial.length > 0;
+        const cur = existing.tb_status as string | undefined;
+        if (cur === 'risk' && !hasAnyRisk) {
+          patch.tb_status = 'cleared';
+        } else if (cur === 'cleared' && hasAnyRisk) {
+          patch.tb_status = 'risk';
+        }
+      }
+
       if (Object.keys(patch).length > 0) {
         const { error } = await supabase.from('patients').update(patch).eq('id', patientId);
         if (error) {
