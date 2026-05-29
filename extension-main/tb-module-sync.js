@@ -823,13 +823,25 @@
     const needsFluoro = inRiskGroup && p.tb_status !== 'archived';
     const BAD = (s) => `<span style="color:#dc2626;font-weight:600;">${s}</span>`;
 
+    // ── Статус ТБ (завжди показуємо, незалежно від наявності флюоро) ──────
+    const STATUS_META = {
+      risk:     { label: 'В групі ризику', bg: '#fed7aa', fg: '#9a3412' },
+      detected: { label: 'Виявлений ТБ',   bg: '#fecaca', fg: '#991b1b' },
+      cleared:  { label: 'Без ризику ТБ',  bg: '#d1fae5', fg: '#065f46' },
+      archived: { label: 'Архівний',        bg: '#f1f5f9', fg: '#64748b' },
+    };
+    const sm = STATUS_META[p.tb_status] || { label: p.tb_status || '—', bg: '#f1f5f9', fg: '#334155' };
+    const statusRow = `
+      <div class="tb-section__row" style="display:flex;align-items:center;gap:6px;">
+        <span style="color:#64748b;">Статус:</span>
+        <span style="display:inline-block;padding:1px 8px;border-radius:999px;background:${sm.bg};color:${sm.fg};font-weight:600;font-size:0.9em;">${sm.label}</span>
+      </div>`;
+
     // ── Флюоро ────────────────────────────────────────────────────────────
+    // Статус виведено окремо вище, тому тут лише дата + просрочка.
     let fluoroOk = true;
     let fluoroLabel;
-    if (!needsFluoro && !p.last_fluoro_date) {
-      // Не в групі ризику й даних немає — м'яко інформуємо, без алярму.
-      fluoroLabel = `<em style="color:#64748b;">не в групі ризику</em>`;
-    } else if (p.last_fluoro_date) {
+    if (p.last_fluoro_date) {
       fluoroLabel = `<strong>${formatDate(p.last_fluoro_date)}</strong>`;
       if (needsFluoro && p.next_planned_date) {
         const overdueDays = daysSinceIso(p.next_planned_date);
@@ -838,9 +850,12 @@
           fluoroLabel += ` — ${BAD('просрочено ' + formatDuration(overdueDays))}`;
         }
       }
-    } else {
+    } else if (needsFluoro) {
       fluoroOk = false;
       fluoroLabel = BAD('не зроблено');
+    } else {
+      // Не в групі ризику й даних немає — лаконічно, без алярму.
+      fluoroLabel = `<span style="color:#94a3b8;">не вносилось</span>`;
     }
 
     // ── АДП-М ─────────────────────────────────────────────────────────────
@@ -897,8 +912,11 @@
       }
     }
 
-    const state = !fluoroOk || !adpmOk ? 'err' : adpmWarn ? 'warn' : 'ok';
+    // Виявлений ТБ — завжди червоний фон, незалежно від іншого.
+    const state =
+      p.tb_status === 'detected' || !fluoroOk || !adpmOk ? 'err' : adpmWarn ? 'warn' : 'ok';
     setSection(state, `
+      ${statusRow}
       <div class="tb-section__row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <span>Остання флюоро: ${fluoroLabel}</span>
         <a class="tb-btn tb-btn--ghost" href="${STATE.config.url}/patients/${p.id}" target="_blank">Картка ↗</a>
