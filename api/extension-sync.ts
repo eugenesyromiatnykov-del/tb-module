@@ -109,6 +109,7 @@ export default async function handler(req: Req, res: Res) {
       address?: string | null;
       location_id?: string | null;
       diagnoses_codes?: string[];
+      diagnoses_detail?: Array<{ code: string; name?: string | null; date?: string | null }>;
       medical_risk_groups?: string[];
       social_risk_groups?: string[];
       fluoro?: {
@@ -157,6 +158,14 @@ export default async function handler(req: Req, res: Res) {
       if (Array.isArray(body.diagnoses_codes)) {
         patch.diagnoses_codes = body.diagnoses_codes;
         patch.diagnoses_synced_at = new Date().toISOString();
+      }
+      if (Array.isArray(body.diagnoses_detail)) {
+        // MIS is authoritative — replace, don't merge. Strip unknown keys.
+        patch.diagnoses_detail = body.diagnoses_detail.map((d) => ({
+          code: d.code,
+          name: d.name ?? null,
+          date: d.date ?? null,
+        }));
       }
       if (Array.isArray(body.medical_risk_groups)) {
         // Merge (union) — extension is authoritative for medical groups it detects.

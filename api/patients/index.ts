@@ -17,7 +17,7 @@ export const config = { runtime: 'nodejs' };
 const SELECT_FULL = `
   id, medics_id, surname, first_name, patronymic, birth_date, gender,
   phone, address, village, location_id, tb_status, contact_of,
-  medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_synced_at,
+  medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_detail, diagnoses_synced_at,
   notes, archived, archived_reason, archived_at, is_external, created_at, updated_at,
   last_fluoro_date, next_planned_date, last_result_code,
   last_adpm_date, next_adpm_date, adpm_contraindication, adpm_refused

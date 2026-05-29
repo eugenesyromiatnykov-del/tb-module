@@ -938,16 +938,36 @@
       return renderError('Не вдалось зчитати ПІБ зі сторінки');
     }
 
-    // Diagnoses → groups + codes.
+    // Diagnoses → groups + codes + per-diagnosis detail (code, name, date).
     let diag = { groups: [], codes: [] };
+    let diagnosesRaw = null; // [{code, name}]
     if (analyzedData?.patient?.diagnoses) {
       diag = diagnosesToGroups(analyzedData.patient.diagnoses);
+      diagnosesRaw = analyzedData.patient.diagnoses;
     } else if (typeof MedicsParser !== 'undefined') {
       try {
         const p = new MedicsParser();
         const data = p.parseAll();
-        if (data?.diagnoses) diag = diagnosesToGroups(data.diagnoses);
+        if (data?.diagnoses) {
+          diag = diagnosesToGroups(data.diagnoses);
+          diagnosesRaw = data.diagnoses;
+        }
       } catch (_) {}
+    }
+
+    // Build diagnoses_detail by joining parsed diagnoses with episode dates
+    // (analyzer.episodes is keyed by code → { date: Date | null, … }).
+    let diagnosesDetail = null;
+    if (Array.isArray(diagnosesRaw)) {
+      const episodes = analyzedData?.analyzer?.episodes ?? {};
+      diagnosesDetail = diagnosesRaw.map((d) => {
+        const code = typeof d === 'string' ? d : d.code;
+        const name = typeof d === 'string' ? null : d.name ?? null;
+        const ep = code ? episodes[code] : null;
+        const isoDate =
+          ep?.date instanceof Date ? ep.date.toISOString().slice(0, 10) : null;
+        return { code, name, date: isoDate };
+      }).filter((d) => d.code);
     }
 
     // R-ОГК last record + planned next.
@@ -979,6 +999,7 @@
       medical_risk_groups: diag.groups,
       social_risk_groups: autoSocial,
     };
+    if (diagnosesDetail) payload.diagnoses_detail = diagnosesDetail;
     if (fluoro) payload.fluoro = fluoro;
 
     // АДП-М: send the latest valid record (status 'Виконана') if parsed.

@@ -24,7 +24,8 @@ import {
   type LocationId,
   type TbStatus,
 } from '@/types/database';
-import { RISK_GROUPS, labelOf } from '@/lib/risk-groups';
+import { RISK_GROUPS, RISK_GROUP_BY_KEY, labelOf } from '@/lib/risk-groups';
+import { groupForCode } from '@/lib/icd-risk-mapping';
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -118,20 +119,15 @@ export function PatientsPage() {
       },
       {
         header: 'Групи',
-        accessorFn: (p) => [...p.medical_risk_groups, ...p.social_risk_groups],
+        accessorFn: (p) => p,
         cell: (info) => {
-          const groups = info.getValue<string[]>();
+          const p = info.getValue<Patient>();
+          const groups = [...p.medical_risk_groups, ...p.social_risk_groups];
           if (groups.length === 0) return <span className="text-slate-400">—</span>;
           return (
             <div className="flex flex-wrap gap-1">
               {groups.slice(0, 2).map((g) => (
-                <span
-                  key={g}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
-                  title={g}
-                >
-                  {labelOf(g)}
-                </span>
+                <RiskGroupBadge key={g} groupKey={g} patient={p} />
               ))}
               {groups.length > 2 && (
                 <span
@@ -392,6 +388,54 @@ function rowAccent(p: Patient): string {
   if (bucket === 'next_30') return 'border-l-4 border-l-cyan-400';
   if (p.tb_status === 'detected') return 'border-l-4 border-l-yellow-400';
   return '';
+}
+
+// Compact pill with a rich hover-tooltip for medical groups: shows the
+// specific diagnoses (code, name, date when known) that triggered this
+// group tag. Social groups render as a plain pill — no diagnosis link.
+function RiskGroupBadge({ groupKey, patient }: { groupKey: string; patient: Patient }) {
+  const def = RISK_GROUP_BY_KEY[groupKey];
+  const isMedical = def?.category === 'medical';
+  const matching = isMedical
+    ? (patient.diagnoses_detail ?? []).filter((d) => groupForCode(d.code) === groupKey)
+    : [];
+
+  const pill = (
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">
+      {labelOf(groupKey)}
+    </span>
+  );
+
+  if (!isMedical || matching.length === 0) {
+    return pill;
+  }
+
+  return (
+    <span
+      className="group/rb relative inline-block cursor-help"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {pill}
+      <div className="invisible absolute left-0 top-full z-50 mt-1 w-80 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg group-hover/rb:visible">
+        <div className="mb-2 text-sm font-semibold text-slate-900">{labelOf(groupKey)}</div>
+        <div className="space-y-2">
+          {matching.map((d) => (
+            <div key={d.code} className="border-t border-slate-100 pt-2 first:border-0 first:pt-0">
+              <div className="font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                {d.code}
+                {d.date && (
+                  <span className="ml-2 normal-case tracking-normal text-slate-400">
+                    від {formatDateUk(d.date)}
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 leading-snug text-slate-700">{d.name ?? '—'}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </span>
+  );
 }
 
 function StatusBadge({ status }: { status: TbStatus }) {

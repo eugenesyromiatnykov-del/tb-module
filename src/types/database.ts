@@ -1,5 +1,11 @@
 export type LocationId = 'bilohirska' | 'zaluzhe';
 
+export type DiagnosisDetail = {
+  code: string;          // ICPC-2 or МКХ-10 (presence of '.' distinguishes)
+  name: string | null;   // full diagnosis text as it appears in МІС
+  date: string | null;   // best-effort 'YYYY-MM-DD' from episode start; nullable
+};
+
 // Final set after 0007:
 // - risk      — default; doctor explicitly tracks this person for TB.
 //   "В групі ризику" / "Контактний" all live here. Risk groups
@@ -39,6 +45,7 @@ export type Patient = {
   medical_risk_groups: string[];
   social_risk_groups: string[];
   diagnoses_codes: string[];
+  diagnoses_detail: DiagnosisDetail[];
   diagnoses_synced_at: string | null;
 
   notes: string | null;
