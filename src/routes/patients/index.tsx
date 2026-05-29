@@ -402,58 +402,73 @@ function RiskGroupBadge({ groupKey, patient }: { groupKey: string; patient: Pati
   const matching = isMedical
     ? (patient.diagnoses_detail ?? []).filter((d) => groupForCode(d.code) === groupKey)
     : [];
-  const hasTooltip = isMedical && matching.length > 0;
 
-  const ref = useRef<HTMLSpanElement>(null);
-  const [tooltip, setTooltip] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   const open = () => {
-    if (!hasTooltip || !ref.current) return;
+    if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    setTooltip({ top: r.bottom + 4, left: r.left });
+    setPos({ top: r.bottom + 4, left: r.left });
   };
-  const close = () => setTooltip(null);
+  const close = () => setPos(null);
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 
   return (
-    <span
+    <button
+      type="button"
       ref={ref}
       onMouseEnter={open}
       onMouseLeave={close}
       onFocus={open}
       onBlur={close}
-      onClick={(e) => e.stopPropagation()}
+      onClick={stop}
+      onMouseDown={stop}
       className={cn(
-        'inline-block rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700',
-        hasTooltip && 'cursor-help',
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs transition-colors',
+        'border-slate-200 bg-slate-50 text-slate-700',
+        'hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800',
+        isMedical ? 'cursor-help' : 'cursor-default',
       )}
     >
       {labelOf(groupKey)}
-      {tooltip &&
+      {pos &&
         createPortal(
           <div
-            style={{ position: 'fixed', top: tooltip.top, left: tooltip.left, zIndex: 1000 }}
-            className="w-80 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg"
+            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 1000 }}
+            className="pointer-events-none w-80 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs text-slate-700 shadow-lg"
           >
             <div className="mb-2 text-sm font-semibold text-slate-900">{labelOf(groupKey)}</div>
-            <div className="space-y-2">
-              {matching.map((d) => (
-                <div key={d.code} className="border-t border-slate-100 pt-2 first:border-0 first:pt-0">
-                  <div className="font-mono text-[10px] uppercase tracking-wide text-slate-500">
-                    {d.code}
-                    {d.date && (
-                      <span className="ml-2 normal-case tracking-normal text-slate-400">
-                        від {formatDateUk(d.date)}
-                      </span>
-                    )}
+            {!isMedical ? (
+              <div className="italic text-slate-500">Соціальна група — не повʼязана з діагнозом.</div>
+            ) : matching.length === 0 ? (
+              <div className="italic text-slate-500">
+                Деталі діагнозу ще не синхронізовані. Відкрий пацієнта в МІС і запусти аналіз — після цього код та назва зʼявляться тут.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {matching.map((d) => (
+                  <div
+                    key={d.code}
+                    className="border-t border-slate-100 pt-2 first:border-0 first:pt-0"
+                  >
+                    <div className="font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                      {d.code}
+                      {d.date && (
+                        <span className="ml-2 normal-case tracking-normal text-slate-400">
+                          від {formatDateUk(d.date)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 leading-snug text-slate-700">{d.name ?? '—'}</div>
                   </div>
-                  <div className="mt-0.5 leading-snug text-slate-700">{d.name ?? '—'}</div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>,
           document.body,
         )}
-    </span>
+    </button>
   );
 }
 
