@@ -72,7 +72,8 @@
   const ICPC_TO_GROUP = {
     B90: 'hiv',
     A79: 'oncology', B72: 'oncology', B74: 'oncology',
-    D74: 'oncology', D75: 'oncology', D76: 'oncology', D77: 'oncology', D78: 'oncology',
+    D74: 'oncology', D75: 'oncology', D76: 'oncology', D77: 'oncology',
+    // D78 was here too but it's "Доброякісне новоутворення травної системи" — dropped.
     L71: 'oncology', N74: 'oncology',
     R84: 'oncology', R85: 'oncology',
     U75: 'oncology', U76: 'oncology', U77: 'oncology',
@@ -103,10 +104,13 @@
     // Active TB history — A15-A19, plus the doctor-style A15.x, etc.
     [/^A1[5-9]\b/, 'previously_treated'],
     [/^Z86\.1\b/, 'previously_treated'],
-    // Oncology — C00-D48
-    [/^C\d/, 'oncology'],
-    [/^D[0-3]\d/, 'oncology'],
-    [/^D4[0-8]\b/, 'oncology'],
+    // Oncology — strictly malignant + carcinoma in situ + active hematologic
+    // surveillance. Benign neoplasms (D10–D36, e.g. D22 melanocytic nevus =
+    // "родинка") and most uncertain-behavior codes (D37–D44, D48) are NOT
+    // immunosuppressive and were causing false positives.
+    [/^C\d/, 'oncology'],        // C00–C97 — all malignant neoplasms
+    [/^D0\d/, 'oncology'],       // D00–D09 — carcinoma in situ
+    [/^D4[567]\b/, 'oncology'],  // D45–D47 — polycythaemia vera, MDS, other myeloid/lymphoid neoplasms of uncertain behavior
     // Diabetes — E10-E14
     [/^E1[0-4]\b/, 'diabetes'],
     // Chronic respiratory — J40-J47
