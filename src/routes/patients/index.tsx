@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   flexRender,
@@ -393,47 +394,65 @@ function rowAccent(p: Patient): string {
 // Compact pill with a rich hover-tooltip for medical groups: shows the
 // specific diagnoses (code, name, date when known) that triggered this
 // group tag. Social groups render as a plain pill — no diagnosis link.
+// Tooltip is rendered via a portal with position:fixed so it escapes the
+// table's overflow-hidden / overflow-x-auto clipping contexts.
 function RiskGroupBadge({ groupKey, patient }: { groupKey: string; patient: Patient }) {
   const def = RISK_GROUP_BY_KEY[groupKey];
   const isMedical = def?.category === 'medical';
   const matching = isMedical
     ? (patient.diagnoses_detail ?? []).filter((d) => groupForCode(d.code) === groupKey)
     : [];
+  const hasTooltip = isMedical && matching.length > 0;
 
-  const pill = (
-    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">
-      {labelOf(groupKey)}
-    </span>
-  );
+  const ref = useRef<HTMLSpanElement>(null);
+  const [tooltip, setTooltip] = useState<{ top: number; left: number } | null>(null);
 
-  if (!isMedical || matching.length === 0) {
-    return pill;
-  }
+  const open = () => {
+    if (!hasTooltip || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setTooltip({ top: r.bottom + 4, left: r.left });
+  };
+  const close = () => setTooltip(null);
 
   return (
     <span
-      className="group/rb relative inline-block cursor-help"
+      ref={ref}
+      onMouseEnter={open}
+      onMouseLeave={close}
+      onFocus={open}
+      onBlur={close}
       onClick={(e) => e.stopPropagation()}
+      className={cn(
+        'inline-block rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700',
+        hasTooltip && 'cursor-help',
+      )}
     >
-      {pill}
-      <div className="invisible absolute left-0 top-full z-50 mt-1 w-80 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg group-hover/rb:visible">
-        <div className="mb-2 text-sm font-semibold text-slate-900">{labelOf(groupKey)}</div>
-        <div className="space-y-2">
-          {matching.map((d) => (
-            <div key={d.code} className="border-t border-slate-100 pt-2 first:border-0 first:pt-0">
-              <div className="font-mono text-[10px] uppercase tracking-wide text-slate-500">
-                {d.code}
-                {d.date && (
-                  <span className="ml-2 normal-case tracking-normal text-slate-400">
-                    від {formatDateUk(d.date)}
-                  </span>
-                )}
-              </div>
-              <div className="mt-0.5 leading-snug text-slate-700">{d.name ?? '—'}</div>
+      {labelOf(groupKey)}
+      {tooltip &&
+        createPortal(
+          <div
+            style={{ position: 'fixed', top: tooltip.top, left: tooltip.left, zIndex: 1000 }}
+            className="w-80 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg"
+          >
+            <div className="mb-2 text-sm font-semibold text-slate-900">{labelOf(groupKey)}</div>
+            <div className="space-y-2">
+              {matching.map((d) => (
+                <div key={d.code} className="border-t border-slate-100 pt-2 first:border-0 first:pt-0">
+                  <div className="font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                    {d.code}
+                    {d.date && (
+                      <span className="ml-2 normal-case tracking-normal text-slate-400">
+                        від {formatDateUk(d.date)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 leading-snug text-slate-700">{d.name ?? '—'}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>,
+          document.body,
+        )}
     </span>
   );
 }
