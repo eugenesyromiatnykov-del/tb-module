@@ -1189,5 +1189,5 @@
     setTimeout(boot, 600);
   }
 
-  console.log('[TB Module] tb-module-sync.js loaded');
+  console.log('[TB Module] tb-module-sync.js loaded — build 2026-05-29 (diagnoses_detail)');
 })();
