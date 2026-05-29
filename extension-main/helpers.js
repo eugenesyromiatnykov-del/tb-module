@@ -63,4 +63,15 @@ function formatDate(date) {
   return `${String(date.getDate()).padStart(2,'0')}.${String(date.getMonth()+1).padStart(2,'0')}.${date.getFullYear()}`;
 }
 
+// Date → 'YYYY-MM-DD' using LOCAL components. Never use toISOString().slice(0,10)
+// for storage — that converts to UTC and shifts the date back one day in Kyiv
+// (UTC+2/+3), so 05.03 becomes 04.03 on the server.
+function toLocalIso(date) {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return null;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 console.log('[Medics Indicators] Helpers.js завантажено');

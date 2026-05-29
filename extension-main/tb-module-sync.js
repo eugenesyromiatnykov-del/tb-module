@@ -738,7 +738,7 @@
     if (!m) return null;
     const d = new Date(+m[1], +m[2] - 1, +m[3]);
     d.setFullYear(d.getFullYear() + years);
-    return d.toISOString().slice(0, 10);
+    return toLocalIso(d);
   }
 
   // Скільки днів минуло з ISO-дати до сьогодні. Якщо дата майбутня — від'ємне.
@@ -964,8 +964,7 @@
         const code = typeof d === 'string' ? d : d.code;
         const name = typeof d === 'string' ? null : d.name ?? null;
         const ep = code ? episodes[code] : null;
-        const isoDate =
-          ep?.date instanceof Date ? ep.date.toISOString().slice(0, 10) : null;
+        const isoDate = ep?.date instanceof Date ? toLocalIso(ep.date) : null;
         return { code, name, date: isoDate };
       }).filter((d) => d.code);
     }
@@ -976,7 +975,7 @@
     // АДП-М from page — UI only for now, no backend storage yet.
     const adpm = analyzedData?.patient?.lastAdpM;
     STATE.lastAdpM = adpm?.date instanceof Date ? {
-      date: adpm.date.toISOString().slice(0, 10),
+      date: toLocalIso(adpm.date),
       vaccine_name: adpm.vaccine_name || null,
     } : null;
 
@@ -1007,7 +1006,7 @@
     const adpmFull = analyzedData?.patient?.lastAdpM;
     if (adpmFull?.date instanceof Date) {
       payload.adpm = {
-        date: adpmFull.date.toISOString().slice(0, 10),
+        date: toLocalIso(adpmFull.date),
         vaccine_name: adpmFull.vaccine_name || null,
         manufacturer: adpmFull.manufacturer || null,
         lot_number: adpmFull.lot_number || null,
