@@ -103,6 +103,27 @@
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  // Workplace modal cleanup. After «Підтвердити» MIS usually closes the
+  // modal — but not reliably; second/third patient saw it lingering and
+  // blocking the next viewBtn click. Try the close button first; if it
+  // doesn't go away, strip the is-open class as a last resort.
+  async function dismissAnyOpenModal() {
+    let open = document.querySelector(SELECTORS.workplaceModal);
+    if (!open) return;
+    console.log('[TB Batch] dismissing leftover workplace modal');
+    const closeBtn = open.querySelector('button[ng-click="workplace_modal.close()"]');
+    if (closeBtn) {
+      closeBtn.click();
+      await wait(500);
+    }
+    open = document.querySelector(SELECTORS.workplaceModal);
+    if (open) {
+      console.warn('[TB Batch] modal still open after close click, force-stripping is-open');
+      open.classList.remove('is-open');
+      await wait(200);
+    }
+  }
+
   // AngularJS radios bind via ng-model + ng-value. Native .click() flips the
   // DOM `checked` flag but the AngularJS digest sometimes misses it (no
   // synthetic 'change' event), so workplace_modal.workplace stays undefined
@@ -258,9 +279,20 @@
       });
     } catch (_) {}
 
+    // Clean up any leftover workplace modal from the previous patient.
+    // After «Підтвердити» MIS sometimes leaves the modal open on the
+    // original tab for a beat (or longer), which blocks our next pass —
+    // viewBtn for the next patient gets hidden behind it, search filter
+    // ng-change might be ignored, etc. Force it shut first.
+    await dismissAnyOpenModal();
+
     try {
       const searchInput = await waitFor(SELECTORS.searchInput, 15_000);
       if (!searchInput) throw new Error('Пошук medics_id не знайдено');
+      // Clear first, then set — defensively, in case Angular's ng-change
+      // debouncer ate the previous patient's filter call mid-flight.
+      setAngularInputValue(searchInput, '');
+      await wait(200);
       setAngularInputValue(searchInput, item.medics_id);
       await wait(TIMING.afterSearchType);
 
