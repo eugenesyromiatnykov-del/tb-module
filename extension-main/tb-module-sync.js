@@ -807,7 +807,73 @@
     document.getElementById('tb-change-medics')?.addEventListener('click', renderNeedMedicsId);
   }
 
-  function renderExisting(p, _source) {
+  // Compact "tb-module since" line at the top of the widget — answers
+  // "когда мы в последний раз видели этого пациента в реестре?". Different
+  // from `p.diagnoses_synced_at` because indicator analysis is the slow
+  // expensive part — knowing it's fresh tells the doctor we can trust the
+  // cached state and skip a re-analyze cycle.
+  function lastSyncLine(p) {
+    const ts = p.last_indicators_synced_at;
+    if (!ts) return '';
+    let label;
+    try {
+      const d = new Date(ts);
+      const diff = Date.now() - d.getTime();
+      const day = 86400000;
+      if (diff < 60 * 60 * 1000) {
+        label = 'щойно';
+      } else if (diff < day) {
+        label = 'сьогодні';
+      } else if (diff < 2 * day) {
+        label = 'вчора';
+      } else if (diff < 7 * day) {
+        label = `${Math.floor(diff / day)} дн. тому`;
+      } else {
+        label = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+      }
+    } catch (_) { label = '—'; }
+    return `
+      <div class="tb-section__row" style="color:#94a3b8;font-size:0.85em;">
+        Останній аналіз: <span style="color:#64748b;">${label}</span>
+      </div>`;
+  }
+
+  // Compact one-pill-per-rule list of cached indicators so the doctor sees
+  // last-known state instantly on med-card open, without waiting for the
+  // analyzer to re-run. State→color: completed green, partial blue,
+  // overdue red, not_done amber. Limited to top 6 by "needs attention"
+  // priority to keep the widget compact.
+  function indicatorsBlock(indicators) {
+    if (!Array.isArray(indicators) || indicators.length === 0) return '';
+    const priority = { overdue: 0, not_done: 1, partial: 2, completed: 3 };
+    const sorted = [...indicators].sort(
+      (a, b) => (priority[a.state] ?? 9) - (priority[b.state] ?? 9),
+    );
+    const COLORS = {
+      completed: { bg: '#d1fae5', fg: '#065f46' },
+      overdue:   { bg: '#fecaca', fg: '#991b1b' },
+      partial:   { bg: '#dbeafe', fg: '#1e40af' },
+      not_done:  { bg: '#fed7aa', fg: '#9a3412' },
+    };
+    const LABEL = { completed: '✓', overdue: '⚠', partial: '½', not_done: '·' };
+    const pills = sorted.slice(0, 8).map((r) => {
+      const c = COLORS[r.state] || { bg: '#f1f5f9', fg: '#334155' };
+      const name = (r.rule_name || r.rule_id).replace(/^Скринінг\s+/i, '').replace(/^Оцінювання\s+/i, '');
+      const counts = r.total_count
+        ? ` ${r.completed_count}/${r.total_count}`
+        : '';
+      const sym = LABEL[r.state] || '?';
+      const title = `${name} · ${r.completed_count}/${r.total_count}${r.last_date ? ' · ост.: ' + r.last_date : ''}`;
+      return `<span title="${title.replace(/"/g, '&quot;')}" style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:999px;background:${c.bg};color:${c.fg};font-size:0.82em;font-weight:500;">${sym} ${name}${counts}</span>`;
+    }).join(' ');
+    const more = sorted.length > 8 ? ` <span style="color:#94a3b8;font-size:0.8em;">+${sorted.length - 8}</span>` : '';
+    return `
+      <div class="tb-section__row" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+        ${pills}${more}
+      </div>`;
+  }
+
+  function renderExisting(p, _source, indicators) {
     // Пацієнт у групі ризику по ТБ, якщо ХОЧА Б ОДНЕ з:
     //   • tb_status у реєстрі — 'risk' або 'detected' (виставляється
     //     вручну лікарем або автосинхронізацією);
@@ -917,11 +983,12 @@
     const state =
       p.tb_status === 'detected' || !fluoroOk || !adpmOk ? 'err' : adpmWarn ? 'warn' : 'ok';
     setSection(state, `
+      ${lastSyncLine(p)}
       ${statusRow}
       <div class="tb-section__row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <span>Остання флюоро: ${fluoroLabel}</span>
         <a class="tb-btn tb-btn--ghost" href="${STATE.config.url}/patients/${p.id}" target="_blank">Картка ↗</a>
-      </div>${adpmRow}
+      </div>${adpmRow}${indicatorsBlock(indicators)}
     `);
   }
 
@@ -935,14 +1002,49 @@
     try {
       const res = await apiGet(r.id);
       if (!res.found) return renderEmpty(r.id, r.source);
-      return renderExisting(res.patient, r.source);
+      return renderExisting(res.patient, r.source, res.indicators ?? []);
     } catch (e) {
       console.error('[TB Module] apiGet:', e);
       return renderError(`Помилка запиту: ${e.message}`);
     }
   }
 
-  async function doSync(manual, analyzedData) {
+  // Serialize one indicator-matcher result into the shape /api/extension-sync
+  // expects. Pulls only stable fields; Date → 'YYYY-MM-DD' so the JSONB
+  // column doesn't get ad-hoc ISO timestamps.
+  function serializeIndicator(r) {
+    if (!r || !r.rule) return null;
+    const isoDate = (d) => (d instanceof Date && !isNaN(d) ? toLocalIso(d) : null);
+    return {
+      rule_id: r.rule.id,
+      rule_name: r.rule.name ?? null,
+      rule_category: r.rule.category ?? null,
+      state: r.status, // 'completed' | 'overdue' | 'partial' | 'not_done'
+      is_overdue: !!r.isOverdue,
+      completed_count: r.requiredActions?.filter((a) => a.isCompleted).length ?? 0,
+      total_count: r.requiredActions?.filter((a) => !a.isRecommendedReferral).length ?? 0,
+      last_date: isoDate(r.lastDate),
+      next_date: isoDate(r.nextDate),
+      frequency_months: typeof r.rule.frequency === 'number' ? r.rule.frequency : null,
+      // Strip non-serializable fields from required_actions (Dates etc).
+      required_actions: (r.requiredActions ?? []).map((a) => ({
+        code: a.code,
+        name: a.name,
+        isCompleted: !!a.isCompleted,
+        date: a.date ? (typeof a.date === 'string' ? a.date : isoDate(new Date(a.date))) : null,
+        daysAgo: a.daysAgo ?? null,
+        isExpired: !!a.isExpired,
+        isOrLogic: !!a.isOrLogic,
+        isConditional: !!a.isConditional,
+        isEpisode: !!a.isEpisode,
+        isEncounterAction: !!a.isEncounterAction,
+        isRecommendedReferral: !!a.isRecommendedReferral,
+      })),
+      details: Array.isArray(r.details) ? r.details : [],
+    };
+  }
+
+  async function doSync(manual, analyzedData, analyzedResults) {
     if (!isConfigured()) return renderUnconfigured();
     let medicsId = STATE.currentMedicsId;
     if (!medicsId) {
@@ -1020,6 +1122,16 @@
     if (diagnosesDetail) payload.diagnoses_detail = diagnosesDetail;
     if (fluoro) payload.fluoro = fluoro;
 
+    // Indicator analysis snapshot — sending the array (even empty) makes
+    // the server replace the patient's stored results. We send ONLY when
+    // we actually have matcher output, so a sync triggered without an
+    // analysis (e.g. just a manual ПІБ change) doesn't wipe history.
+    if (Array.isArray(analyzedResults) && analyzedResults.length > 0) {
+      payload.indicators = analyzedResults
+        .map(serializeIndicator)
+        .filter(Boolean);
+    }
+
     // АДП-М: send the latest valid record (status 'Виконана') if parsed.
     // Backend dedupes on (patient_id + date).
     const adpmFull = analyzedData?.patient?.lastAdpM;
@@ -1064,7 +1176,7 @@
       hideOverlay();
       revealSection();
       try {
-        doSync(false, collectedData).catch((e) => console.error('[TB Module] auto-sync:', e));
+        doSync(false, collectedData, results).catch((e) => console.error('[TB Module] auto-sync:', e));
       } catch (e) {
         console.error('[TB Module] auto-sync error:', e);
       }

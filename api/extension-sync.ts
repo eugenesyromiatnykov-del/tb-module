@@ -80,7 +80,8 @@ export default async function handler(req: Req, res: Res) {
         medical_risk_groups, social_risk_groups,
         last_fluoro_date, next_planned_date, last_result_code,
         last_adpm_date, next_adpm_date,
-        adpm_contraindication, adpm_refused
+        adpm_contraindication, adpm_refused,
+        last_indicators_synced_at
       `)
       .eq('medics_id', medics)
       .maybeSingle();
@@ -92,7 +93,18 @@ export default async function handler(req: Req, res: Res) {
       res.status(200).json({ found: false });
       return;
     }
-    res.status(200).json({ found: true, patient: data });
+    // Pull cached indicator results so the extension can render the prior
+    // analysis instantly on med-card open (before/instead of re-running).
+    const { data: indicators } = await supabase
+      .from('indicator_results')
+      .select(`
+        rule_id, rule_name, rule_category, state, is_overdue,
+        completed_count, total_count, last_date, next_date,
+        frequency_months, required_actions, details, analyzed_at
+      `)
+      .eq('patient_id', data.id as string)
+      .order('rule_id');
+    res.status(200).json({ found: true, patient: data, indicators: indicators ?? [] });
     return;
   }
 
@@ -125,6 +137,24 @@ export default async function handler(req: Req, res: Res) {
         lot_number?: string | null;
         notes?: string | null;
       };
+      // Full per-rule snapshot from indicator-matcher. Sending an array
+      // (even empty) makes this client authoritative — the server replaces
+      // the patient's entire indicator_results set. Sending undefined
+      // leaves whatever was stored untouched.
+      indicators?: Array<{
+        rule_id: string;
+        rule_name?: string | null;
+        rule_category?: string | null;
+        state: 'completed' | 'overdue' | 'partial' | 'not_done';
+        is_overdue?: boolean;
+        completed_count?: number;
+        total_count?: number;
+        last_date?: string | null;     // ISO 'YYYY-MM-DD'
+        next_date?: string | null;
+        frequency_months?: number | null;
+        required_actions?: unknown[];
+        details?: unknown[];
+      }>;
     };
 
     if (!body.medics_id) {
@@ -296,7 +326,62 @@ export default async function handler(req: Req, res: Res) {
       }
     }
 
-    res.status(200).json({ ok: true, patient_id: patientId, created: !existing, fluoroAdded, adpmAdded });
+    // ── Indicator results snapshot ──────────────────────────────────────
+    // Replace-all semantics: extension is authoritative for what rules apply.
+    // If the patient ages out of "preventive-exam-40-64" into "preventive-
+    // exam-65-plus", the old row should disappear so reports don't show
+    // a stale "applies but not_done" forever.
+    let indicatorsSaved = 0;
+    if (Array.isArray(body.indicators)) {
+      const now = new Date().toISOString();
+      // Wipe + bulk-insert is simpler and atomic enough — only one
+      // extension runs per patient at a time.
+      const { error: delErr } = await supabase
+        .from('indicator_results')
+        .delete()
+        .eq('patient_id', patientId);
+      if (delErr) {
+        res.status(500).json({ error: `indicators clear: ${delErr.message}` });
+        return;
+      }
+      if (body.indicators.length > 0) {
+        const rows = body.indicators.map((ind) => ({
+          patient_id: patientId,
+          rule_id: ind.rule_id,
+          rule_name: ind.rule_name ?? null,
+          rule_category: ind.rule_category ?? null,
+          state: ind.state,
+          is_overdue: ind.is_overdue ?? (ind.state === 'overdue'),
+          completed_count: ind.completed_count ?? 0,
+          total_count: ind.total_count ?? 0,
+          last_date: ind.last_date ?? null,
+          next_date: ind.next_date ?? null,
+          frequency_months: ind.frequency_months ?? null,
+          required_actions: Array.isArray(ind.required_actions) ? ind.required_actions : [],
+          details: Array.isArray(ind.details) ? ind.details : [],
+          analyzed_at: now,
+        }));
+        const { error: insErr } = await supabase.from('indicator_results').insert(rows);
+        if (insErr) {
+          res.status(500).json({ error: `indicators insert: ${insErr.message}` });
+          return;
+        }
+        indicatorsSaved = rows.length;
+      }
+      await supabase
+        .from('patients')
+        .update({ last_indicators_synced_at: now })
+        .eq('id', patientId);
+    }
+
+    res.status(200).json({
+      ok: true,
+      patient_id: patientId,
+      created: !existing,
+      fluoroAdded,
+      adpmAdded,
+      indicatorsSaved,
+    });
     return;
   }
 

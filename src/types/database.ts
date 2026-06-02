@@ -47,6 +47,7 @@ export type Patient = {
   diagnoses_codes: string[];
   diagnoses_detail: DiagnosisDetail[];
   diagnoses_synced_at: string | null;
+  last_indicators_synced_at: string | null;
 
   notes: string | null;
   archived: boolean;
@@ -175,6 +176,50 @@ export type Questionnaire = {
   result: QuestionnaireResult;
   filled_by: string | null;
   notes: string | null;
+};
+
+// ─── Indicator analysis (МІС extension → indicator_results table) ──────────
+
+export type IndicatorState = 'completed' | 'overdue' | 'partial' | 'not_done';
+
+export type IndicatorRequiredAction = {
+  code: string;
+  name: string;
+  isCompleted: boolean;
+  date: string | null;          // ISO 'YYYY-MM-DD'
+  daysAgo: number | null;
+  isExpired?: boolean;
+  isOrLogic?: boolean;
+  isConditional?: boolean;
+  isEpisode?: boolean;
+  isEncounterAction?: boolean;
+  isRecommendedReferral?: boolean;
+};
+
+export type IndicatorResult = {
+  id: string;
+  patient_id: string;
+  rule_id: string;              // stable id from extension's indicators-rules.js
+  rule_name: string | null;     // cached human name (e.g. "Скринінг туберкульозу")
+  rule_category: string | null; // "Профілактика" | "Моніторинг" | …
+  state: IndicatorState;
+  is_overdue: boolean;
+  completed_count: number;
+  total_count: number;
+  last_date: string | null;
+  next_date: string | null;
+  frequency_months: number | null;
+  required_actions: IndicatorRequiredAction[];
+  details: string[];
+  analyzed_at: string;
+  created_at: string;
+};
+
+export const INDICATOR_STATE_LABELS: Record<IndicatorState, string> = {
+  completed: 'Виконано',
+  overdue: 'Прострочено',
+  partial: 'Частково',
+  not_done: 'Не виконано',
 };
 
 export type QuantiferonResultCode = 'positive' | 'negative' | 'indeterminate' | 'unknown';
