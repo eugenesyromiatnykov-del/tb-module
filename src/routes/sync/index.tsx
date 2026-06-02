@@ -11,7 +11,7 @@ import { LOCATION_LABELS, type LocationId } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 type JobScope = 'location' | 'subset' | 'all';
-type JobStatus = 'queued' | 'running' | 'paused' | 'stopped' | 'done' | 'error';
+type JobStatus = 'queued' | 'running' | 'paused' | 'stopped' | 'cancelled' | 'done' | 'error';
 
 export type SyncJob = {
   id: string;
@@ -59,6 +59,12 @@ async function resumeJob(jobId: string) {
     json: { action: 'resume', job_id: jobId },
   });
 }
+async function cancelJob(jobId: string) {
+  return apiFetch<{ job: SyncJob }>(`/api/patients?mode=sync_job`, {
+    method: 'POST',
+    json: { action: 'cancel', job_id: jobId },
+  });
+}
 
 export function SyncPage() {
   const { data, isLoading } = useActiveSyncJob();
@@ -102,6 +108,15 @@ export function SyncPage() {
       refreshNow();
     } finally { setBusy(false); }
   };
+  const onCancel = async () => {
+    if (!job) return;
+    if (!confirm('Повністю скасувати завдання? Прогрес зникне, поточну чергу не вдасться продовжити.')) return;
+    setBusy(true);
+    try {
+      await cancelJob(job.id);
+      refreshNow();
+    } finally { setBusy(false); }
+  };
 
   return (
     <div>
@@ -124,7 +139,7 @@ export function SyncPage() {
           onStart={onStart}
         />
       ) : (
-        <ActiveJobCard job={job} busy={busy} onStop={onStop} onResume={onResume} />
+        <ActiveJobCard job={job} busy={busy} onStop={onStop} onResume={onResume} onCancel={onCancel} />
       )}
 
       <Card className="mt-4">
@@ -195,12 +210,13 @@ function StartCard({
 }
 
 function ActiveJobCard({
-  job, busy, onStop, onResume,
+  job, busy, onStop, onResume, onCancel,
 }: {
   job: SyncJob;
   busy: boolean;
   onStop: () => void;
   onResume: () => void;
+  onCancel: () => void;
 }) {
   const total = job.queue.length;
   const done = job.cursor;
@@ -216,16 +232,24 @@ function ActiveJobCard({
             Активне завдання · <StatusPill status={job.status} />
           </CardTitle>
           <div className="flex gap-2">
-            {job.status === 'running' || job.status === 'paused' || job.status === 'queued' ? (
+            {(job.status === 'running' || job.status === 'paused' || job.status === 'queued') && (
               <Button variant="secondary" onClick={onStop} disabled={busy}>
                 <Square className="h-4 w-4" /> Зупинити
               </Button>
-            ) : null}
-            {job.status === 'stopped' ? (
+            )}
+            {job.status === 'stopped' && (
               <Button onClick={onResume} disabled={busy}>
                 <Play className="h-4 w-4" /> Продовжити
               </Button>
-            ) : null}
+            )}
+            <Button
+              variant="secondary"
+              onClick={onCancel}
+              disabled={busy}
+              className="!border-red-200 !bg-red-50 !text-red-700 hover:!bg-red-100"
+            >
+              <Trash2 className="h-4 w-4" /> Скасувати
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -291,12 +315,13 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function StatusPill({ status }: { status: JobStatus }) {
   const map: Record<JobStatus, { label: string; cls: string }> = {
-    queued:  { label: 'у черзі',     cls: 'bg-slate-100 text-slate-700' },
-    running: { label: 'виконується', cls: 'bg-blue-100 text-blue-800' },
-    paused:  { label: 'призупинено', cls: 'bg-amber-100 text-amber-800' },
-    stopped: { label: 'зупинено',    cls: 'bg-orange-100 text-orange-800' },
-    done:    { label: 'завершено',   cls: 'bg-green-100 text-green-800' },
-    error:   { label: 'помилка',     cls: 'bg-red-100 text-red-800' },
+    queued:    { label: 'у черзі',     cls: 'bg-slate-100 text-slate-700' },
+    running:   { label: 'виконується', cls: 'bg-blue-100 text-blue-800' },
+    paused:    { label: 'призупинено', cls: 'bg-amber-100 text-amber-800' },
+    stopped:   { label: 'зупинено',    cls: 'bg-orange-100 text-orange-800' },
+    cancelled: { label: 'скасовано',   cls: 'bg-red-100 text-red-800' },
+    done:      { label: 'завершено',   cls: 'bg-green-100 text-green-800' },
+    error:     { label: 'помилка',     cls: 'bg-red-100 text-red-800' },
   };
   const m = map[status];
   return (
@@ -377,4 +402,4 @@ function useStaleness(job: SyncJob): string | null {
   return '> 5 хв';
 }
 
-void Trash2; void Pause; // reserved for later (cancel/pause UI)
+void Pause; // reserved for later (pause UI — currently we only stop)

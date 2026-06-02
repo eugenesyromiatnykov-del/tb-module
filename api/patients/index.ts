@@ -728,5 +728,24 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     return;
   }
 
+  if (action === 'cancel') {
+    // Hard-discard: terminal state, frees the slot so a new job can start.
+    // Lets the doctor abandon e.g. an unfinished Залужжя and immediately
+    // queue Білогір'я.
+    const { data, error } = await supabase
+      .from('sync_jobs')
+      .update({
+        status: 'cancelled',
+        finished_at: new Date().toISOString(),
+        current_medics_id: null,
+      })
+      .eq('id', jobId)
+      .select('*')
+      .maybeSingle();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json({ job: data });
+    return;
+  }
+
   res.status(400).json({ error: `Unknown action: ${action}` });
 }
