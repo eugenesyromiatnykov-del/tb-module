@@ -229,15 +229,24 @@
   }
 
   // SW poke channel — fires poll() on demand, ignoring whatever throttled
-  // setTimeout was due to fire.
+  // setTimeout was due to fire. Two listening paths because Chrome's tab
+  // freeze can drop runtime messages while still delivering DOM events:
+  //   1. chrome.runtime message (`tb-poke-poll`) — works in most states
+  //   2. window CustomEvent (`tb-batch-wake`) dispatched by SW via
+  //      chrome.scripting.executeScript with world: 'MAIN' — bypasses
+  //      runtime-channel throttling, works on frozen pages.
   try {
     chrome.runtime.onMessage.addListener((msg) => {
       if (msg && msg.type === 'tb-poke-poll') {
-        console.log('[TB Batch] SW poke received, polling now');
+        console.log('[TB Batch] SW poke (message) received, polling now');
         poll();
       }
     });
   } catch (_) { /* not in extension context */ }
+  window.addEventListener('tb-batch-wake', () => {
+    console.log('[TB Batch] SW poke (event) received, polling now');
+    poll();
+  });
 
   const DISPATCH_LOCK_KEY = 'tb-batch-dispatched';
   const DISPATCH_LOCK_TTL_MS = 60_000; // give the medcard tab a minute to sync; stale lock recovers fast

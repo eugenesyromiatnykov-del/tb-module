@@ -89,16 +89,47 @@ async function checkAndEnsureTab() {
   const tabs = await chrome.tabs.query({ url: 'https://medics.ua/*' });
   if (tabs.length === 0) {
     console.log(`[TB SW] active job ${job.id}: opening journal in background tab`);
-    await chrome.tabs.create({ url: JOURNAL_URL, active: false });
+    const tab = await chrome.tabs.create({ url: JOURNAL_URL, active: false });
+    // Once the tab finishes loading, wake it up immediately rather than
+    // waiting for the next 30 s alarm — otherwise it might already be
+    // throttled by then.
+    if (tab.id != null) {
+      const onUpdated = (id, info) => {
+        if (id !== tab.id || info.status !== 'complete') return;
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        // Tiny delay so document_idle content scripts finish loading first.
+        setTimeout(() => wakeTab(tab.id), 1500);
+      };
+      chrome.tabs.onUpdated.addListener(onUpdated);
+    }
     return;
   }
   console.log(`[TB SW] active job ${job.id}: medics.ua tab already open (${tabs.length}), poking content scripts`);
-  // Background-tab setTimeout is throttled — extension messaging isn't. Wake
-  // the content scripts so they poll right now regardless of their own
-  // delayed timer.
   for (const t of tabs) {
-    if (t.id != null) {
-      chrome.tabs.sendMessage(t.id, { type: 'tb-poke-poll' }).catch(() => { /* tab might have unloaded mid-message */ });
-    }
+    if (t.id != null) wakeTab(t.id);
+  }
+}
+
+// Background tabs get aggressively throttled — setTimeout in the content
+// script may stall, and chrome.tabs.sendMessage isn't always delivered when
+// the page is in the "frozen" lifecycle state. chrome.scripting.executeScript
+// reliably runs code in any tab regardless of throttling state, so we use it
+// as the primary wake mechanism, with sendMessage as a fallback.
+async function wakeTab(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: () => {
+        // Dispatch a custom event the content script listens for. Runs in
+        // the page's own world so the dispatch reaches isolated-world
+        // listeners via the event loop.
+        window.dispatchEvent(new CustomEvent('tb-batch-wake'));
+      },
+    });
+  } catch (e) {
+    // Fallback to message channel.
+    try { await chrome.tabs.sendMessage(tabId, { type: 'tb-poke-poll' }); } catch (_) {}
+    console.warn('[TB SW] executeScript wake failed, fell back to sendMessage:', e?.message);
   }
 }
