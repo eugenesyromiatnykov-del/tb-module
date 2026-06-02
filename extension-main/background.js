@@ -14,6 +14,13 @@ const POLL_ALARM = 'tb-sync-poll';
 const POLL_PERIOD_MIN = 0.5; // 30 seconds (Chrome's minimum for unpacked is 30s)
 const JOURNAL_URL = 'https://medics.ua/doctors/journal';
 
+// Track the doctor's "real" active tab (not one of our medics.ua workers) so
+// we can restore focus whenever MIS spawns a med-card tab and yanks the
+// foreground away. Without this, every patient interrupts whatever else the
+// doctor is doing — even other apps lose focus.
+let preferredTabId = null;
+const recentMedicsTabs = new Map(); // tabId → createdAt — tabs we should snap focus away from
+
 function ensureAlarm() {
   chrome.alarms.get(POLL_ALARM, (existing) => {
     if (existing) return;
@@ -24,15 +31,66 @@ function ensureAlarm() {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[TB SW] installed');
   ensureAlarm();
+  rememberPreferredTab();
   checkAndEnsureTab().catch((e) => console.warn('[TB SW] initial check failed', e));
 });
 chrome.runtime.onStartup.addListener(() => {
   console.log('[TB SW] startup');
   ensureAlarm();
+  rememberPreferredTab();
 });
+
+async function rememberPreferredTab() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab && tab.id != null && !(tab.url?.startsWith('https://medics.ua'))) {
+      preferredTabId = tab.id;
+    }
+  } catch (_) { /* no active tab */ }
+}
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== POLL_ALARM) return;
   checkAndEnsureTab().catch((e) => console.warn('[TB SW] poll failed', e));
+});
+
+// Track non-medics.ua active tab as the "preferred" target to restore focus to.
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    const isMedics = tab.url?.startsWith('https://medics.ua') || tab.pendingUrl?.startsWith('https://medics.ua');
+    if (!isMedics) {
+      preferredTabId = tabId;
+      return;
+    }
+    // Snap focus away if this medics.ua tab was created by MIS auto-spawn
+    // (window.open from a script-driven click) AND there's an active batch.
+    const created = recentMedicsTabs.get(tabId);
+    if (!created || Date.now() - created > 8000) return;
+    const job = await getActiveJob();
+    if (!job || (job.status !== 'running' && job.status !== 'queued')) return;
+    if (preferredTabId == null || preferredTabId === tabId) return;
+    try {
+      await chrome.tabs.update(preferredTabId, { active: true });
+      console.log('[TB SW] focus snapped back from medcard tab', tabId, '→', preferredTabId);
+    } catch (e) {
+      // preferred tab might've been closed.
+      preferredTabId = null;
+    }
+  } catch (_) { /* tab might have been closed already */ }
+});
+
+// Note every new medics.ua tab — those born during a batch are the ones that
+// would otherwise yank focus from the doctor's other work.
+chrome.tabs.onCreated.addListener((tab) => {
+  const url = tab.url || tab.pendingUrl || '';
+  if (!url.startsWith('https://medics.ua')) return;
+  if (tab.id == null) return;
+  recentMedicsTabs.set(tab.id, Date.now());
+  setTimeout(() => recentMedicsTabs.delete(tab.id), 15_000);
+});
+chrome.tabs.onRemoved.addListener((tabId) => {
+  recentMedicsTabs.delete(tabId);
+  if (preferredTabId === tabId) preferredTabId = null;
 });
 
 // Allow the options page / content script to trigger an immediate check
