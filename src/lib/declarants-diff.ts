@@ -47,14 +47,20 @@ export function computeDiff(
     let medicsIdChanged = false;
 
     if (!cur || claimedIds.has(cur.id)) {
-      // Fall back: same person (matching ПІБ + ДН) whose medics_id changed
-      // in МІС — file wins, rewrite our row to the new ID. Same key
-      // collision is handled by claimedIds so two file rows can't
+      // Fall back to ПІБ + ДН match. Two scenarios this catches:
+      //   1. medics_id stayed the same but byMedics missed (stale fetch,
+      //      whitespace, etc.) — we'd otherwise have generated a bogus add
+      //      that crashes the INSERT on unique constraint.
+      //   2. medics_id actually changed in МІС — file wins, generate update
+      //      that rewrites medics_id along with whatever else differs.
+      // Same key collision is handled by claimedIds so two file rows can't
       // both claim the same DB row.
       const byNd = byNameDob.get(nameDobKey(row));
-      if (byNd && !claimedIds.has(byNd.id) && byNd.medics_id !== row.medics_id) {
+      if (byNd && !claimedIds.has(byNd.id)) {
         cur = byNd;
-        medicsIdChanged = true;
+        if (byNd.medics_id !== row.medics_id) {
+          medicsIdChanged = true;
+        }
       } else if (cur && claimedIds.has(cur.id)) {
         cur = null;
       }

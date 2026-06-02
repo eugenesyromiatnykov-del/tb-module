@@ -54,8 +54,34 @@ export default async function handler(req: Req, res: Res) {
   // surname+first+birth → assign medics_id, switch to risk, update fields).
   let added = 0;
   let promoted = 0;
+  let recoveredFromCollision = 0; // adds that turned into updates after server-side recheck
   const insertConflicts: Array<{ medics_id: string; surname: string; first_name: string; reason: string }> = [];
+  // Collect rows that need a regular UPDATE (medics_id already in DB after all).
+  const adoptedUpdates: { id: string; patch: Partial<IncomingPatient> }[] = [];
+
   if (body.add.length > 0) {
+    // Pre-flight: server-side check whether the file's medics_id is actually
+    // already in DB (frontend diff might be stale, or row was missed at fetch
+    // time — see the 302-collision incident). Anything that's already there
+    // gets routed to update path instead of insert.
+    const incomingMedicsIds = body.add.map((p) => p.medics_id).filter(Boolean);
+    const collidingByMedics = new Map<string, { id: string; medics_id: string; archived: boolean | null }>();
+    const MEDICS_LOOKUP_CHUNK = 500; // keep URL length sane
+    for (let i = 0; i < incomingMedicsIds.length; i += MEDICS_LOOKUP_CHUNK) {
+      const slice = incomingMedicsIds.slice(i, i + MEDICS_LOOKUP_CHUNK);
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id, medics_id, archived')
+        .in('medics_id', slice);
+      if (error) {
+        res.status(500).json({ error: `precheck medics_id: ${error.message}` });
+        return;
+      }
+      for (const r of data ?? []) {
+        if (r.medics_id) collidingByMedics.set(r.medics_id as string, r as { id: string; medics_id: string; archived: boolean | null });
+      }
+    }
+
     // Pull all non-declarant patients (medics_id IS NULL) so we can match by ПІБ+ДН.
     const { data: candidates, error: candErr } = await supabase
       .from('patients')
@@ -76,6 +102,25 @@ export default async function handler(req: Req, res: Res) {
     const trulyNew: typeof body.add = [];
     const toPromote: { id: string; row: typeof body.add[number] }[] = [];
     for (const p of body.add) {
+      // 1. medics_id already exists in DB → fold into UPDATE
+      const collided = collidingByMedics.get(p.medics_id);
+      if (collided) {
+        const patch: Partial<IncomingPatient> = {
+          surname: p.surname,
+          first_name: p.first_name,
+          patronymic: p.patronymic,
+          birth_date: p.birth_date,
+          gender: p.gender,
+          phone: p.phone,
+          address: p.address,
+          location_id: p.location_id,
+        };
+        // Resurrect archived row when we re-claim it from the file.
+        adoptedUpdates.push({ id: collided.id, patch });
+        recoveredFromCollision += 1;
+        continue;
+      }
+      // 2. ПІБ + ДН matches a no-medics_id row → promote
       const k = `${norm(p.surname)}|${norm(p.first_name)}|${p.birth_date}`;
       const existingId = byKey.get(k);
       if (existingId) toPromote.push({ id: existingId, row: p });
@@ -180,11 +225,14 @@ export default async function handler(req: Req, res: Res) {
   // fire them in parallel chunks. Sequentially this was ~100ms × 1200+
   // rows ≈ 2 minutes (and risks hitting Vercel's serverless timeout).
   // 25-concurrent ≈ 50 round-trips × 100ms ≈ 5 s.
+  // Also pulls in adoptedUpdates from the pre-flight medics_id collision
+  // recovery above.
+  const allUpdates = [...body.update, ...adoptedUpdates];
   let updated = 0;
   const updateFailures: Array<{ id: string; medics_id?: string; reason: string }> = [];
   const UPDATE_CONCURRENCY = 25;
-  for (let i = 0; i < body.update.length; i += UPDATE_CONCURRENCY) {
-    const slice = body.update.slice(i, i + UPDATE_CONCURRENCY);
+  for (let i = 0; i < allUpdates.length; i += UPDATE_CONCURRENCY) {
+    const slice = allUpdates.slice(i, i + UPDATE_CONCURRENCY);
     const results = await Promise.all(
       slice.map(async (u) => {
         if (!u.id) return { ok: true, u, error: null as null | { message: string } };
@@ -243,6 +291,7 @@ export default async function handler(req: Req, res: Res) {
     updated,
     archived,
     promoted,
+    recoveredFromCollision,
     failures: {
       insert: insertConflicts,
       update: updateFailures,
