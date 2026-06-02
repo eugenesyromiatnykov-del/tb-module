@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
 import { SyncFreshness } from '@/components/SyncFreshness';
 import { SyncCell } from '@/components/SyncCell';
+import { SyncFilteredButton } from '@/components/SyncFilteredButton';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -191,9 +192,12 @@ export function VaccinationsPage() {
             : `Знайдено: ${patients.length}${isFetching && !isLoading ? ' · оновлення…' : ''}`
         }
         actions={
-          <Button onClick={onExport} disabled={patients.length === 0} variant="secondary">
-            <Download className="h-4 w-4" /> Експортувати XLSX
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <SyncFilteredButton patients={patients} />
+            <Button onClick={onExport} disabled={patients.length === 0} variant="secondary">
+              <Download className="h-4 w-4" /> Експортувати XLSX
+            </Button>
+          </div>
         }
       />
 

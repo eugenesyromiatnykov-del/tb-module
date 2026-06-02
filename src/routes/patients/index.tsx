@@ -25,6 +25,7 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
 import { SyncFreshness } from '@/components/SyncFreshness';
 import { SyncCell } from '@/components/SyncCell';
+import { SyncFilteredButton } from '@/components/SyncFilteredButton';
 import { exportPatientsXlsx, exportReportXlsx } from '@/lib/xlsx-export';
 import { calcAge, formatDateUk, fluoroBucket, daysSince } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -247,7 +248,8 @@ export function PatientsPage() {
             : `Знайдено: ${patients.length}${isFetching && !isLoading ? ' · оновлення…' : ''}`
         }
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <SyncFilteredButton patients={patients} />
             <Button
               onClick={onExportReport}
               disabled={patients.length === 0 || reportLoading}

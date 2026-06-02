@@ -60,15 +60,17 @@ export async function parseDeclarantsXlsx(
   const iDept = idx('Відділення');
 
   const warnings: string[] = [];
+  // Required minimum — Стать / phone / address / city are accepted but optional,
+  // so an "export from МІС" with just identity columns still works for the
+  // regular declarant refresh.
   const required = [
     ['Medics ID', iMedics],
     ['Прізвище', iSurname],
     ["Ім'я", iFirst],
-    ['Стать', iGender],
     ['Дата народження', iBirth],
   ] as const;
   for (const [name, i] of required) {
-    if (i < 0) warnings.push(`Не знайдено колонку "${name}"`);
+    if (i < 0) warnings.push(`Не знайдено обовʼязкову колонку "${name}"`);
   }
   if (warnings.length > 0) return { rows: [], totalInFile: 0, warnings, byLocation: { ...empty } };
 
