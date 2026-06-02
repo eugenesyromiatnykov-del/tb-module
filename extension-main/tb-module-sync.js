@@ -545,47 +545,67 @@
     const s = document.createElement('style');
     s.id = 'tb-module-styles';
     s.textContent = `
-      /* Hide noise we don't need anymore */
-      #mi-completion-bar { display: none !important; }
-      .mi-summary-sticky, .mi-tiles, .mi-legend { display: none !important; }
+      /* v5.0.0: hide deprecated noise sections */
+      #mi-completion-bar,
+      #mi-progress-container,
+      .mi-summary-sticky, .mi-tiles, .mi-legend,
       #mi-instruction { display: none !important; }
 
       /* Inline gender picker in patient banner */
       .tb-gender-inline { display: inline-flex !important; gap: 4px !important; margin-left: 6px !important; vertical-align: middle !important; }
       .tb-gender-inline button {
         background: transparent !important; border: 1px solid #cbd5e1 !important;
-        border-radius: 6px !important; padding: 2px 6px !important;
-        font-size: 12px !important; line-height: 1 !important; cursor: pointer !important;
+        border-radius: 5px !important; padding: 1px 6px !important;
+        font-size: 11px !important; line-height: 1 !important; cursor: pointer !important;
         font-family: inherit !important; color: #475569 !important;
       }
       .tb-gender-inline button.is-active { background: #0284c7 !important; border-color: #0284c7 !important; color: #fff !important; }
       .tb-gender-inline button.is-active-f { background: #db2777 !important; border-color: #db2777 !important; color: #fff !important; }
       .tb-gender-inline button:hover { background: #f1f5f9 !important; }
 
-      .tb-section { margin:0 0 0.85em 0!important; padding:0.75em 0.9em!important; background:#fff!important; border:1px solid #e2e8f0!important; border-radius:12px!important; font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important; font-size:0.92em!important; color:#0f172a!important; box-sizing:border-box!important; }
-      .tb-section--ok{border-color:#86efac!important;background:#f0fdf4!important}
-      .tb-section--warn{border-color:#fbbf24!important;background:#fffbeb!important}
-      .tb-section--err{border-color:#fca5a5!important;background:#fef2f2!important}
-      .tb-section--info{border-color:#93c5fd!important;background:#eff6ff!important}
-      .tb-section--neutral{border-color:#e2e8f0!important;background:#f8fafc!important}
-      .tb-section__head{display:flex!important;align-items:center!important;gap:8px!important;margin-bottom:8px!important}
-      .tb-section__title{font-weight:600!important;font-size:13px!important;color:#0f172a!important;margin:0!important}
-      .tb-section__dot{width:8px!important;height:8px!important;border-radius:50%!important;display:inline-block!important;flex-shrink:0!important}
-      .tb-section__body{line-height:1.5!important}
-      .tb-section__row{display:flex!important;justify-content:space-between!important;gap:10px!important;padding:2px 0!important;color:#475569!important;font-size:12px!important}
-      .tb-section__row strong{color:#0f172a!important;font-weight:600!important}
-      .tb-section__status{display:inline-block!important;padding:2px 8px!important;border-radius:999px!important;font-size:11px!important;font-weight:500!important;margin-left:4px!important}
-      .tb-section__actions{margin-top:10px!important;display:flex!important;gap:6px!important;flex-wrap:wrap!important}
-      .tb-btn{background:#2563eb!important;color:#fff!important;border:0!important;border-radius:6px!important;padding:6px 12px!important;font-size:12px!important;font-weight:500!important;cursor:pointer!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;gap:4px!important;font-family:inherit!important}
-      .tb-btn:hover{background:#1d4ed8!important}
+      /* ── TB section: compact, glanceable ────────────────────────────── */
+      .tb-section{
+        margin:0 0 12px 0!important;padding:10px 12px!important;background:#fff!important;
+        border:1px solid #e2e8f0!important;border-left:3px solid #cbd5e1!important;
+        border-radius:8px!important;
+        font-family:-apple-system,"Segoe UI",Roboto,sans-serif!important;
+        font-size:13px!important;color:#0f172a!important;box-sizing:border-box!important;
+      }
+      .tb-section--ok      { border-left-color:#10b981!important }
+      .tb-section--warn    { border-left-color:#f59e0b!important }
+      .tb-section--err     { border-left-color:#ef4444!important;background:#fef2f2!important }
+      .tb-section--info    { border-left-color:#3b82f6!important }
+      .tb-section--neutral { border-left-color:#cbd5e1!important }
+
+      .tb-head{display:flex!important;align-items:center!important;gap:8px!important;margin-bottom:8px!important;font-size:12px!important}
+      .tb-head__spacer{flex:1!important}
+      .tb-head__meta{color:#94a3b8!important;font-size:11px!important}
+      .tb-head__link{color:#64748b!important;text-decoration:none!important;padding:2px 6px!important;border-radius:5px!important;font-size:12px!important;line-height:1!important}
+      .tb-head__link:hover{background:#f1f5f9!important;color:#0f172a!important}
+      .tb-status-pill{display:inline-flex!important;align-items:center!important;padding:2px 9px!important;border-radius:999px!important;font-size:11px!important;font-weight:600!important;letter-spacing:0.2px!important}
+
+      .tb-tiles{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
+      .tb-tile{padding:8px 10px!important;background:#f8fafc!important;border:1px solid #e2e8f0!important;border-radius:7px!important;min-width:0!important}
+      .tb-tile__label{font-size:10px!important;font-weight:700!important;color:#64748b!important;text-transform:uppercase!important;letter-spacing:0.5px!important;margin-bottom:3px!important}
+      .tb-tile__date{font-size:15px!important;font-weight:600!important;color:#0f172a!important;line-height:1.15!important;margin-bottom:3px!important}
+      .tb-tile__state{font-size:11px!important;font-weight:500!important;display:flex!important;align-items:center!important;gap:5px!important}
+      .tb-tile__dot{width:6px!important;height:6px!important;border-radius:50%!important;display:inline-block!important;flex-shrink:0!important}
+
+      /* Generic buttons reused by sub-views (rare but kept for emptyState etc.) */
+      .tb-btn{background:#0f172a!important;color:#fff!important;border:0!important;border-radius:6px!important;padding:6px 12px!important;font-size:12px!important;font-weight:500!important;cursor:pointer!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;gap:4px!important;font-family:inherit!important}
+      .tb-btn:hover{background:#1e293b!important}
       .tb-btn--ghost{background:#fff!important;color:#0f172a!important;border:1px solid #cbd5e1!important}
       .tb-btn--ghost:hover{background:#f1f5f9!important}
       .tb-btn:disabled{opacity:0.5!important;cursor:not-allowed!important}
       .tb-input{font-family:inherit!important;padding:6px 10px!important;font-size:12px!important;border:1px solid #cbd5e1!important;border-radius:6px!important;flex:1!important;min-width:0!important;box-sizing:border-box!important}
       .tb-input:focus{outline:2px solid #2563eb!important;outline-offset:-1px!important;border-color:transparent!important}
+      .tb-section__row{display:flex!important;justify-content:space-between!important;gap:10px!important;padding:2px 0!important;color:#475569!important;font-size:12px!important}
+      .tb-section__row strong{color:#0f172a!important;font-weight:600!important}
+      .tb-section__title{font-weight:600!important;font-size:13px!important;color:#0f172a!important;margin:0!important}
       .tb-section__hint{font-size:11px!important;color:#64748b!important;margin-top:4px!important}
       .tb-section__name{font-weight:600!important;font-size:14px!important;color:#0f172a!important;margin:0 0 2px!important}
       .tb-section__meta{font-size:11px!important;color:#64748b!important;margin-bottom:8px!important}
+      .tb-section__actions{margin-top:8px!important;display:flex!important;gap:6px!important;flex-wrap:wrap!important}
       .tb-section__groups{display:flex!important;flex-wrap:wrap!important;gap:4px!important;margin-top:6px!important}
       .tb-section__group{background:#f1f5f9!important;border:1px solid #cbd5e1!important;padding:1px 7px!important;border-radius:999px!important;font-size:11px!important;color:#334155!important}
       .tb-section__quote{margin-top:6px!important;padding:8px 10px!important;background:#fff!important;border:1px solid #e2e8f0!important;border-radius:6px!important;font-size:11px!important;color:#475569!important;font-style:italic!important;line-height:1.4!important}
@@ -807,188 +827,127 @@
     document.getElementById('tb-change-medics')?.addEventListener('click', renderNeedMedicsId);
   }
 
-  // Compact "tb-module since" line at the top of the widget — answers
-  // "когда мы в последний раз видели этого пациента в реестре?". Different
-  // from `p.diagnoses_synced_at` because indicator analysis is the slow
-  // expensive part — knowing it's fresh tells the doctor we can trust the
-  // cached state and skip a re-analyze cycle.
-  function lastSyncLine(p) {
-    const ts = p.last_indicators_synced_at;
-    if (!ts) return '';
-    let label;
+  // Relative "X ago" label for analysis freshness.
+  function relativeLabel(ts) {
+    if (!ts) return null;
     try {
       const d = new Date(ts);
       const diff = Date.now() - d.getTime();
       const day = 86400000;
-      if (diff < 60 * 60 * 1000) {
-        label = 'щойно';
-      } else if (diff < day) {
-        label = 'сьогодні';
-      } else if (diff < 2 * day) {
-        label = 'вчора';
-      } else if (diff < 7 * day) {
-        label = `${Math.floor(diff / day)} дн. тому`;
-      } else {
-        label = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+      if (diff < 60 * 60 * 1000) return 'щойно';
+      if (diff < day) return 'сьогодні';
+      if (diff < 2 * day) return 'вчора';
+      if (diff < 7 * day) return `${Math.floor(diff / day)} дн. тому`;
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+    } catch (_) { return null; }
+  }
+
+  // Compute fluoro tile state — { dateLabel, stateLabel, tone }.
+  function computeFluoroTile(p, needsFluoro) {
+    if (p.last_fluoro_date) {
+      const dateLabel = formatDate(p.last_fluoro_date);
+      if (needsFluoro && p.next_planned_date) {
+        const overdueDays = daysSinceIso(p.next_planned_date);
+        if (overdueDays != null && overdueDays > 0) {
+          return { dateLabel, stateLabel: `просрочено ${formatDuration(overdueDays)}`, tone: 'err' };
+        }
       }
-    } catch (_) { label = '—'; }
-    return `
-      <div class="tb-section__row" style="color:#94a3b8;font-size:0.85em;">
-        Останній аналіз: <span style="color:#64748b;">${label}</span>
-      </div>`;
+      return { dateLabel, stateLabel: needsFluoro ? 'у нормі' : '', tone: 'ok' };
+    }
+    if (needsFluoro) return { dateLabel: '—', stateLabel: 'не зроблено', tone: 'err' };
+    return { dateLabel: '—', stateLabel: 'не вносилось', tone: 'mute' };
   }
 
-  // Compact one-pill-per-rule list of cached indicators so the doctor sees
-  // last-known state instantly on med-card open, without waiting for the
-  // analyzer to re-run. State→color: completed green, partial blue,
-  // overdue red, not_done amber. Limited to top 6 by "needs attention"
-  // priority to keep the widget compact.
-  function indicatorsBlock(indicators) {
-    if (!Array.isArray(indicators) || indicators.length === 0) return '';
-    const priority = { overdue: 0, not_done: 1, partial: 2, completed: 3 };
-    const sorted = [...indicators].sort(
-      (a, b) => (priority[a.state] ?? 9) - (priority[b.state] ?? 9),
-    );
-    const COLORS = {
-      completed: { bg: '#d1fae5', fg: '#065f46' },
-      overdue:   { bg: '#fecaca', fg: '#991b1b' },
-      partial:   { bg: '#dbeafe', fg: '#1e40af' },
-      not_done:  { bg: '#fed7aa', fg: '#9a3412' },
+  // Compute АДП-М tile state.
+  function computeAdpmTile(p) {
+    if (p.adpm_contraindication) return { dateLabel: '—', stateLabel: 'протипоказання', tone: 'mute' };
+    if (p.adpm_refused) return { dateLabel: '—', stateLabel: 'відмова', tone: 'mute' };
+    const lastIso = p.last_adpm_date || (STATE.lastAdpM?.date ?? null);
+    if (!lastIso) {
+      return STATE.analyzedOnce
+        ? { dateLabel: '—', stateLabel: 'не внесено', tone: 'err' }
+        : { dateLabel: '—', stateLabel: 'немає даних', tone: 'mute' };
+    }
+    const dateLabel = formatDate(lastIso);
+    const nextIso = p.next_adpm_date || addYearsIso(lastIso, 10);
+    if (nextIso) {
+      const overdueDays = daysSinceIso(nextIso);
+      if (overdueDays != null && overdueDays > 0) {
+        return { dateLabel, stateLabel: `просрочено ${formatDuration(overdueDays)}`, tone: 'err' };
+      }
+      if (overdueDays != null) {
+        const m = nextIso.match(/^(\d{4})-/);
+        if (m && +m[1] === new Date().getFullYear()) {
+          return { dateLabel, stateLabel: 'цьогоріч', tone: 'warn' };
+        }
+      }
+    }
+    return { dateLabel, stateLabel: 'у нормі', tone: 'ok' };
+  }
+
+  // Render one тlefty/right tile for the flu/АДПМ row. Tone palette is
+  // intentionally muted — the colour belongs on the section accent, not
+  // on every inner block.
+  function renderTile(label, tile) {
+    const TONE = {
+      ok:   { fg: '#065f46', dot: '#10b981' },
+      warn: { fg: '#9a3412', dot: '#f59e0b' },
+      err:  { fg: '#991b1b', dot: '#ef4444' },
+      mute: { fg: '#64748b', dot: '#cbd5e1' },
     };
-    const LABEL = { completed: '✓', overdue: '⚠', partial: '½', not_done: '·' };
-    const pills = sorted.slice(0, 8).map((r) => {
-      const c = COLORS[r.state] || { bg: '#f1f5f9', fg: '#334155' };
-      const name = (r.rule_name || r.rule_id).replace(/^Скринінг\s+/i, '').replace(/^Оцінювання\s+/i, '');
-      const counts = r.total_count
-        ? ` ${r.completed_count}/${r.total_count}`
-        : '';
-      const sym = LABEL[r.state] || '?';
-      const title = `${name} · ${r.completed_count}/${r.total_count}${r.last_date ? ' · ост.: ' + r.last_date : ''}`;
-      return `<span title="${title.replace(/"/g, '&quot;')}" style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:999px;background:${c.bg};color:${c.fg};font-size:0.82em;font-weight:500;">${sym} ${name}${counts}</span>`;
-    }).join(' ');
-    const more = sorted.length > 8 ? ` <span style="color:#94a3b8;font-size:0.8em;">+${sorted.length - 8}</span>` : '';
+    const t = TONE[tile.tone] || TONE.mute;
     return `
-      <div class="tb-section__row" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
-        ${pills}${more}
+      <div class="tb-tile">
+        <div class="tb-tile__label">${label}</div>
+        <div class="tb-tile__date">${tile.dateLabel}</div>
+        ${tile.stateLabel ? `<div class="tb-tile__state" style="color:${t.fg};">
+          <span class="tb-tile__dot" style="background:${t.dot};"></span>
+          ${tile.stateLabel}
+        </div>` : ''}
       </div>`;
   }
 
-  function renderExisting(p, _source, indicators) {
-    // Пацієнт у групі ризику по ТБ, якщо ХОЧА Б ОДНЕ з:
-    //   • tb_status у реєстрі — 'risk' або 'detected' (виставляється
-    //     вручну лікарем або автосинхронізацією);
-    //   • є хоч одна медична група ризику (парсер додає з діагнозів МІС,
-    //     бекенд робить union з існуючими);
-    //   • є хоч одна соціальна група — їх парсер не визначає, вони
-    //     додаються вручну у вебдодатку, але після sync доступні в `p`.
-    // Тобто рішення враховує і свіжі дані парсингу, і всю історію реєстру.
+  // Indicator chips removed in v5.0.0 per user request — the doctor uses
+  // the TODO list, not per-indicator state. Full breakdown still available
+  // via the «Деталі індикаторів» toggle in the widget body.
+  function renderExisting(p, _source, _indicators) {
     const inRiskGroup =
       p.tb_status === 'risk' ||
       p.tb_status === 'detected' ||
       (p.medical_risk_groups?.length || 0) > 0 ||
       (p.social_risk_groups?.length || 0) > 0;
     const needsFluoro = inRiskGroup && p.tb_status !== 'archived';
-    const BAD = (s) => `<span style="color:#dc2626;font-weight:600;">${s}</span>`;
 
-    // ── Статус ТБ (завжди показуємо, незалежно від наявності флюоро) ──────
     const STATUS_META = {
       risk:     { label: 'В групі ризику', bg: '#fed7aa', fg: '#9a3412' },
       detected: { label: 'Виявлений ТБ',   bg: '#fecaca', fg: '#991b1b' },
       cleared:  { label: 'Без ризику ТБ',  bg: '#d1fae5', fg: '#065f46' },
-      archived: { label: 'Архівний',        bg: '#f1f5f9', fg: '#64748b' },
+      archived: { label: 'Архівний',        bg: '#e2e8f0', fg: '#475569' },
     };
     const sm = STATUS_META[p.tb_status] || { label: p.tb_status || '—', bg: '#f1f5f9', fg: '#334155' };
-    const statusRow = `
-      <div class="tb-section__row" style="display:flex;align-items:center;gap:6px;">
-        <span style="color:#64748b;">Статус:</span>
-        <span style="display:inline-block;padding:1px 8px;border-radius:999px;background:${sm.bg};color:${sm.fg};font-weight:600;font-size:0.9em;">${sm.label}</span>
-      </div>`;
 
-    // ── Флюоро ────────────────────────────────────────────────────────────
-    // Статус виведено окремо вище, тому тут лише дата + просрочка.
-    let fluoroOk = true;
-    let fluoroLabel;
-    if (p.last_fluoro_date) {
-      fluoroLabel = `<strong>${formatDate(p.last_fluoro_date)}</strong>`;
-      if (needsFluoro && p.next_planned_date) {
-        const overdueDays = daysSinceIso(p.next_planned_date);
-        if (overdueDays != null && overdueDays > 0) {
-          fluoroOk = false;
-          fluoroLabel += ` — ${BAD('просрочено ' + formatDuration(overdueDays))}`;
-        }
-      }
-    } else if (needsFluoro) {
-      fluoroOk = false;
-      fluoroLabel = BAD('не зроблено');
-    } else {
-      // Не в групі ризику й даних немає — лаконічно, без алярму.
-      fluoroLabel = `<span style="color:#94a3b8;">не вносилось</span>`;
-    }
+    const flu = computeFluoroTile(p, needsFluoro);
+    const adpm = computeAdpmTile(p);
 
-    // ── АДП-М ─────────────────────────────────────────────────────────────
-    // Перевага у бекенд-полях `p.last_adpm_date`, `p.next_adpm_date` (там вже
-    // змержені всі вакцинації з бази + щойно синхронізована з парсера).
-    // STATE.lastAdpM — лише як свіжий fallback до того, як прийде refresh.
-    let adpmOk = true;
-    let adpmWarn = false; // помаранчевий, але не червоний
-    let adpmRow = '';
-    const ORG = (s) => `<span style="color:#ea580c;font-weight:600;">${s}</span>`;
+    // Overall section tone — driven by the worst of (TB detected, flu,
+    // АДП-М). Affects the section border / accent.
+    let state = 'ok';
+    if (p.tb_status === 'detected' || flu.tone === 'err' || adpm.tone === 'err') state = 'err';
+    else if (adpm.tone === 'warn') state = 'warn';
 
-    if (p.adpm_contraindication) {
-      adpmRow = `
-      <div class="tb-section__row">
-        <span>АДП-М: <em style="color:#64748b;">протипоказання</em></span>
-      </div>`;
-    } else if (p.adpm_refused) {
-      adpmRow = `
-      <div class="tb-section__row">
-        <span>АДП-М: <em style="color:#64748b;">відмова</em></span>
-      </div>`;
-    } else {
-      const lastIso =
-        p.last_adpm_date ||
-        (STATE.lastAdpM?.date ?? null);
-      const nextIso = p.next_adpm_date || (lastIso ? addYearsIso(lastIso, 10) : null);
+    const lastSync = relativeLabel(p.last_indicators_synced_at);
 
-      if (lastIso) {
-        let extra = '';
-        if (nextIso) {
-          const overdueDays = daysSinceIso(nextIso);
-          if (overdueDays != null && overdueDays > 0) {
-            adpmOk = false;
-            extra = ` — ${BAD('просрочено ' + formatDuration(overdueDays))}`;
-          } else if (overdueDays != null) {
-            const m = nextIso.match(/^(\d{4})-/);
-            const thisYear = new Date().getFullYear();
-            if (m && +m[1] === thisYear) {
-              adpmWarn = true;
-              extra = ` — ${ORG('цьогоріч')}`;
-            }
-          }
-        }
-        adpmRow = `
-      <div class="tb-section__row">
-        <span>Остання АДП-М: <strong>${formatDate(lastIso)}</strong>${extra}</span>
-      </div>`;
-      } else if (STATE.analyzedOnce) {
-        adpmOk = false;
-        adpmRow = `
-      <div class="tb-section__row">
-        <span>Остання АДП-М: ${BAD('не внесено')}</span>
-      </div>`;
-      }
-    }
-
-    // Виявлений ТБ — завжди червоний фон, незалежно від іншого.
-    const state =
-      p.tb_status === 'detected' || !fluoroOk || !adpmOk ? 'err' : adpmWarn ? 'warn' : 'ok';
     setSection(state, `
-      ${lastSyncLine(p)}
-      ${statusRow}
-      <div class="tb-section__row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <span>Остання флюоро: ${fluoroLabel}</span>
-        <a class="tb-btn tb-btn--ghost" href="${STATE.config.url}/patients/${p.id}" target="_blank">Картка ↗</a>
-      </div>${adpmRow}${indicatorsBlock(indicators)}
+      <div class="tb-head">
+        <span class="tb-status-pill" style="background:${sm.bg};color:${sm.fg};">${sm.label}</span>
+        <span class="tb-head__spacer"></span>
+        ${lastSync ? `<span class="tb-head__meta">${lastSync}</span>` : ''}
+        <a class="tb-head__link" href="${STATE.config.url}/patients/${p.id}" target="_blank" title="Картка в реєстрі">↗</a>
+      </div>
+      <div class="tb-tiles">
+        ${renderTile('Флюоро', flu)}
+        ${renderTile('АДП-М', adpm)}
+      </div>
     `);
   }
 

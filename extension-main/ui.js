@@ -194,27 +194,32 @@ class MedicsIndicatorUI {
             /* Картка індикатора */
             .mi-indicator-card { transition: box-shadow 0.15s ease, transform 0.15s ease !important; }
             .mi-indicator-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1) !important; }
-            /* Шапка пацієнта */
+            /* Patient banner — slim single-row strip under header (v5.0.0) */
             .mi-patient-banner {
                 display: flex !important;
                 align-items: center !important;
-                gap: 0.5em !important;
-                padding: 0.5em 1em !important;
-                background: #f8f9fb !important;
-                border-bottom: 1px solid #e9ecef !important;
-                font-size: 0.92em !important;
-                color: #344054 !important;
+                gap: 8px !important;
+                padding: 6px 12px !important;
+                background: #f8fafc !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                font-size: 12px !important;
+                color: #475569 !important;
                 line-height: 1.3 !important;
                 margin: 0 !important;
                 flex-shrink: 0 !important;
-                flex-wrap: wrap !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
             .mi-patient-banner-name {
                 font-weight: 600 !important;
-                color: #212529 !important;
+                color: #0f172a !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
             .mi-patient-banner-meta {
-                color: #6c757d !important;
+                color: #94a3b8 !important;
+                font-size: 11px !important;
             }
         `;
         document.head.appendChild(styleTag);
@@ -388,71 +393,45 @@ class MedicsIndicatorUI {
     createWidget() {
         const widget = document.createElement('div');
         widget.id = 'medics-indicators-widget';
-        // Початкова висота — auto (під контент). Розтягується до 80vh після аналізу.
-        widget.style.cssText = `position: fixed !important; bottom: 2vh !important; right: 2vw !important; width: 420px !important; max-width: calc(100vw - 40px) !important; height: auto !important; background: #ffffff !important; border-radius: 14px !important; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06) !important; z-index: 999999 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; font-size: 14px !important; line-height: 1.5 !important; color: #0f172a !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 0 !important; transition: height 0.25s ease !important;`;
+        // v5.0.0: slimmer chrome, capped at 50vh, max width respects 1/3 viewport.
+        widget.style.cssText = `position: fixed !important; bottom: 16px !important; right: 16px !important; width: 420px !important; max-width: min(33vw, calc(100vw - 32px)) !important; height: auto !important; max-height: 50vh !important; background: #ffffff !important; border-radius: 10px !important; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.06) !important; z-index: 999999 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; font-size: 13px !important; line-height: 1.45 !important; color: #0f172a !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 0 !important; transition: max-height 0.2s ease !important;`;
 
         widget.innerHTML = `
-            <div id="mi-header" style="display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 8px !important; padding: 0.75em 1em !important; background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important; color: white !important; border-radius: 14px 14px 0 0 !important; cursor: move !important; flex-shrink: 0 !important; margin: 0 !important;">
-                <div style="display: flex !important; align-items: center !important; gap: 0.5em !important; font-weight: 600 !important; font-size: 1.05em !important; margin: 0 !important; min-width: 0 !important;">
-                    <span style="font-size: 1.25em !important; line-height: 1 !important;">📊</span>
-                    <span class="mi-title-text" style="overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;">Medics Indicators</span>
+            <div id="mi-header" style="display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 8px !important; padding: 8px 12px !important; background: #0f172a !important; color: white !important; border-radius: 10px 10px 0 0 !important; cursor: move !important; flex-shrink: 0 !important; margin: 0 !important;">
+                <div style="display: flex !important; align-items: center !important; gap: 6px !important; font-weight: 600 !important; font-size: 13px !important; margin: 0 !important; min-width: 0 !important;">
+                    <span class="mi-title-text" style="overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; letter-spacing: 0.2px !important;">Indicators</span>
                 </div>
                 <div id="mi-header-actions" style="display: flex !important; gap: 4px !important; align-items: center !important; margin: 0 !important; flex-shrink: 0 !important;">
-                    <div style="display: flex !important; gap: 1px !important; background: rgba(255,255,255,0.1) !important; border-radius: 4px !important; padding: 1px !important;">
-                        <button id="mi-scale-S" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">S</button>
-                        <button id="mi-scale-M" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">M</button>
-                        <button id="mi-scale-L" style="padding: 1px 5px !important; background: rgba(255,255,255,0.15) !important; color: white !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 0.72em !important; margin: 0 !important; transition: background 0.2s !important; line-height: 1.4 !important;">L</button>
+                    <div style="display: flex !important; gap: 0 !important; background: rgba(255,255,255,0.08) !important; border-radius: 4px !important; padding: 1px !important;">
+                        <button id="mi-scale-S" style="padding: 1px 6px !important; background: transparent !important; color: rgba(255,255,255,0.65) !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; font-weight: 600 !important; margin: 0 !important; transition: all 0.15s !important; line-height: 1.4 !important;">S</button>
+                        <button id="mi-scale-M" style="padding: 1px 6px !important; background: transparent !important; color: rgba(255,255,255,0.65) !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; font-weight: 600 !important; margin: 0 !important; transition: all 0.15s !important; line-height: 1.4 !important;">M</button>
+                        <button id="mi-scale-L" style="padding: 1px 6px !important; background: transparent !important; color: rgba(255,255,255,0.65) !important; border: none !important; border-radius: 3px !important; cursor: pointer !important; font-size: 10px !important; font-weight: 600 !important; margin: 0 !important; transition: all 0.15s !important; line-height: 1.4 !important;">L</button>
                     </div>
-                    <button id="mi-toggle-btn" style="padding: 2px 8px !important; background: rgba(255, 255, 255, 0.2) !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; font-size: 0.85em !important; line-height: 1.2 !important; margin: 0 !important; transition: background 0.2s !important; flex-shrink: 0 !important;">_</button>
+                    <button id="mi-toggle-btn" style="padding: 1px 8px !important; background: rgba(255, 255, 255, 0.12) !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; font-size: 14px !important; line-height: 1 !important; margin: 0 !important; transition: background 0.2s !important; flex-shrink: 0 !important;">−</button>
                 </div>
             </div>
 
             <div id="mi-patient-banner" class="mi-patient-banner" style="display: none !important;">
-                <span style="font-size: 14px !important;">👤</span>
                 <span id="mi-patient-name" class="mi-patient-banner-name"></span>
                 <span id="mi-patient-meta" class="mi-patient-banner-meta"></span>
             </div>
 
-            <div id="mi-progress-container" style="display: none !important; padding: 0.8em 1.15em !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
-                <div style="display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 8px !important;">
-                    <span style="font-size: 13px !important; font-weight: 600 !important; color: #0f172a !important;">Аналіз…</span>
-                    <span id="mi-progress-percent" style="font-size: 12px !important; color: #64748b !important; margin-left: auto !important;">0%</span>
-                </div>
-                <div style="width: 100% !important; height: 6px !important; background: #e2e8f0 !important; border-radius: 999px !important; overflow: hidden !important;">
-                    <div id="mi-progress-bar" style="height: 100% !important; width: 0% !important; background: linear-gradient(90deg, #334155 0%, #64748b 100%) !important; transition: width 0.3s ease !important; border-radius: 999px !important;"></div>
-                </div>
-            </div>
-            
-            <div id="mi-completion-bar" style="display: none !important; padding: 0.7em 1.15em !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; margin: 0 !important;">
-                <div style="display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 8px !important;">
-                    <span style="font-size: 13px !important; font-weight: 600 !important; color: #334155 !important;">Виконання індикаторів</span>
-                    <span id="mi-completion-percent" style="font-size: 13px !important; font-weight: 700 !important; color: #10b981 !important; margin-left: auto !important;">0%</span>
-                </div>
-                <div style="width: 100% !important; height: 8px !important; background: #e2e8f0 !important; border-radius: 999px !important; overflow: hidden !important;">
-                    <div id="mi-completion-bar-fill" style="height: 100% !important; width: 0% !important; background: linear-gradient(90deg, #10b981 0%, #34d399 100%) !important; transition: width 0.5s ease !important; border-radius: 999px !important;"></div>
-                </div>
-            </div>
-            
-            <div id="mi-widget-body" style="padding: 1.15em !important; overflow-y: auto !important; overflow-x: hidden !important; flex: 1 !important; background: #ffffff !important; margin: 0 !important; min-height: 0 !important;">
-                <div id="mi-instruction" style="margin-bottom: 16px !important; padding: 14px 16px !important; background: #f8fafc !important; border-radius: 10px !important; border: 1px solid #e2e8f0 !important; margin: 0 0 16px 0 !important;">
-                    <p style="margin: 0 0 4px 0 !important; color: #0f172a !important;">📋 <strong>Інструкція</strong></p>
-                    <p style="font-size: 13px !important; color: #64748b !important; margin: 0 !important;">Натисніть «Проаналізувати»</p>
-                </div>
+            <div id="mi-widget-body" style="padding: 10px !important; overflow-y: auto !important; overflow-x: hidden !important; flex: 1 !important; background: #ffffff !important; margin: 0 !important; min-height: 0 !important;">
                 <div id="mi-results" style="display: none !important; margin: 0 !important;"></div>
-                <div id="mi-form027-section" style="display: none !important; margin: 16px 0 0 0 !important; padding: 14px !important; background: #fffbeb !important; border: 1px solid #fde68a !important; border-radius: 12px !important;">
-                    <div style="display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 0 10px 0 !important;">
-                        <span style="font-weight: 600 !important; color: #92400e !important; flex: 1 !important;">📄 Виписка для форми 027/о</span>
-                        <button id="mi-form027-copy-btn" style="background: #10b981 !important; color: white !important; border: none !important; border-radius: 8px !important; padding: 6px 14px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; margin: 0 !important; transition: background 0.15s ease !important;">Копіювати</button>
+                <div id="mi-form027-section" style="display: none !important; margin: 12px 0 0 0 !important; padding: 10px !important; background: #fffbeb !important; border: 1px solid #fde68a !important; border-radius: 8px !important;">
+                    <div style="display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 0 8px 0 !important;">
+                        <span style="font-weight: 600 !important; color: #92400e !important; flex: 1 !important; font-size: 12px !important;">Виписка для форми 027/о</span>
+                        <button id="mi-form027-copy-btn" style="background: #10b981 !important; color: white !important; border: none !important; border-radius: 6px !important; padding: 4px 10px !important; font-size: 11px !important; font-weight: 600 !important; cursor: pointer !important; margin: 0 !important; transition: background 0.15s ease !important;">Копіювати</button>
                     </div>
-                    <textarea id="mi-form027-textarea" readonly style="width: 100% !important; min-height: 200px !important; max-height: 50vh !important; padding: 10px !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important; font-size: 12px !important; line-height: 1.5 !important; resize: vertical !important; box-sizing: border-box !important; background: white !important; color: #0f172a !important; margin: 0 !important;"></textarea>
+                    <textarea id="mi-form027-textarea" readonly style="width: 100% !important; min-height: 160px !important; max-height: 40vh !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important; font-size: 11px !important; line-height: 1.45 !important; resize: vertical !important; box-sizing: border-box !important; background: white !important; color: #0f172a !important; margin: 0 !important;"></textarea>
                 </div>
             </div>
 
-            <div id="mi-footer" style="display: flex !important; justify-content: center !important; align-items: center !important; gap: 8px !important; padding: 12px 16px !important; background: #f8fafc !important; border-top: 1px solid #e2e8f0 !important; border-radius: 0 0 14px 14px !important; flex-shrink: 0 !important; margin: 0 !important;">
-                <button id="mi-analyze-btn" style="background: #334155 !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 12px 16px !important; font-size: 15px !important; font-weight: 600 !important; cursor: pointer !important; flex: 1 !important; transition: all 0.15s ease !important; margin: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12) !important;">
+            <div id="mi-footer" style="display: flex !important; align-items: center !important; gap: 6px !important; padding: 8px 10px !important; background: #f8fafc !important; border-top: 1px solid #e2e8f0 !important; border-radius: 0 0 10px 10px !important; flex-shrink: 0 !important; margin: 0 !important;">
+                <button id="mi-analyze-btn" style="background: #0f172a !important; color: white !important; border: none !important; border-radius: 7px !important; padding: 8px 14px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; flex: 1 !important; transition: all 0.15s ease !important; margin: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important;">
                     <span class="mi-btn-text">Проаналізувати</span>
                 </button>
-                <button id="mi-form027-btn" style="background: #f59e0b !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 12px 14px !important; font-size: 14px !important; font-weight: 600 !important; cursor: pointer !important; flex: 0 0 auto !important; transition: all 0.15s ease !important; margin: 0 !important; white-space: nowrap !important; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;">📄 027/о</button>
+                <button id="mi-form027-btn" style="background: #fff !important; color: #92400e !important; border: 1px solid #fde68a !important; border-radius: 7px !important; padding: 8px 12px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; flex: 0 0 auto !important; transition: all 0.15s ease !important; margin: 0 !important; white-space: nowrap !important;">027/о</button>
             </div>
         `;
 
@@ -683,8 +662,9 @@ class MedicsIndicatorUI {
 
     expandToFullHeight() {
         if (!this.widget || !this.isExpanded) return;
-        this.widget.style.setProperty('height', '80vh', 'important');
-        this.widget.style.bottom = '20px';
+        // v5.0.0: cap at 50vh (was 80vh) — fits в нижню половину екрана.
+        this.widget.style.setProperty('max-height', '50vh', 'important');
+        this.widget.style.bottom = '16px';
         this.widget.style.top = 'auto';
     }
 
@@ -715,22 +695,57 @@ class MedicsIndicatorUI {
         const grouped = this.groupByCategory(results);
         const todoActions = this.collectTodoActions(results);
 
-        let html = this.renderSummarySection(results);
-        html += this.renderGenderSelector(data.patient.gender);
-        if (todoActions.length > 0) { html += this.renderTodoList(todoActions); }
-        for (const [category, categoryResults] of Object.entries(grouped)) {
-            const categoryObj = typeof INDICATOR_CATEGORIES !== 'undefined' ? INDICATOR_CATEGORIES[category] : { name: category, icon: '📋' };
-            html += `<div class="mi-category-block" data-category="${escapeHtml(category)}" style="margin-bottom: 16px !important; margin: 0 0 16px 0 !important; border-radius: 12px !important; overflow: hidden !important; border: 1px solid #e2e8f0 !important; background: white !important; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;"><div style="padding: 11px 14px !important; background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; color: #0f172a !important; font-weight: 600 !important; font-size: 13px !important; display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 !important; text-transform: uppercase !important; letter-spacing: 0.4px !important;"><span style="font-size: 16px !important;">${categoryObj.icon}</span><span>${categoryObj.name}</span><span style="margin-left: auto !important; padding: 1px 9px !important; background: #e2e8f0 !important; color: #475569 !important; border-radius: 999px !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: 0 !important; text-transform: none !important;">${categoryResults.length}</span></div><div style="padding: 12px !important; background: white !important; margin: 0 !important;">`;
-            categoryResults.forEach(result => { html += this.renderIndicatorCard(result); });
+        // v5.0.0: TODO list is the main thing. Indicator cards moved behind
+        // a collapsible "Деталі індикаторів" toggle below — doctor said he
+        // doesn't normally inspect per-indicator state. Summary tiles +
+        // standalone gender selector dropped (gender lives inline in the
+        // patient banner via decorateBannerMeta).
+        let html = '';
+        if (todoActions.length > 0) {
+            html += this.renderTodoList(todoActions);
+        } else {
+            html += `<div style="margin:0 0 12px 0!important;padding:10px 12px!important;background:#f0fdf4!important;border:1px solid #bbf7d0!important;border-radius:8px!important;color:#065f46!important;font-size:12px!important;">Усі застосовні індикатори виконані 🎉</div>`;
+        }
+
+        // Indicators — collapsed by default.
+        const totalRules = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
+        if (totalRules > 0) {
+            html += `<div class="mi-indicators-collapse" data-open="false" style="margin:0 0 8px 0!important;border:1px solid #e2e8f0!important;border-radius:8px!important;background:#fff!important;overflow:hidden!important;">
+                <button type="button" id="mi-indicators-toggle" style="display:flex!important;align-items:center!important;gap:6px!important;width:100%!important;padding:8px 12px!important;background:#f8fafc!important;border:0!important;border-bottom:1px solid transparent!important;cursor:pointer!important;font-family:inherit!important;font-size:12px!important;font-weight:600!important;color:#475569!important;text-align:left!important;margin:0!important;">
+                    <span class="mi-indicators-toggle-caret" style="display:inline-block!important;width:10px!important;transition:transform 0.15s!important;">▸</span>
+                    <span>Деталі індикаторів</span>
+                    <span style="margin-left:auto!important;padding:1px 7px!important;background:#e2e8f0!important;color:#475569!important;border-radius:999px!important;font-size:10px!important;font-weight:700!important;">${totalRules}</span>
+                </button>
+                <div id="mi-indicators-content" style="display:none!important;padding:8px 10px!important;background:#fff!important;margin:0!important;">`;
+            for (const [category, categoryResults] of Object.entries(grouped)) {
+                const categoryObj = typeof INDICATOR_CATEGORIES !== 'undefined' ? INDICATOR_CATEGORIES[category] : { name: category, icon: '' };
+                html += `<div class="mi-category-block" data-category="${escapeHtml(category)}" style="margin:0 0 10px 0!important;">
+                    <div style="padding:4px 0 6px 0!important;color:#64748b!important;font-weight:600!important;font-size:10px!important;text-transform:uppercase!important;letter-spacing:0.5px!important;">${categoryObj.name} <span style="color:#94a3b8!important;font-weight:500!important;">· ${categoryResults.length}</span></div>
+                    <div style="margin:0!important;">`;
+                categoryResults.forEach(result => { html += this.renderIndicatorCard(result); });
+                html += `</div></div>`;
+            }
             html += `</div></div>`;
         }
+
         resultsDiv.innerHTML = html;
         this.attachIndicatorListeners();
-        this.attachGenderSelectorListeners();
-        this.attachFilterListeners();
         this.positionTooltips();
-        // Стартовий фільтр — «Усі»
-        this.applyFilter('all');
+
+        // Wire up indicators collapse.
+        const toggle = document.getElementById('mi-indicators-toggle');
+        const content = document.getElementById('mi-indicators-content');
+        if (toggle && content) {
+            toggle.addEventListener('click', () => {
+                const wrap = toggle.closest('.mi-indicators-collapse');
+                const open = wrap.getAttribute('data-open') === 'true';
+                wrap.setAttribute('data-open', open ? 'false' : 'true');
+                content.style.setProperty('display', open ? 'none' : 'block', 'important');
+                const caret = toggle.querySelector('.mi-indicators-toggle-caret');
+                if (caret) caret.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+                toggle.style.borderBottomColor = open ? 'transparent' : '#e2e8f0';
+            });
+        }
     }
 
     positionTooltips() {
@@ -776,50 +791,65 @@ class MedicsIndicatorUI {
     }
 
     renderTodoList(todoActions) {
-        const grouped = {
-            episodes: todoActions.filter(a => a.isEpisode),
-            encounters: todoActions.filter(a => a.isEncounterAction),
-            observations: todoActions.filter(a => !a.isEpisode && !a.isEncounterAction && !a.isReferral && !a.isDiagnosticReport),
-            referrals: todoActions.filter(a => a.isReferral),
-            diagnosticReports: todoActions.filter(a => a.isDiagnosticReport)
-        };
-        const typeNames = {
-            episodes: { name: 'Епізоди', icon: '📋', color: '#6366f1' },
-            encounters: { name: 'Взаємодії', icon: '👥', color: '#8b5cf6' },
-            observations: { name: 'Обстеження', icon: '🔬', color: '#3b82f6' },
-            referrals: { name: 'Направлення', icon: '📄', color: '#f59e0b' },
-            diagnosticReports: { name: 'Діагностичні звіти', icon: '📑', color: '#ec4899' }
-        };
-        let html = `<div style="margin-bottom: 20px !important; margin: 0 0 20px 0 !important; border: 1px solid #fde68a !important; border-radius: 12px !important; overflow: hidden !important; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;"><div class="todo-header" style="display: flex !important; align-items: center !important; gap: 10px !important; padding: 12px 16px !important; background: #fef3c7 !important; color: #92400e !important; cursor: pointer !important; font-weight: 600 !important; margin: 0 !important;"><span style="font-size: 18px !important;">📝</span><span style="flex: 1 !important;">Необхідні дії</span><span style="padding: 2px 9px !important; background: #fcd34d !important; color: #78350f !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 700 !important;">${todoActions.length}</span><span class="todo-toggle" style="display: inline-block !important; width: 20px !important; height: 20px !important; line-height: 20px !important; text-align: center !important; font-size: 14px !important; transition: transform 0.2s !important;">▼</span></div><div id="mi-todo-content" style="display: block !important; padding: 14px !important; background: #fffbeb !important; margin: 0 !important;">`;
-        for (const [type, actions] of Object.entries(grouped)) {
-            if (actions.length === 0) continue;
-            const typeInfo = typeNames[type];
-            html += `<div style="margin-bottom: 16px !important; margin: 0 0 16px 0 !important;"><div style="display: flex !important; align-items: center !important; gap: 8px !important; margin-bottom: 10px !important; padding-bottom: 6px !important; border-bottom: 1px solid ${typeInfo.color}33 !important;"><span style="font-size: 16px !important;">${typeInfo.icon}</span><span style="font-weight: 600 !important; font-size: 12px !important; color: ${typeInfo.color} !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;">${typeInfo.name}</span><span style="margin-left: auto !important; padding: 1px 8px !important; background: ${typeInfo.color}1a !important; color: ${typeInfo.color} !important; border-radius: 999px !important; font-size: 11px !important; font-weight: 700 !important;">${actions.length}</span></div><div style="display: flex !important; flex-direction: column !important; gap: 8px !important;">`;
-            actions.forEach(action => {
-                const tooltip = 'Індикатори:\n' + action.indicators.join('\n');
-                if (action.isOrGroup) {
-                    // OR-група: один блок з кількома альтернативами
-                    const anyDone = action.alternatives.some(a => a.isCompleted);
-                    const borderColor = typeInfo.color;
-                    html += `<div style="position:relative !important; background:white !important; border:1px solid #e2e8f0 !important; border-left:3px solid ${borderColor} !important; border-radius:8px !important; box-shadow:0 1px 2px rgba(15, 23, 42, 0.04) !important; margin:0 !important; overflow:hidden !important;">`;
-                    html += `<div style="padding:5px 10px !important; background:${borderColor}10 !important; font-size:10px !important; font-weight:700 !important; color:${borderColor} !important; text-transform:uppercase !important; letter-spacing:0.5px !important; display:flex !important; align-items:center !important; gap:6px !important;">${action.isOverdue ? '⏰' : '⚠️'} <span>Виконати одне з</span>${this.createInfoIcon(tooltip, false)}</div>`;
-                    action.alternatives.forEach(alt => {
-                        const expired = alt.isCompleted && alt.isExpired;
-                        const ic = expired ? '⏰' : (alt.isCompleted ? '✅' : '↔️');
-                        html += `<div style="display:flex !important; align-items:center !important; gap:8px !important; padding:7px 12px !important;"><span style="font-size:13px !important;">${ic}</span><div style="flex:1 !important; font-size:12px !important; color:#0f172a !important; font-weight:500 !important;">${escapeHtml(alt.name)}</div></div>`;
-                    });
-                    if (action.indicators.length > 1) {
-                        html += `<div style="padding:3px 12px 6px !important; font-size:11px !important; color:#94a3b8 !important;">Для ${action.indicators.length} індикаторів</div>`;
-                    } else {
-                        html += `<div style="padding:3px 12px 6px !important; font-size:11px !important; color:#94a3b8 !important;">${escapeHtml(action.indicators[0])}</div>`;
-                    }
-                    html += `</div>`;
-                } else {
-                    html += `<div style="display:flex !important; align-items:center !important; gap:8px !important; padding:10px 12px !important; background:white !important; border:1px solid #e2e8f0 !important; border-left:3px solid ${typeInfo.color} !important; border-radius:8px !important; box-shadow:0 1px 2px rgba(15, 23, 42, 0.04) !important; margin:0 !important; position:relative !important;"><span style="font-size:16px !important;">${action.isOverdue ? '⏰' : '⚠️'}</span><div style="flex:1 !important; margin:0 !important;"><div style="font-weight:600 !important; color:#0f172a !important; font-size:13px !important; margin-bottom:3px !important;">${escapeHtml(action.name)}${action.isOverdue ? ' <span style="font-size:10px;color:#f59e0b;font-weight:700;letter-spacing:0.3px;">[ПРОСТРОЧЕНО]</span>' : ''}</div>${action.indicators.length > 1 ? `<div style="font-size:11px !important; color:#94a3b8 !important; margin:0 !important;">Для ${action.indicators.length} індикаторів</div>` : `<div style="font-size:11px !important; color:#94a3b8 !important; margin:0 !important;">${escapeHtml(action.indicators[0])}</div>`}</div>${this.createInfoIcon(tooltip, false)}</div>`;
-                }
-            });
-            html += `</div></div>`;
-        }
+        // v5.0.0: flat, scannable list. Each TODO is one row: dot (urgency
+        // colour) + name + tiny meta. Type/category dropped from the main
+        // view — it's available in the info tooltip if needed. The doctor
+        // works through this list top-to-bottom; type-grouping headers
+        // were visual noise that didn't help.
+        // Sort: overdue first, then by name.
+        const sorted = [...todoActions].sort((a, b) => {
+            if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+            return (a.name || '').localeCompare(b.name || '', 'uk');
+        });
+
+        let html = `<div style="margin:0 0 10px 0!important;border:1px solid #e2e8f0!important;border-radius:8px!important;overflow:hidden!important;background:#fff!important;">
+            <div style="display:flex!important;align-items:center!important;gap:8px!important;padding:8px 12px!important;background:#fef3c7!important;color:#92400e!important;font-weight:600!important;font-size:12px!important;margin:0!important;">
+                <span>Необхідні дії</span>
+                <span style="margin-left:auto!important;padding:1px 8px!important;background:#fff!important;color:#92400e!important;border-radius:999px!important;font-size:11px!important;font-weight:700!important;border:1px solid #fde68a!important;">${todoActions.length}</span>
+            </div>
+            <div id="mi-todo-content" style="padding:6px 0!important;background:#fff!important;margin:0!important;">`;
+
+        sorted.forEach((action, idx) => {
+            const tooltip = 'Індикатори:\n' + action.indicators.join('\n');
+            const sep = idx > 0 ? 'border-top:1px solid #f1f5f9!important;' : '';
+            const dotColor = action.isOverdue ? '#ef4444' : '#f59e0b';
+
+            if (action.isOrGroup) {
+                const altsHtml = action.alternatives.map((alt) => {
+                    const done = alt.isCompleted && !alt.isExpired;
+                    const sym = done ? '✓' : (alt.isExpired ? '⏰' : '·');
+                    const color = done ? '#10b981' : (alt.isExpired ? '#f59e0b' : '#94a3b8');
+                    return `<div style="display:flex!important;align-items:center!important;gap:6px!important;padding:1px 0!important;color:#475569!important;font-size:11px!important;"><span style="display:inline-block!important;width:10px!important;color:${color}!important;font-weight:700!important;text-align:center!important;">${sym}</span><span>${escapeHtml(alt.name)}</span></div>`;
+                }).join('');
+                html += `<div class="mi-todo-row" style="display:flex!important;gap:8px!important;padding:8px 12px!important;${sep}margin:0!important;">
+                    <span style="display:inline-block!important;width:8px!important;height:8px!important;border-radius:50%!important;background:${dotColor}!important;margin-top:5px!important;flex-shrink:0!important;"></span>
+                    <div style="flex:1!important;min-width:0!important;">
+                        <div style="display:flex!important;align-items:center!important;gap:6px!important;">
+                            <span style="font-weight:600!important;color:#0f172a!important;font-size:12px!important;">Виконати одне з</span>
+                            ${action.isOverdue ? '<span style="font-size:9px!important;font-weight:700!important;color:#dc2626!important;letter-spacing:0.4px!important;">ПРОСТРОЧЕНО</span>' : ''}
+                            ${this.createInfoIcon(tooltip, false)}
+                        </div>
+                        <div style="margin-top:2px!important;">${altsHtml}</div>
+                    </div>
+                </div>`;
+            } else {
+                const note = action.indicators.length > 1
+                    ? `Для ${action.indicators.length} індикаторів`
+                    : escapeHtml(action.indicators[0]);
+                html += `<div class="mi-todo-row" style="display:flex!important;gap:8px!important;align-items:flex-start!important;padding:7px 12px!important;${sep}margin:0!important;">
+                    <span style="display:inline-block!important;width:8px!important;height:8px!important;border-radius:50%!important;background:${dotColor}!important;margin-top:5px!important;flex-shrink:0!important;"></span>
+                    <div style="flex:1!important;min-width:0!important;">
+                        <div style="display:flex!important;align-items:center!important;gap:6px!important;">
+                            <span style="font-weight:500!important;color:#0f172a!important;font-size:12px!important;line-height:1.35!important;">${escapeHtml(action.name)}</span>
+                            ${action.isOverdue ? '<span style="font-size:9px!important;font-weight:700!important;color:#dc2626!important;letter-spacing:0.4px!important;white-space:nowrap!important;">ПРОСТРОЧЕНО</span>' : ''}
+                            ${this.createInfoIcon(tooltip, false)}
+                        </div>
+                        <div style="font-size:10.5px!important;color:#94a3b8!important;margin-top:1px!important;line-height:1.3!important;">${note}</div>
+                    </div>
+                </div>`;
+            }
+        });
+
         html += `</div></div>`;
         return html;
     }
