@@ -8,14 +8,21 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Download, Search, Loader2, X } from 'lucide-react';
+import { Download, FileSpreadsheet, Search, Loader2, X } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { usePatients, useVillages, FILTER_LABELS, type PatientFilters, type PatientFilter } from '@/hooks/usePatients';
+import {
+  usePatients,
+  useVillages,
+  fetchReportRows,
+  FILTER_LABELS,
+  type PatientFilters,
+  type PatientFilter,
+} from '@/hooks/usePatients';
 import { MultiSelect } from '@/components/ui/MultiSelect';
-import { exportPatientsXlsx } from '@/lib/xlsx-export';
+import { exportPatientsXlsx, exportReportXlsx } from '@/lib/xlsx-export';
 import { calcAge, formatDateUk, fluoroBucket, daysSince } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import {
@@ -201,6 +208,21 @@ export function PatientsPage() {
     exportPatientsXlsx(patients, `${parts.join('_')}.xlsx`);
   };
 
+  const [reportLoading, setReportLoading] = useState(false);
+  const onExportReport = async () => {
+    if (patients.length === 0 || reportLoading) return;
+    setReportLoading(true);
+    try {
+      const { rows } = await fetchReportRows(filters);
+      const today = new Date().toISOString().slice(0, 10);
+      exportReportXlsx(rows, `zvit_${today}.xlsx`);
+    } catch (e) {
+      alert(`Помилка експорту: ${(e as Error).message}`);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -211,9 +233,19 @@ export function PatientsPage() {
             : `Знайдено: ${patients.length}${isFetching && !isLoading ? ' · оновлення…' : ''}`
         }
         actions={
-          <Button onClick={onExport} disabled={patients.length === 0} variant="secondary">
-            <Download className="h-4 w-4" /> Експортувати XLSX
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={onExportReport}
+              disabled={patients.length === 0 || reportLoading}
+              variant="secondary"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {reportLoading ? 'Готую звіт…' : 'Експорт для звіту'}
+            </Button>
+            <Button onClick={onExport} disabled={patients.length === 0} variant="secondary">
+              <Download className="h-4 w-4" /> Експортувати XLSX
+            </Button>
+          </div>
         }
       />
 

@@ -75,6 +75,19 @@ export function fetchPatientsForDiff() {
   return apiFetch<{ patients: PatientForDiff[] }>(`/api/patients?mode=diff`);
 }
 
+export type ReportRow = Patient & {
+  fluoro: Array<{ date: string; result: string | null; result_code: string }>;
+  xpert: { date: string; result: string | null } | null;
+  quantiferon: { date: string; result_code: string } | null;
+  questionnaire: { filled_at: string; result: string } | null;
+};
+
+export function fetchReportRows(filters: PatientFilters): Promise<{ rows: ReportRow[] }> {
+  const qs = buildQuery(filters);
+  const sep = qs ? '&' : '?';
+  return apiFetch<{ rows: ReportRow[] }>(`/api/patients${qs}${sep}mode=report`);
+}
+
 export function useVillages() {
   return useQuery({
     queryKey: ['patients-villages'],

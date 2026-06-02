@@ -183,5 +183,19 @@ export default async function handler(req: Req, res: Res) {
     return;
   }
 
+  if (req.method === 'DELETE') {
+    // Hard delete — ON DELETE CASCADE on fluorography / sputum_tests /
+    // quantiferon_tests / adpm_vaccinations removes the dependent rows.
+    // Doctor uses this for genuine mistakes (duplicate, wrong person);
+    // for "left the practice" use PATCH archived=true instead.
+    const { error } = await supabase.from('patients').delete().eq('id', id);
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.status(204).json({ ok: true });
+    return;
+  }
+
   res.status(405).json({ error: 'Method not allowed' });
 }

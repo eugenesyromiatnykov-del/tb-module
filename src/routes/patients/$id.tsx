@@ -18,6 +18,7 @@ import {
   useCreatePatient,
   useDeleteAdpm,
   useDeleteFluoro,
+  useDeletePatient,
   useDeleteQuantiferon,
   useDeleteSputum,
   usePatient,
@@ -105,9 +106,12 @@ export function PatientDetailPage() {
           patient.location_id ? ` · ${LOCATION_LABELS[patient.location_id]}` : ''
         }`}
         actions={
-          <Button variant="secondary" onClick={() => navigate('/patients')}>
-            <ArrowLeft className="h-4 w-4" /> До реєстру
-          </Button>
+          <div className="flex gap-2">
+            <DeletePatientButton patientId={patient.id} fullName={fullName} />
+            <Button variant="secondary" onClick={() => navigate('/patients')}>
+              <ArrowLeft className="h-4 w-4" /> До реєстру
+            </Button>
+          </div>
         }
       />
 
@@ -1438,6 +1442,32 @@ function RefusalForm({ patient, onClose }: { patient: Patient; onClose: () => vo
         </Button>
       </div>
     </form>
+  );
+}
+
+function DeletePatientButton({ patientId, fullName }: { patientId: string; fullName: string }) {
+  const navigate = useNavigate();
+  const del = useDeletePatient(patientId);
+  const onClick = () => {
+    const ok = confirm(
+      `Видалити пацієнта «${fullName}» з реєстру?\n\nРазом із ним зникнуть усі записи флюоро, мокротиння, квантиферону та АДП-М. Скасувати буде неможливо.\n\nДля «пацієнт не обслуговується більше» краще архівувати (з картки), а не видаляти.`,
+    );
+    if (!ok) return;
+    del.mutate(undefined, {
+      onSuccess: () => navigate('/patients'),
+    });
+  };
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={onClick}
+      disabled={del.isPending}
+      className="!border-red-200 !bg-red-50 !text-red-700 hover:!bg-red-100"
+    >
+      <Trash2 className="h-4 w-4" />
+      {del.isPending ? 'Видалення…' : 'Видалити'}
+    </Button>
   );
 }
 

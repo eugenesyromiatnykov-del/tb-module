@@ -140,6 +140,132 @@ export default async function handler(req: Req, res: Res) {
   const q = req.query ?? {};
   const mode = asString(q.mode);
 
+  // ── Report mode: same filters as default, but joins recent fluoro /
+  // sputum xpert / quantiferon / latest questionnaire so a single round-trip
+  // gives the export everything for the 20-column reporting template.
+  if (mode === 'report') {
+    const filter = asString(q.filter) as Filter | undefined;
+    const location = asString(q.location);
+    const status = asString(q.status);
+    const group = asString(q.group);
+    const includeArchived = asString(q.archived) === '1';
+    const externalParam = asString(q.external);
+    const search = (asString(q.search) ?? '').trim();
+    const clearedParam = asString(q.cleared);
+    const adpmRaw = (asString(q.adpm) ?? '').trim();
+    const adpmValues = adpmRaw ? adpmRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    const address = (asString(q.address) ?? '').trim();
+    const villageParam = (asString(q.village) ?? '').trim();
+    const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
+
+    let pQuery = supabase.from('patient_dashboard').select(SELECT_FULL);
+    if (filter) pQuery = applyFilter(pQuery, filter, location);
+    else {
+      if (!includeArchived) pQuery = pQuery.eq('archived', false);
+      if (location) pQuery = pQuery.eq('location_id', location);
+    }
+    if (status) pQuery = pQuery.eq('tb_status', status);
+    else if (clearedParam === 'only') pQuery = pQuery.eq('tb_status', 'cleared');
+    else if (clearedParam !== 'include') pQuery = pQuery.neq('tb_status', 'cleared');
+    if (externalParam === '1') pQuery = pQuery.eq('is_external', true);
+    if (externalParam === '0') pQuery = pQuery.eq('is_external', false);
+    if (group) pQuery = pQuery.or(`medical_risk_groups.cs.{${group}},social_risk_groups.cs.{${group}}`);
+    if (address) pQuery = pQuery.ilike('address', `%${address}%`);
+    if (villages.length > 0) pQuery = pQuery.in('village', villages);
+    if (adpmValues.length > 0) {
+      const year = new Date().getFullYear();
+      const today = todayIso();
+      const parts: string[] = [];
+      for (const v of adpmValues) {
+        if (v === 'vaccinated') parts.push('last_adpm_date.not.is.null');
+        else if (v === 'contraindicated') parts.push('adpm_contraindication.eq.true');
+        else if (v === 'refused') parts.push('adpm_refused.eq.true');
+        else if (v === 'pending') parts.push('and(adpm_contraindication.eq.false,adpm_refused.eq.false)');
+        else if (v === 'this_year') parts.push(`and(next_adpm_date.gte.${year}-01-01,next_adpm_date.lte.${year}-12-31)`);
+        else if (v === 'overdue') parts.push(`and(next_adpm_date.lt.${today},next_adpm_date.not.is.null)`);
+      }
+      if (parts.length > 0) pQuery = pQuery.or(parts.join(','));
+    }
+    if (search) {
+      const like = `%${search}%`;
+      pQuery = pQuery.or(
+        `surname.ilike.${like},first_name.ilike.${like},patronymic.ilike.${like},medics_id.ilike.${like}`,
+      );
+    }
+    pQuery = pQuery.order('surname', { ascending: true }).range(0, 9999);
+    const { data: patients, error: pErr } = await pQuery;
+    if (pErr) {
+      res.status(500).json({ error: pErr.message });
+      return;
+    }
+
+    const ids = (patients ?? []).map((p) => p.id as string);
+    if (ids.length === 0) {
+      res.status(200).json({ rows: [] });
+      return;
+    }
+
+    // Fan-out joins. Order DESC so first-seen-per-patient = latest.
+    const [fluoroRes, sputumRes, quantRes, questRes] = await Promise.all([
+      supabase
+        .from('fluorography')
+        .select('patient_id,date,result,result_code')
+        .in('patient_id', ids)
+        .gte('date', '2024-01-01')
+        .order('date', { ascending: false }),
+      supabase
+        .from('sputum_tests')
+        .select('patient_id,date,test_type,result')
+        .in('patient_id', ids)
+        .eq('test_type', 'xpert')
+        .order('date', { ascending: false }),
+      supabase
+        .from('quantiferon_tests')
+        .select('patient_id,date,result,result_code')
+        .in('patient_id', ids)
+        .order('date', { ascending: false }),
+      supabase
+        .from('questionnaires')
+        .select('patient_id,filled_at,result')
+        .in('patient_id', ids)
+        .order('filled_at', { ascending: false }),
+    ]);
+    for (const r of [fluoroRes, sputumRes, quantRes, questRes]) {
+      if (r.error) {
+        res.status(500).json({ error: r.error.message });
+        return;
+      }
+    }
+
+    const fluoroByPat = new Map<string, Array<{ date: string; result: string | null; result_code: string }>>();
+    for (const f of fluoroRes.data ?? []) {
+      const arr = fluoroByPat.get(f.patient_id as string) ?? [];
+      arr.push({ date: f.date as string, result: (f.result as string) ?? null, result_code: f.result_code as string });
+      fluoroByPat.set(f.patient_id as string, arr);
+    }
+    const latestBy = <T extends { patient_id: unknown }>(rows: T[]): Map<string, T> => {
+      const m = new Map<string, T>();
+      for (const r of rows) {
+        const pid = r.patient_id as string;
+        if (!m.has(pid)) m.set(pid, r);
+      }
+      return m;
+    };
+    const xpert = latestBy((sputumRes.data ?? []) as Array<{ patient_id: unknown; date: string; result: string | null }>);
+    const quant = latestBy((quantRes.data ?? []) as Array<{ patient_id: unknown; date: string; result_code: string }>);
+    const quest = latestBy((questRes.data ?? []) as Array<{ patient_id: unknown; filled_at: string; result: string }>);
+
+    const rows = (patients ?? []).map((p) => ({
+      ...p,
+      fluoro: fluoroByPat.get(p.id as string) ?? [],
+      xpert: xpert.get(p.id as string) ?? null,
+      quantiferon: quant.get(p.id as string) ?? null,
+      questionnaire: quest.get(p.id as string) ?? null,
+    }));
+    res.status(200).json({ rows });
+    return;
+  }
+
   // ── Villages mode: distinct list for the multi-select filter ────────────
   if (mode === 'villages') {
     const { data, error } = await supabase

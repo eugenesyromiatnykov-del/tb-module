@@ -36,6 +36,18 @@ export function useUpdatePatient(id: string) {
   });
 }
 
+export function useDeletePatient(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/api/patients/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['patient', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+}
+
 export function useCreatePatient() {
   const queryClient = useQueryClient();
   return useMutation({
