@@ -204,45 +204,12 @@
   let stallSinceCursor = -1;
   let stallSinceTime = 0;
 
-  // ─── Visible diagnostic banner ──────────────────────────────────────────
-  // Fixed overlay top-right of medics.ua tabs so the doctor can see what
-  // batch-runner is doing in real time without opening DevTools.
-  let bannerEl = null;
-  function setBanner(text, tone = 'info') {
-    const colors = {
-      info: '#1e293b',
-      ok: '#065f46',
-      warn: '#92400e',
-      err: '#7f1d1d',
-    };
-    try {
-      if (!bannerEl) {
-        bannerEl = document.createElement('div');
-        bannerEl.id = 'tb-batch-status';
-        bannerEl.style.cssText = [
-          'position:fixed','top:0','right:0','z-index:2147483647',
-          'background:#1e293b','color:#fff','padding:6px 10px',
-          'font:11px/1.4 SFMono-Regular,Consolas,Menlo,monospace',
-          'border-bottom-left-radius:8px','max-width:360px',
-          'box-shadow:0 4px 12px rgba(0,0,0,.3)','pointer-events:none',
-          'white-space:pre-wrap','word-break:break-word',
-        ].join(';');
-      }
-      if (!bannerEl.isConnected) {
-        const host = document.body || document.documentElement;
-        if (host) host.appendChild(bannerEl);
-        else {
-          document.addEventListener('DOMContentLoaded', () => {
-            (document.body || document.documentElement)?.appendChild(bannerEl);
-          }, { once: true });
-        }
-      }
-      bannerEl.style.background = colors[tone] || colors.info;
-      const ts = new Date().toLocaleTimeString('uk-UA');
-      bannerEl.textContent = `[TB ${ts}] v4.4.0\n${text}`;
-    } catch (_) { /* DOM not ready or detached */ }
-  }
-  setBanner('loaded — waiting for poll');
+  // No-op stub — used to be a top-right diagnostic overlay (v4.1.9–4.4.0).
+  // Doctor confirmed sync is stable; kept the function as a no-op so the
+  // existing call sites don't have to be rewritten. Reinstate by replacing
+  // the body with the old DOM-injection code if we ever need diagnostics
+  // again.
+  function setBanner(_text, _tone) { /* no-op */ }
 
   // ─── Tab keep-alive: defeat Chrome's background-tab throttling ──────────
   // When the doctor switches away from the medics.ua tab Chrome aggressively
