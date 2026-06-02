@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table';
 import { ArrowUpDown, Download, Loader2, Search } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
+import { MedicsIdCell } from '@/components/MedicsIdCell';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -69,6 +70,12 @@ export function VaccinationsPage() {
 
   const columns = useMemo<ColumnDef<Patient>[]>(
     () => [
+      {
+        id: 'medics_id',
+        header: 'Medics ID',
+        accessorFn: (p) => p.medics_id ?? '',
+        cell: (info) => <MedicsIdCell id={info.row.original.medics_id} />,
+      },
       {
         id: 'name',
         header: 'ПІБ',
@@ -325,16 +332,18 @@ function NextAdpmCell({ patient }: { patient: Patient }) {
   return <span className="text-slate-700">{formatDateUk(next)}</span>;
 }
 
+// Same accent style as /patients: a coloured 4px left border, never a
+// full-row tint — full-row bg colors fought ugly with the slate hover.
 function rowTone(p: Patient): string {
   if (p.adpm_contraindication || p.adpm_refused) return '';
   const next = p.next_adpm_date;
-  if (!next) return p.last_adpm_date ? '' : 'bg-red-50';
+  if (!next) return p.last_adpm_date ? '' : 'border-l-4 border-l-red-500';
   const m = next.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return '';
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (d < today) return 'bg-red-50';
-  if (d.getFullYear() === today.getFullYear()) return 'bg-orange-50';
+  if (d < today) return 'border-l-4 border-l-red-500';
+  if (d.getFullYear() === today.getFullYear()) return 'border-l-4 border-l-orange-400';
   return '';
 }

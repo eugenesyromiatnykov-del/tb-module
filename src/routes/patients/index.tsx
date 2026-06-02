@@ -22,6 +22,7 @@ import {
   type PatientFilter,
 } from '@/hooks/usePatients';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { MedicsIdCell } from '@/components/MedicsIdCell';
 import { exportPatientsXlsx, exportReportXlsx } from '@/lib/xlsx-export';
 import { calcAge, formatDateUk, fluoroBucket, daysSince } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -88,6 +89,12 @@ export function PatientsPage() {
 
   const columns = useMemo<ColumnDef<Patient>[]>(
     () => [
+      {
+        header: 'Medics ID',
+        id: 'medics_id',
+        accessorFn: (p) => p.medics_id ?? '',
+        cell: (info) => <MedicsIdCell id={info.row.original.medics_id} />,
+      },
       {
         header: 'ПІБ',
         accessorFn: (p) => `${p.surname} ${p.first_name} ${p.patronymic ?? ''}`.trim(),
