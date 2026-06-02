@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Medics Indicators",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "description": "Аналіз виконання індикаторів якості надавача ПМД",
   "icons": {
     "16": "icon16.png",
@@ -34,6 +34,12 @@
   },
   "options_page": "tb-options.html",
   "content_scripts": [
+    {
+      "matches": ["https://medics.ua/*"],
+      "js": ["window-open-hijack.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
     {
       "matches": ["https://medics.ua/*"],
       "js": [

@@ -239,7 +239,7 @@
       }
       bannerEl.style.background = colors[tone] || colors.info;
       const ts = new Date().toLocaleTimeString('uk-UA');
-      bannerEl.textContent = `[TB ${ts}] v4.2.0\n${text}`;
+      bannerEl.textContent = `[TB ${ts}] v4.3.0\n${text}`;
     } catch (_) { /* DOM not ready or detached */ }
   }
   setBanner('loaded — waiting for poll');
@@ -297,6 +297,19 @@
   window.addEventListener('tb-batch-wake', () => {
     console.log('[TB Batch] SW poke (event) received, polling now');
     poll();
+  });
+
+  // Bridge from MAIN-world hijack (window-open-hijack.js). When MIS calls
+  // window.open or clicks <a target=_blank> the hijack catches the URL and
+  // posts it to us here — we relay to SW which opens it via
+  // chrome.tabs.create({active:false}) so focus never gets yanked away.
+  window.addEventListener('message', (e) => {
+    if (e.source !== window) return;
+    if (!e.data || e.data.source !== 'tb-bg-open' || !e.data.url) return;
+    console.log('[TB Batch] forwarding bg-tab open request:', e.data.url);
+    try {
+      chrome.runtime.sendMessage({ type: 'tb-open-bg-tab', url: e.data.url });
+    } catch (_) {}
   });
 
   const DISPATCH_LOCK_KEY = 'tb-batch-dispatched';
@@ -597,17 +610,14 @@
 
     await wait(TIMING.betweenPatientsMs);
 
-    // If we were spawned by MIS in a new tab (target=_blank from the Confirm
-    // button), close ourselves so tabs don't pile up. Otherwise just navigate
-    // back to journal — the original tab is still around.
-    if (window.opener || document.referrer.includes('medics.ua')) {
-      console.log('[TB Batch] closing spawned med-card tab');
-      try { chrome.runtime.sendMessage({ type: 'tb-close-tab' }); } catch (_) {}
-      // As a fallback if message + remove fails:
-      setTimeout(() => { try { window.close(); } catch (_) {} }, 1000);
-    } else {
-      location.assign(JOURNAL_URL);
-    }
+    // This tab was a batch worker (myMedCardMedicsId is set, see the guard
+    // at the top). Always close — chrome.tabs.create opens med-card tabs as
+    // detached background tabs (no window.opener, no referrer), so the old
+    // "if spawned by MIS" check doesn't apply. The journal tab is alive
+    // separately and will dispatch the next patient.
+    console.log('[TB Batch] closing batch-worker med-card tab');
+    try { chrome.runtime.sendMessage({ type: 'tb-close-tab' }); } catch (_) {}
+    setTimeout(() => { try { window.close(); } catch (_) {} }, 1000);
   }
 
   function waitForSyncCompleted(expectedMedicsId, timeoutMs) {

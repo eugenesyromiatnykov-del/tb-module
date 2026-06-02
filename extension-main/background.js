@@ -159,6 +159,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return false;
   }
+  if (msg && msg.type === 'tb-open-bg-tab' && msg.url) {
+    // From window-open-hijack.js. Open med-card in current window WITHOUT
+    // making it active — preserves the doctor's focus on /sync (or VSCode,
+    // or wherever). openerTabId preserves tab-tree grouping so closing the
+    // med-card returns Chrome's "back" focus to the journal.
+    const openerId = sender?.tab?.id;
+    const opts = { url: msg.url, active: false };
+    if (openerId != null) opts.openerTabId = openerId;
+    chrome.tabs.create(opts).catch((e) => console.warn('[TB SW] bg-tab create failed', e));
+    sendResponse({ ok: true });
+    return false;
+  }
   return false;
 });
 
