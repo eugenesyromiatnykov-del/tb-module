@@ -35,12 +35,14 @@
   };
 
   const TIMING = {
-    afterSearchType: 1500,
-    afterModalOpen: 800,
+    afterSearchType: 800,         // was 1500 — Angular ng-change + filter usually finishes < 800ms
+    afterModalOpen: 400,          // was 800
     syncTimeoutMs: 90_000,
-    betweenPatientsMs: 5000,
+    betweenPatientsMs: 1500,      // was 5000 — once sync event fires, no reason to linger
     pollIntervalMs: 4000,
     pollIntervalFastMs: 1000,
+    medCardBootDelay: 600,        // was 1500 — widget mounts faster than that
+    pageBootDelay: 1500,          // was 2500 in initOnLoad
   };
 
   // ─── Config / auth ───────────────────────────────────────────────────────
@@ -183,8 +185,16 @@
   let lastSeenJobId = null;
   let lastCursor = -1;
 
+  // Watchdog: if the journal tab sees the SAME (jobId, cursor) for too many
+  // polls without anything happening — modal stuck, AJAX hung, MIS quirk —
+  // force-reload the page to reset state. The cycle then resumes from the
+  // server-side cursor without losing position.
+  const WATCHDOG_STALE_THRESHOLD_MS = 45_000;
+  let stallSinceCursor = -1;
+  let stallSinceTime = 0;
+
   const DISPATCH_LOCK_KEY = 'tb-batch-dispatched';
-  const DISPATCH_LOCK_TTL_MS = 120_000; // give the medcard tab time to sync
+  const DISPATCH_LOCK_TTL_MS = 60_000; // give the medcard tab a minute to sync; stale lock recovers fast
 
   function readDispatchLock() {
     return new Promise((r) =>
@@ -268,6 +278,21 @@
     }
 
     if (isOnJournal()) {
+      // Watchdog: if cursor hasn't moved in WATCHDOG_STALE_THRESHOLD_MS,
+      // suspect we're stuck on a hidden modal / mid-AJAX limbo and reload
+      // the page. Note: triggers BEFORE the dispatch-lock check so a stuck
+      // lock can't trap us either.
+      if (stallSinceCursor !== job.cursor) {
+        stallSinceCursor = job.cursor;
+        stallSinceTime = Date.now();
+      } else if (stallSinceTime && Date.now() - stallSinceTime > WATCHDOG_STALE_THRESHOLD_MS) {
+        console.warn('[TB Batch] watchdog: cursor stuck for', Math.round((Date.now() - stallSinceTime) / 1000), 's — reloading journal');
+        await clearDispatchLock(); // belt-and-suspenders
+        stallSinceTime = 0;
+        location.reload();
+        return;
+      }
+
       // Cross-tab dispatch lock: when this (or any other) journal tab clicked
       // «Підтвердити» recently, MIS spawned a med-card tab and is syncing.
       // Don't re-dispatch from here until the cursor moves on or the lock
@@ -279,6 +304,9 @@
         return;
       }
       if (lock) await clearDispatchLock(); // stale lock — purge
+      // Reset stall tracker since we're about to do work.
+      stallSinceCursor = job.cursor;
+      stallSinceTime = Date.now();
       await driveJournal(job, item);
       return;
     }
@@ -336,7 +364,7 @@
           console.warn('[TB Batch] viewBtn missing — reloading /doctors/journal once');
           sessionStorage.setItem(reloadKey, '1');
           location.assign(JOURNAL_URL);
-          await wait(3000); // let nav fire before falling through
+          await wait(1500); // let nav fire before falling through
           return;
         }
         sessionStorage.removeItem(reloadKey);
@@ -402,7 +430,7 @@
       } else {
         console.warn('[TB Batch] med-card: analyze button not found or disabled');
       }
-    }, 1500);
+    }, TIMING.medCardBootDelay);
 
     let failedReason = null;
     try {
@@ -469,6 +497,6 @@
 
   // ─── Boot ────────────────────────────────────────────────────────────────
   // Slightly delay so Angular bootstraps + analyzer hook installs first.
-  setTimeout(poll, 2500);
-  console.log('[TB Batch] batch-runner.js loaded (backend-driven, build 2026-06-02)');
+  setTimeout(poll, TIMING.pageBootDelay);
+  console.log('[TB Batch] batch-runner.js loaded (backend-driven, build 2026-06-03 fast)');
 })();
