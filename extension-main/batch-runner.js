@@ -115,6 +115,21 @@
   let lastSeenJobId = null;
   let lastCursor = -1;
 
+  const DISPATCH_LOCK_KEY = 'tb-batch-dispatched';
+  const DISPATCH_LOCK_TTL_MS = 120_000; // give the medcard tab time to sync
+
+  function readDispatchLock() {
+    return new Promise((r) =>
+      chrome.storage.local.get([DISPATCH_LOCK_KEY], (v) => r(v[DISPATCH_LOCK_KEY] || null)),
+    );
+  }
+  function writeDispatchLock(d) {
+    return new Promise((r) => chrome.storage.local.set({ [DISPATCH_LOCK_KEY]: d }, r));
+  }
+  function clearDispatchLock() {
+    return new Promise((r) => chrome.storage.local.remove([DISPATCH_LOCK_KEY], r));
+  }
+
   // ─── Main poll loop ─────────────────────────────────────────────────────
   async function poll() {
     let job;
@@ -185,6 +200,17 @@
     }
 
     if (isOnJournal()) {
+      // Cross-tab dispatch lock: when this (or any other) journal tab clicked
+      // «Підтвердити» recently, MIS spawned a med-card tab and is syncing.
+      // Don't re-dispatch from here until the cursor moves on or the lock
+      // expires — otherwise we double-open the same patient.
+      const lock = await readDispatchLock();
+      if (lock && lock.job_id === job.id && lock.cursor === job.cursor &&
+          Date.now() - lock.at < DISPATCH_LOCK_TTL_MS) {
+        console.log('[TB Batch] dispatch lock active (', Math.round((Date.now() - lock.at) / 1000), 's), waiting');
+        return;
+      }
+      if (lock) await clearDispatchLock(); // stale lock — purge
       await driveJournal(job, item);
       return;
     }
@@ -243,9 +269,10 @@
 
       const confirmBtn = modal.querySelector(SELECTORS.confirmBtn);
       if (!confirmBtn) throw new Error('Кнопка «Підтвердити» не знайдена');
+      // Set dispatch lock BEFORE click — once MIS navigates, this script dies
+      // and a fresh batch-runner on the new med-card tab takes over.
+      await writeDispatchLock({ job_id: job.id, cursor: job.cursor, at: Date.now() });
       confirmBtn.click();
-      // MIS will navigate to the med-card. This script will reboot there
-      // via the content-script lifecycle; poll() resumes automatically.
     } catch (e) {
       console.warn('[TB Batch] journal step failed:', e?.message);
       await heartbeat(job.id, {
@@ -268,6 +295,21 @@
     lastCursor = job.cursor;
 
     console.log('[TB Batch] med-card → waiting for sync of', item.medics_id);
+
+    // Force-click the Medics Indicators analyze button. The widget's own
+    // auto-analyze is gated by the «АВТО» toggle — we don't care about that
+    // here, batch always wants to analyze. Wait a moment for the widget to
+    // mount, then click.
+    setTimeout(async () => {
+      const btn = await waitFor('#mi-analyze-btn', 10_000);
+      if (btn && !btn.disabled) {
+        console.log('[TB Batch] med-card: clicking analyze');
+        btn.click();
+      } else {
+        console.warn('[TB Batch] med-card: analyze button not found or disabled');
+      }
+    }, 1500);
+
     let failedReason = null;
     try {
       await waitForSyncCompleted(item.medics_id, TIMING.syncTimeoutMs);
@@ -287,9 +329,23 @@
         current_medics_id: null,
       });
     } catch (_) {}
+    // Cursor moved on — clear the dispatch lock so the next journal-tab poll
+    // can dispatch the next patient.
+    await clearDispatchLock();
 
     await wait(TIMING.betweenPatientsMs);
-    location.assign(JOURNAL_URL);
+
+    // If we were spawned by MIS in a new tab (target=_blank from the Confirm
+    // button), close ourselves so tabs don't pile up. Otherwise just navigate
+    // back to journal — the original tab is still around.
+    if (window.opener || document.referrer.includes('medics.ua')) {
+      console.log('[TB Batch] closing spawned med-card tab');
+      try { chrome.runtime.sendMessage({ type: 'tb-close-tab' }); } catch (_) {}
+      // As a fallback if message + remove fails:
+      setTimeout(() => { try { window.close(); } catch (_) {} }, 1000);
+    } else {
+      location.assign(JOURNAL_URL);
+    }
   }
 
   function waitForSyncCompleted(expectedMedicsId, timeoutMs) {

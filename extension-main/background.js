@@ -39,10 +39,19 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // (e.g. right after the doctor presses Запустити on /sync — content script
 // can fire chrome.runtime.sendMessage({type: 'tb-sync-check'}) to skip the
 // alarm wait).
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'tb-sync-check') {
     checkAndEnsureTab().then(() => sendResponse({ ok: true })).catch((e) => sendResponse({ ok: false, error: e?.message }));
     return true; // async response
+  }
+  if (msg && msg.type === 'tb-close-tab') {
+    const tabId = sender?.tab?.id;
+    if (tabId != null) {
+      console.log('[TB SW] closing tab', tabId, 'by request from content script');
+      chrome.tabs.remove(tabId).catch((e) => console.warn('[TB SW] close failed', e));
+    }
+    sendResponse({ ok: true });
+    return false;
   }
   return false;
 });
