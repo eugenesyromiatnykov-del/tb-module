@@ -144,6 +144,7 @@ export default async function handler(req: Req, res: Res) {
   // sputum xpert / quantiferon / latest questionnaire so a single round-trip
   // gives the export everything for the 20-column reporting template.
   if (mode === 'report') {
+    try {
     const filter = asString(q.filter) as Filter | undefined;
     const location = asString(q.location);
     const status = asString(q.status);
@@ -206,54 +207,82 @@ export default async function handler(req: Req, res: Res) {
     }
 
     // Fan-out joins. Order DESC so first-seen-per-patient = latest.
-    const [fluoroRes, sputumRes, quantRes, questRes] = await Promise.all([
-      supabase
-        .from('fluorography')
-        .select('patient_id,date,result,result_code')
-        .in('patient_id', ids)
-        .gte('date', '2024-01-01')
-        .order('date', { ascending: false }),
-      supabase
-        .from('sputum_tests')
-        .select('patient_id,date,test_type,result')
-        .in('patient_id', ids)
-        .eq('test_type', 'xpert')
-        .order('date', { ascending: false }),
-      supabase
-        .from('quantiferon_tests')
-        .select('patient_id,date,result,result_code')
-        .in('patient_id', ids)
-        .order('date', { ascending: false }),
-      supabase
-        .from('questionnaires')
-        .select('patient_id,filled_at,result')
-        .in('patient_id', ids)
-        .order('filled_at', { ascending: false }),
-    ]);
-    for (const r of [fluoroRes, sputumRes, quantRes, questRes]) {
-      if (r.error) {
-        res.status(500).json({ error: r.error.message });
-        return;
+    // .in() ships the id list in the URL — with thousands of UUIDs the
+    // query string blows past PostgREST's URL length limit, so we chunk.
+    const CHUNK = 200;
+    const idChunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) idChunks.push(ids.slice(i, i + CHUNK));
+
+    async function fetchChunked<T>(
+      build: (chunk: string[]) => Promise<{ data: T[] | null; error: { message: string } | null }>,
+    ): Promise<T[]> {
+      const out: T[] = [];
+      for (const chunk of idChunks) {
+        const { data, error } = await build(chunk);
+        if (error) throw new Error(error.message);
+        if (data) out.push(...data);
       }
+      return out;
     }
 
+    type FluoroRow = { patient_id: string; date: string; result: string | null; result_code: string };
+    type SputumRow = { patient_id: string; date: string; test_type: string; result: string | null };
+    type QuantRow = { patient_id: string; date: string; result: string | null; result_code: string };
+    type QuestRow = { patient_id: string; filled_at: string; result: string };
+
+    const [fluoroRows, sputumRows, quantRows, questRows] = await Promise.all([
+      fetchChunked<FluoroRow>((chunk) =>
+        supabase
+          .from('fluorography')
+          .select('patient_id,date,result,result_code')
+          .in('patient_id', chunk)
+          .gte('date', '2024-01-01')
+          .order('date', { ascending: false })
+          .range(0, 19999) as unknown as Promise<{ data: FluoroRow[] | null; error: { message: string } | null }>,
+      ),
+      fetchChunked<SputumRow>((chunk) =>
+        supabase
+          .from('sputum_tests')
+          .select('patient_id,date,test_type,result')
+          .in('patient_id', chunk)
+          .eq('test_type', 'xpert')
+          .order('date', { ascending: false })
+          .range(0, 19999) as unknown as Promise<{ data: SputumRow[] | null; error: { message: string } | null }>,
+      ),
+      fetchChunked<QuantRow>((chunk) =>
+        supabase
+          .from('quantiferon_tests')
+          .select('patient_id,date,result,result_code')
+          .in('patient_id', chunk)
+          .order('date', { ascending: false })
+          .range(0, 19999) as unknown as Promise<{ data: QuantRow[] | null; error: { message: string } | null }>,
+      ),
+      fetchChunked<QuestRow>((chunk) =>
+        supabase
+          .from('questionnaires')
+          .select('patient_id,filled_at,result')
+          .in('patient_id', chunk)
+          .order('filled_at', { ascending: false })
+          .range(0, 19999) as unknown as Promise<{ data: QuestRow[] | null; error: { message: string } | null }>,
+      ),
+    ]);
+
     const fluoroByPat = new Map<string, Array<{ date: string; result: string | null; result_code: string }>>();
-    for (const f of fluoroRes.data ?? []) {
-      const arr = fluoroByPat.get(f.patient_id as string) ?? [];
-      arr.push({ date: f.date as string, result: (f.result as string) ?? null, result_code: f.result_code as string });
-      fluoroByPat.set(f.patient_id as string, arr);
+    for (const f of fluoroRows) {
+      const arr = fluoroByPat.get(f.patient_id) ?? [];
+      arr.push({ date: f.date, result: f.result, result_code: f.result_code });
+      fluoroByPat.set(f.patient_id, arr);
     }
-    const latestBy = <T extends { patient_id: unknown }>(rows: T[]): Map<string, T> => {
+    const latestBy = <T extends { patient_id: string }>(rows: T[]): Map<string, T> => {
       const m = new Map<string, T>();
       for (const r of rows) {
-        const pid = r.patient_id as string;
-        if (!m.has(pid)) m.set(pid, r);
+        if (!m.has(r.patient_id)) m.set(r.patient_id, r);
       }
       return m;
     };
-    const xpert = latestBy((sputumRes.data ?? []) as Array<{ patient_id: unknown; date: string; result: string | null }>);
-    const quant = latestBy((quantRes.data ?? []) as Array<{ patient_id: unknown; date: string; result_code: string }>);
-    const quest = latestBy((questRes.data ?? []) as Array<{ patient_id: unknown; filled_at: string; result: string }>);
+    const xpert = latestBy(sputumRows);
+    const quant = latestBy(quantRows);
+    const quest = latestBy(questRows);
 
     const rows = (patients ?? []).map((p) => ({
       ...p,
@@ -262,8 +291,17 @@ export default async function handler(req: Req, res: Res) {
       quantiferon: quant.get(p.id as string) ?? null,
       questionnaire: quest.get(p.id as string) ?? null,
     }));
-    res.status(200).json({ rows });
-    return;
+      res.status(200).json({ rows });
+      return;
+    } catch (e) {
+      console.error('[/api/patients?mode=report] crashed:', e);
+      const err = e as Error;
+      res.status(500).json({
+        error: `report mode crashed: ${err.message}`,
+        stack: err.stack,
+      });
+      return;
+    }
   }
 
   // ── Villages mode: distinct list for the multi-select filter ────────────
