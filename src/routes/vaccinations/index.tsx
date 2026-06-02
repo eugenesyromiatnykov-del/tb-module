@@ -10,6 +10,7 @@ import {
 import { ArrowUpDown, Download, Loader2, Search } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
+import { SyncFreshness } from '@/components/SyncFreshness';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -188,6 +189,10 @@ export function VaccinationsPage() {
           </Button>
         }
       />
+
+      <div className="-mt-2 mb-4">
+        <SyncFreshness />
+      </div>
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <div className="min-w-[220px] flex-1">

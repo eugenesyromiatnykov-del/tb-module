@@ -23,6 +23,7 @@ import {
 } from '@/hooks/usePatients';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
+import { SyncFreshness } from '@/components/SyncFreshness';
 import { exportPatientsXlsx, exportReportXlsx } from '@/lib/xlsx-export';
 import { calcAge, formatDateUk, fluoroBucket, daysSince } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -255,6 +256,10 @@ export function PatientsPage() {
           </div>
         }
       />
+
+      <div className="-mt-2 mb-4">
+        <SyncFreshness />
+      </div>
 
       {filter && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm">

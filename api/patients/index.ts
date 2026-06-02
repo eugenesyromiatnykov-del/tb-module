@@ -106,6 +106,12 @@ export default async function handler(req: Req, res: Res) {
   if (!(await requireAuth(req, res))) return;
 
   const supabase = getSupabaseAdmin();
+  const reqMode = asString((req.query ?? {}).mode);
+
+  // ── Sync-job dispatcher (action lives in body.action for POST) ───────────
+  if (reqMode === 'sync_job') {
+    return handleSyncJob(req, res, supabase);
+  }
 
   if (req.method === 'POST') {
     const body = (req.body ?? {}) as Record<string, unknown>;
@@ -304,6 +310,30 @@ export default async function handler(req: Req, res: Res) {
     }
   }
 
+  // ── Sync meta: aggregate freshness info for the table-page indicators ────
+  if (mode === 'sync_meta') {
+    const { data: maxRow, error: e1 } = await supabase
+      .from('patients')
+      .select('diagnoses_synced_at')
+      .not('diagnoses_synced_at', 'is', null)
+      .order('diagnoses_synced_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (e1) { res.status(500).json({ error: e1.message }); return; }
+    const totalRes = await supabase.from('patients').select('id', { count: 'exact', head: true }).eq('archived', false);
+    const syncedRes = await supabase
+      .from('patients')
+      .select('id', { count: 'exact', head: true })
+      .eq('archived', false)
+      .not('diagnoses_synced_at', 'is', null);
+    res.status(200).json({
+      most_recent_synced_at: maxRow?.diagnoses_synced_at ?? null,
+      total: totalRes.count ?? 0,
+      synced: syncedRes.count ?? 0,
+    });
+    return;
+  }
+
   // ── Batch-queue mode: feeds extension's nightly auto-analyze runner ──────
   // Returns only what's needed to drive MIS: medics_id (to type into search),
   // surname (for progress UI), location_id (to pick the right workplace radio).
@@ -487,4 +517,212 @@ export default async function handler(req: Req, res: Res) {
     return;
   }
   res.status(200).json({ patients: data ?? [] });
+}
+
+// ─── sync_job dispatcher ────────────────────────────────────────────────────
+// Single-active-job semantics: one row in 'queued|running|paused|stopped'
+// status at a time. Web UI starts/stops; extension polls + heartbeats.
+//
+// Actions:
+//   GET                    → returns the active job (or null)
+//   POST {action:'start'}  → creates a new job, builds queue
+//   POST {action:'heartbeat', job_id, cursor, failed, current_medics_id}
+//   POST {action:'stop',   job_id}
+//   POST {action:'resume', job_id}  → 24h rule: if last_heartbeat_at > 24h
+//                                     ago, rebuild queue from scratch.
+//   POST {action:'complete', job_id, failed}
+const ACTIVE_STATUSES = ['queued', 'running', 'paused', 'stopped'];
+
+async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof getSupabaseAdmin>) {
+  if (req.method === 'GET') {
+    const { data, error } = await supabase
+      .from('sync_jobs')
+      .select('*')
+      .in('status', ACTIVE_STATUSES)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.status(200).json({ job: data ?? null });
+    return;
+  }
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const action = body.action as string | undefined;
+
+  if (action === 'start') {
+    // Refuse if there's already an active job.
+    const { data: existing } = await supabase
+      .from('sync_jobs')
+      .select('id, status')
+      .in('status', ACTIVE_STATUSES)
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      res.status(409).json({ error: 'Активне завдання вже існує', job_id: existing.id });
+      return;
+    }
+    const location = (body.location as string | undefined) ?? null;
+    const onlyUnsynced = body.only_unsynced !== false;
+    const scope = (body.scope as string | undefined) ?? 'location';
+    const medicsList = Array.isArray(body.medics_id_list) ? (body.medics_id_list as string[]) : null;
+
+    // Build queue
+    let queue: Array<{ medics_id: string; surname: string; location_id: string | null }> = [];
+    if (scope === 'subset' && medicsList && medicsList.length > 0) {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('medics_id,surname,location_id')
+        .in('medics_id', medicsList)
+        .eq('archived', false)
+        .not('medics_id', 'is', null);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      queue = (data ?? []) as typeof queue;
+    } else {
+      let q = supabase
+        .from('patients')
+        .select('medics_id,surname,location_id')
+        .eq('archived', false)
+        .not('medics_id', 'is', null);
+      if (location) q = q.eq('location_id', location);
+      if (onlyUnsynced) q = q.is('diagnoses_synced_at', null);
+      q = q.order('surname', { ascending: true }).range(0, 9999);
+      const { data, error } = await q;
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      queue = (data ?? []) as typeof queue;
+    }
+
+    const { data: created, error: insErr } = await supabase
+      .from('sync_jobs')
+      .insert({
+        location,
+        only_unsynced: onlyUnsynced,
+        scope,
+        medics_id_list: medicsList,
+        queue,
+        cursor: 0,
+        failed: [],
+        status: 'queued',
+        started_at: new Date().toISOString(),
+        last_heartbeat_at: new Date().toISOString(),
+      })
+      .select('*')
+      .maybeSingle();
+    if (insErr || !created) {
+      res.status(500).json({ error: insErr?.message ?? 'insert failed' });
+      return;
+    }
+    res.status(201).json({ job: created });
+    return;
+  }
+
+  const jobId = body.job_id as string | undefined;
+  if (!jobId) {
+    res.status(400).json({ error: 'job_id required' });
+    return;
+  }
+
+  if (action === 'heartbeat') {
+    const patch: Record<string, unknown> = {
+      last_heartbeat_at: new Date().toISOString(),
+      status: 'running',
+    };
+    if (typeof body.cursor === 'number') patch.cursor = body.cursor;
+    if (Array.isArray(body.failed)) patch.failed = body.failed;
+    if (typeof body.current_medics_id === 'string' || body.current_medics_id === null)
+      patch.current_medics_id = body.current_medics_id;
+    const { data, error } = await supabase
+      .from('sync_jobs').update(patch).eq('id', jobId).select('*').maybeSingle();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json({ job: data });
+    return;
+  }
+
+  if (action === 'stop') {
+    const { data, error } = await supabase
+      .from('sync_jobs')
+      .update({ status: 'stopped', stopped_at: new Date().toISOString() })
+      .eq('id', jobId)
+      .select('*')
+      .maybeSingle();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json({ job: data });
+    return;
+  }
+
+  if (action === 'resume') {
+    const { data: cur, error: curErr } = await supabase
+      .from('sync_jobs').select('*').eq('id', jobId).maybeSingle();
+    if (curErr || !cur) { res.status(404).json({ error: 'job not found' }); return; }
+
+    const beat = cur.last_heartbeat_at ? new Date(cur.last_heartbeat_at as string).getTime() : 0;
+    const ageMs = Date.now() - beat;
+    const TWENTY_FOUR_H = 24 * 60 * 60 * 1000;
+    const patch: Record<string, unknown> = {
+      status: 'running',
+      stopped_at: null,
+      last_heartbeat_at: new Date().toISOString(),
+    };
+    if (ageMs > TWENTY_FOUR_H) {
+      // Rebuild queue from scratch — patient set may have shifted.
+      const scope = cur.scope as string;
+      const location = cur.location as string | null;
+      const onlyUnsynced = cur.only_unsynced as boolean;
+      const medicsList = (cur.medics_id_list as string[] | null) ?? null;
+      let queue: Array<{ medics_id: string; surname: string; location_id: string | null }> = [];
+      if (scope === 'subset' && medicsList && medicsList.length > 0) {
+        const { data } = await supabase
+          .from('patients')
+          .select('medics_id,surname,location_id')
+          .in('medics_id', medicsList)
+          .eq('archived', false)
+          .not('medics_id', 'is', null);
+        queue = (data ?? []) as typeof queue;
+      } else {
+        let q = supabase
+          .from('patients')
+          .select('medics_id,surname,location_id')
+          .eq('archived', false)
+          .not('medics_id', 'is', null);
+        if (location) q = q.eq('location_id', location);
+        if (onlyUnsynced) q = q.is('diagnoses_synced_at', null);
+        q = q.order('surname', { ascending: true }).range(0, 9999);
+        const { data } = await q;
+        queue = (data ?? []) as typeof queue;
+      }
+      patch.queue = queue;
+      patch.cursor = 0;
+      patch.failed = [];
+      patch.started_at = new Date().toISOString();
+    }
+    const { data, error } = await supabase
+      .from('sync_jobs').update(patch).eq('id', jobId).select('*').maybeSingle();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json({ job: data, reset: ageMs > TWENTY_FOUR_H });
+    return;
+  }
+
+  if (action === 'complete') {
+    const patch: Record<string, unknown> = {
+      status: 'done',
+      finished_at: new Date().toISOString(),
+      current_medics_id: null,
+    };
+    if (Array.isArray(body.failed)) patch.failed = body.failed;
+    if (typeof body.cursor === 'number') patch.cursor = body.cursor;
+    const { data, error } = await supabase
+      .from('sync_jobs').update(patch).eq('id', jobId).select('*').maybeSingle();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(200).json({ job: data });
+    return;
+  }
+
+  res.status(400).json({ error: `Unknown action: ${action}` });
 }

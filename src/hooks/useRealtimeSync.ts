@@ -11,6 +11,7 @@ const WATCHED_TABLES = [
   'sputum_tests',
   'quantiferon_tests',
   'adpm_vaccinations',
+  'sync_jobs',
 ] as const;
 
 // Once the user's PIN cookie is set, the server can mint a Supabase-compatible
@@ -57,10 +58,14 @@ export function useRealtimeSync(enabled: boolean): void {
           qc.invalidateQueries({ queryKey: ['patients'] });
           qc.invalidateQueries({ queryKey: ['patient'] });
           qc.invalidateQueries({ queryKey: ['patients-villages'] });
+          qc.invalidateQueries({ queryKey: ['sync-meta'] });
+        } else if (table === 'sync_jobs') {
+          qc.invalidateQueries({ queryKey: ['sync-job-active'] });
         } else {
           qc.invalidateQueries({ queryKey: ['patient'] });
           qc.invalidateQueries({ queryKey: ['patients'] });
           qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
+          qc.invalidateQueries({ queryKey: ['sync-meta'] });
         }
       };
     }

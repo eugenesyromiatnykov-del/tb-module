@@ -4,6 +4,7 @@ import {
   Users,
   BookOpen,
   Syringe,
+  RefreshCw,
   Settings as SettingsIcon,
   LogOut,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ const items: Item[] = [
   { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { to: '/patients', label: 'Пацієнти', icon: Users },
   { to: '/vaccinations', label: 'Вакцинація', icon: Syringe },
+  { to: '/sync', label: 'Синхронізація', icon: RefreshCw },
   { to: '/orders', label: 'Накази', icon: BookOpen },
   { to: '/settings', label: 'Налаштування', icon: SettingsIcon },
 ];

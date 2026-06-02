@@ -9,6 +9,7 @@ import { QuestionnaireDetailPage } from '@/routes/questionnaires/$id';
 import { ReferralPage } from '@/routes/referral';
 import { OrdersPage } from '@/routes/orders';
 import { VaccinationsPage } from '@/routes/vaccinations';
+import { SyncPage } from '@/routes/sync';
 import { SettingsPage } from '@/routes/settings';
 import { ImportDeclarantsPage } from '@/routes/settings/import-declarants';
 import { ImportHistoricalPage } from '@/routes/settings/import-historical';
@@ -36,6 +37,7 @@ export function App() {
         <Route path="/referral/:id" element={<ReferralPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/vaccinations" element={<VaccinationsPage />} />
+        <Route path="/sync" element={<SyncPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/import-declarants" element={<ImportDeclarantsPage />} />
         <Route path="/settings/import-historical" element={<ImportHistoricalPage />} />
