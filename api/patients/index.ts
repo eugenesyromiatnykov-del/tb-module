@@ -438,6 +438,87 @@ export default async function handler(req: Req, res: Res) {
     return;
   }
 
+  // ── Indicators report: cross-join indicator_results × patients with
+  // optional rule/state/location/search filters. Used by the /indicators
+  // page in the web app. Returns flat rows — one per (patient, rule).
+  if (mode === 'indicators') {
+    const ruleId = asString(q.rule_id);
+    const stateParam = asString(q.state);
+    const location = asString(q.location);
+    const search = (asString(q.search) ?? '').trim();
+    let qb = supabase
+      .from('indicator_results')
+      .select(`
+        id, patient_id, rule_id, rule_name, rule_category, rule_type,
+        applicability_reason, state, is_overdue,
+        completed_count, total_count, last_date, next_date,
+        frequency_months, required_actions, details, analyzed_at,
+        patients!inner (
+          id, medics_id, surname, first_name, patronymic, birth_date,
+          gender, location_id, archived, tb_status,
+          medical_risk_groups, social_risk_groups,
+          last_indicators_synced_at
+        )
+      `)
+      .order('analyzed_at', { ascending: false });
+    if (ruleId) qb = qb.eq('rule_id', ruleId);
+    if (stateParam) {
+      const states = stateParam.split(',').map((s) => s.trim()).filter(Boolean);
+      if (states.length === 1) qb = qb.eq('state', states[0]);
+      else if (states.length > 1) qb = qb.in('state', states);
+    }
+    if (location) qb = qb.eq('patients.location_id', location);
+    qb = qb.eq('patients.archived', false);
+    if (search) {
+      const like = `%${search}%`;
+      qb = qb.or(
+        `surname.ilike.${like},first_name.ilike.${like},patronymic.ilike.${like},medics_id.ilike.${like}`,
+        { foreignTable: 'patients' },
+      );
+    }
+    qb = qb.range(0, 9999);
+    const { data, error } = await qb;
+    if (error) {
+      res.status(500).json({ error: `indicators: ${error.message}` });
+      return;
+    }
+    res.status(200).json({ rows: data ?? [] });
+    return;
+  }
+
+  // ── Indicator summary: aggregate counts per (rule_id, state) optionally
+  // scoped to a location. Drives the registry's summary header.
+  if (mode === 'indicators_summary') {
+    const location = asString(q.location);
+    let qb = supabase
+      .from('indicator_results')
+      .select('rule_id, rule_name, state, patients!inner(location_id, archived)')
+      .eq('patients.archived', false)
+      .range(0, 99999);
+    if (location) qb = qb.eq('patients.location_id', location);
+    const { data, error } = await qb;
+    if (error) {
+      res.status(500).json({ error: `indicators_summary: ${error.message}` });
+      return;
+    }
+    // Aggregate in JS — Supabase doesn't expose GROUP BY through PostgREST.
+    type Bucket = { rule_id: string; rule_name: string | null; counts: Record<string, number>; total: number };
+    const by = new Map<string, Bucket>();
+    for (const r of data ?? []) {
+      const id = r.rule_id as string;
+      let b = by.get(id);
+      if (!b) {
+        b = { rule_id: id, rule_name: (r as { rule_name?: string | null }).rule_name ?? null, counts: {}, total: 0 };
+        by.set(id, b);
+      }
+      const st = r.state as string;
+      b.counts[st] = (b.counts[st] ?? 0) + 1;
+      b.total += 1;
+    }
+    res.status(200).json({ summary: Array.from(by.values()).sort((a, b) => a.rule_id.localeCompare(b.rule_id)) });
+    return;
+  }
+
   // ── Default: registry list with filters ──────────────────────────────────
   const filter = asString(q.filter) as Filter | undefined;
   const location = asString(q.location);

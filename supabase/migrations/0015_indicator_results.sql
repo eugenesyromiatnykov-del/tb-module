@@ -23,6 +23,15 @@ create table if not exists indicator_results (
   rule_name         text,
   rule_category     text,
 
+  -- 'ОБСТЕЖЕННЯ' | 'НАПРАВЛЕННЯ' | 'ДІАГНОСТИЧНИЙ_ЗВІТ' | 'КОМПЛЕКСНА' |
+  -- 'ПРОФІЛАКТИЧНИЙ_ОГЛЯД'. Needed downstream to render TODO sections
+  -- with the same grouping logic as the МІС widget (referrals vs. labs).
+  rule_type         text,
+  -- "Чому ця норма застосовна до пацієнта": human-readable string from
+  -- indicator-matcher.getDetailedApplicabilityReason — shown as info-icon
+  -- tooltip in the МІС widget; mirror it in the registry UI.
+  applicability_reason text,
+
   -- Status from indicator-matcher.js:
   --   'completed'  — все виконано в межах частоти
   --   'overdue'    — виконано, але прострочено
@@ -60,7 +69,14 @@ create index if not exists indicator_results_analyzed_at_idx
   on indicator_results (analyzed_at desc);
 
 alter table patients
-  add column if not exists last_indicators_synced_at timestamptz;
+  add column if not exists last_indicators_synced_at timestamptz,
+  -- Patient-wide raw analyzer payload: observations (lab values + vitals),
+  -- referrals, diagnostic reports, episodes, encounter actions. These are
+  -- the source data the indicator matcher consumed; saving the snapshot
+  -- means the registry UI can show "what МІС had on file at analysis
+  -- time" alongside the computed indicator state (and tooltips can list
+  -- the actual lab values, not just "is completed").
+  add column if not exists last_analysis_snapshot jsonb;
 
 -- Expose the new column through patient_dashboard so /api/extension-sync
 -- and the web UI can read it the same way they read other dashboard
@@ -74,6 +90,7 @@ select
   p.medical_risk_groups, p.social_risk_groups,
   p.diagnoses_codes, p.diagnoses_detail, p.diagnoses_synced_at,
   p.last_indicators_synced_at,
+  p.last_analysis_snapshot,
   p.notes, p.archived, p.archived_reason, p.archived_at, p.is_external,
   p.created_at, p.updated_at,
   f.last_fluoro_date, f.next_planned_date, f.last_result_code,

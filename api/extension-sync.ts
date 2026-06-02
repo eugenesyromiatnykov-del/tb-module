@@ -98,9 +98,10 @@ export default async function handler(req: Req, res: Res) {
     const { data: indicators } = await supabase
       .from('indicator_results')
       .select(`
-        rule_id, rule_name, rule_category, state, is_overdue,
-        completed_count, total_count, last_date, next_date,
-        frequency_months, required_actions, details, analyzed_at
+        rule_id, rule_name, rule_category, rule_type, applicability_reason,
+        state, is_overdue, completed_count, total_count,
+        last_date, next_date, frequency_months,
+        required_actions, details, analyzed_at
       `)
       .eq('patient_id', data.id as string)
       .order('rule_id');
@@ -145,6 +146,8 @@ export default async function handler(req: Req, res: Res) {
         rule_id: string;
         rule_name?: string | null;
         rule_category?: string | null;
+        rule_type?: string | null;
+        applicability_reason?: string | null;
         state: 'completed' | 'overdue' | 'partial' | 'not_done';
         is_overdue?: boolean;
         completed_count?: number;
@@ -155,6 +158,11 @@ export default async function handler(req: Req, res: Res) {
         required_actions?: unknown[];
         details?: unknown[];
       }>;
+      // Patient-wide raw analyzer payload: observations (codes + values +
+      // lastDate), referrals, diagnostic reports, episodes, encounter
+      // actions. Sent alongside indicators (same trigger condition) so the
+      // registry UI can show actual lab values and resolved dates.
+      analysis_snapshot?: Record<string, unknown> | null;
     };
 
     if (!body.medics_id) {
@@ -350,6 +358,8 @@ export default async function handler(req: Req, res: Res) {
           rule_id: ind.rule_id,
           rule_name: ind.rule_name ?? null,
           rule_category: ind.rule_category ?? null,
+          rule_type: ind.rule_type ?? null,
+          applicability_reason: ind.applicability_reason ?? null,
           state: ind.state,
           is_overdue: ind.is_overdue ?? (ind.state === 'overdue'),
           completed_count: ind.completed_count ?? 0,
@@ -368,10 +378,11 @@ export default async function handler(req: Req, res: Res) {
         }
         indicatorsSaved = rows.length;
       }
-      await supabase
-        .from('patients')
-        .update({ last_indicators_synced_at: now })
-        .eq('id', patientId);
+      const snapshotPatch: Record<string, unknown> = { last_indicators_synced_at: now };
+      if (body.analysis_snapshot !== undefined) {
+        snapshotPatch.last_analysis_snapshot = body.analysis_snapshot;
+      }
+      await supabase.from('patients').update(snapshotPatch).eq('id', patientId);
     }
 
     res.status(200).json({

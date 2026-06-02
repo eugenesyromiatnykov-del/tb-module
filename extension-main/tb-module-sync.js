@@ -1009,39 +1009,75 @@
     }
   }
 
+  // Serialize a single value for safe JSONB storage. Dates → ISO 'YYYY-MM-DD',
+  // strings/numbers/booleans untouched, anything else (Sets, functions, undefined)
+  // dropped. Recursively handles plain objects + arrays.
+  function jsonSafe(v) {
+    if (v === null || v === undefined) return null;
+    if (v instanceof Date) return !isNaN(v) ? toLocalIso(v) : null;
+    const t = typeof v;
+    if (t === 'string' || t === 'number' || t === 'boolean') return v;
+    if (t === 'function' || t === 'symbol') return null;
+    if (Array.isArray(v)) return v.map(jsonSafe);
+    if (t === 'object') {
+      const out = {};
+      for (const k of Object.keys(v)) {
+        const safe = jsonSafe(v[k]);
+        if (safe !== null || v[k] === null) out[k] = safe;
+      }
+      return out;
+    }
+    return null;
+  }
+
   // Serialize one indicator-matcher result into the shape /api/extension-sync
-  // expects. Pulls only stable fields; Date → 'YYYY-MM-DD' so the JSONB
-  // column doesn't get ad-hoc ISO timestamps.
+  // expects. Pulls ALL fields from the action objects (including orGroupId,
+  // isAlternative, value, etc) so the registry-side UI can reconstruct the
+  // full МІС widget view — TODO grouping, OR-groups, tooltips, the lot.
   function serializeIndicator(r) {
     if (!r || !r.rule) return null;
     const isoDate = (d) => (d instanceof Date && !isNaN(d) ? toLocalIso(d) : null);
+    // Total count: indicator-matcher already adjusts for OR-groups/conditional/
+    // recommended referrals internally — we read those directly off the result.
+    // For the cached count we use what the matcher logged in details when
+    // available, otherwise approximate from requiredActions excluding
+    // recommended referrals + conditional that weren't met.
+    const nonRecommended = (r.requiredActions ?? []).filter((a) => !a.isRecommendedReferral);
     return {
       rule_id: r.rule.id,
       rule_name: r.rule.name ?? null,
       rule_category: r.rule.category ?? null,
+      rule_type: r.rule.type ?? null,
+      applicability_reason: r.applicabilityReason ?? null,
       state: r.status, // 'completed' | 'overdue' | 'partial' | 'not_done'
       is_overdue: !!r.isOverdue,
-      completed_count: r.requiredActions?.filter((a) => a.isCompleted).length ?? 0,
-      total_count: r.requiredActions?.filter((a) => !a.isRecommendedReferral).length ?? 0,
+      completed_count: nonRecommended.filter((a) => a.isCompleted).length,
+      total_count: nonRecommended.length,
       last_date: isoDate(r.lastDate),
       next_date: isoDate(r.nextDate),
       frequency_months: typeof r.rule.frequency === 'number' ? r.rule.frequency : null,
-      // Strip non-serializable fields from required_actions (Dates etc).
-      required_actions: (r.requiredActions ?? []).map((a) => ({
-        code: a.code,
-        name: a.name,
-        isCompleted: !!a.isCompleted,
-        date: a.date ? (typeof a.date === 'string' ? a.date : isoDate(new Date(a.date))) : null,
-        daysAgo: a.daysAgo ?? null,
-        isExpired: !!a.isExpired,
-        isOrLogic: !!a.isOrLogic,
-        isConditional: !!a.isConditional,
-        isEpisode: !!a.isEpisode,
-        isEncounterAction: !!a.isEncounterAction,
-        isRecommendedReferral: !!a.isRecommendedReferral,
-      })),
+      // Pass through ALL action fields (jsonSafe handles Dates). Keeps
+      // orGroupId, isAlternative, value, conditionalCodes, etc — anything
+      // the matcher adds.
+      required_actions: jsonSafe(r.requiredActions ?? []),
       details: Array.isArray(r.details) ? r.details : [],
     };
+  }
+
+  // Patient-wide raw collected data (observations, referrals, diagnostic
+  // reports, episodes, encounter actions). Saved alongside indicators so
+  // the registry-side UI can show actual lab values and resolved dates
+  // (not just "completed: yes/no").
+  function serializeAnalyzerSnapshot(collected) {
+    const a = collected?.analyzer;
+    if (!a) return null;
+    return jsonSafe({
+      observations: a.observations ?? {},
+      referrals: a.referrals ?? {},
+      diagnosticReports: a.diagnosticReports ?? {},
+      episodes: a.episodes ?? {},
+      encounterActions: a.encounterActions ?? {},
+    });
   }
 
   async function doSync(manual, analyzedData, analyzedResults) {
@@ -1130,6 +1166,11 @@
       payload.indicators = analyzedResults
         .map(serializeIndicator)
         .filter(Boolean);
+      // Patient-wide raw analyzer data — observations, referrals, episodes
+      // etc. Shared across all indicators for this patient; saved once on
+      // patients.last_analysis_snapshot.
+      const snap = serializeAnalyzerSnapshot(analyzedData);
+      if (snap) payload.analysis_snapshot = snap;
     }
 
     // АДП-М: send the latest valid record (status 'Виконана') if parsed.

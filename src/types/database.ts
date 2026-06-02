@@ -48,6 +48,7 @@ export type Patient = {
   diagnoses_detail: DiagnosisDetail[];
   diagnoses_synced_at: string | null;
   last_indicators_synced_at: string | null;
+  last_analysis_snapshot: AnalysisSnapshot | null;
 
   notes: string | null;
   archived: boolean;
@@ -181,6 +182,12 @@ export type Questionnaire = {
 // ─── Indicator analysis (МІС extension → indicator_results table) ──────────
 
 export type IndicatorState = 'completed' | 'overdue' | 'partial' | 'not_done';
+export type IndicatorRuleType =
+  | 'ОБСТЕЖЕННЯ'
+  | 'НАПРАВЛЕННЯ'
+  | 'ДІАГНОСТИЧНИЙ_ЗВІТ'
+  | 'КОМПЛЕКСНА'
+  | 'ПРОФІЛАКТИЧНИЙ_ОГЛЯД';
 
 export type IndicatorRequiredAction = {
   code: string;
@@ -188,12 +195,16 @@ export type IndicatorRequiredAction = {
   isCompleted: boolean;
   date: string | null;          // ISO 'YYYY-MM-DD'
   daysAgo: number | null;
+  value?: string | number | null;
   isExpired?: boolean;
   isOrLogic?: boolean;
   isConditional?: boolean;
   isEpisode?: boolean;
   isEncounterAction?: boolean;
   isRecommendedReferral?: boolean;
+  isAlternative?: boolean;
+  orGroupId?: string;
+  conditionalCodes?: string[];
 };
 
 export type IndicatorResult = {
@@ -202,6 +213,8 @@ export type IndicatorResult = {
   rule_id: string;              // stable id from extension's indicators-rules.js
   rule_name: string | null;     // cached human name (e.g. "Скринінг туберкульозу")
   rule_category: string | null; // "Профілактика" | "Моніторинг" | …
+  rule_type: IndicatorRuleType | null;
+  applicability_reason: string | null;
   state: IndicatorState;
   is_overdue: boolean;
   completed_count: number;
@@ -213,6 +226,36 @@ export type IndicatorResult = {
   details: string[];
   analyzed_at: string;
   created_at: string;
+};
+
+// Patient-wide raw analyzer payload. Saved on patients.last_analysis_snapshot
+// the same trigger as indicator_results, so the registry UI can show actual
+// lab values (not just isCompleted booleans) and resolved episode dates.
+export type AnalysisSnapshot = {
+  observations: Record<string, {
+    code: string;
+    values?: Array<string | number | null>;
+    lastDate?: string | null;
+    daysAgo?: number | null;
+  }>;
+  referrals: Record<string, {
+    code: string;
+    date?: string | null;
+    daysAgo?: number | null;
+    dateIsApproximate?: boolean;
+  }>;
+  diagnosticReports: Record<string, {
+    code: string;
+    date?: string | null;
+    daysAgo?: number | null;
+  }>;
+  episodes: Record<string, {
+    code: string;
+    name?: string | null;
+    date?: string | null;
+    daysAgo?: number | null;
+  }>;
+  encounterActions: Record<string, unknown>;
 };
 
 export const INDICATOR_STATE_LABELS: Record<IndicatorState, string> = {
