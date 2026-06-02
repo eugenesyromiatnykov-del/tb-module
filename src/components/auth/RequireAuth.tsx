@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { checkAuth, type AuthState } from '@/lib/auth';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -15,6 +16,10 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  // Mount once whenever the session is confirmed — fetches the Supabase JWT
+  // and subscribes to postgres_changes for the watched tables.
+  useRealtimeSync(state === 'authed');
 
   if (state === 'unknown') {
     return (

@@ -44,3 +44,22 @@ export async function verifySessionFromHeader(cookieHeader: string | null): Prom
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;
+
+// Supabase Realtime needs a JWT signed with SUPABASE_JWT_SECRET, carrying
+// `role: 'authenticated'` and `aud: 'authenticated'` — that's how the
+// realtime gateway decides whose RLS policies apply. Mint a short-lived one
+// for the current logged-in session so the frontend can subscribe to
+// postgres_changes channels without ever holding the service_role key.
+const SUPABASE_TTL_SECONDS = 60 * 60; // 1 hour — frontend refetches as needed
+
+export async function issueSupabaseRealtimeToken(): Promise<{ token: string; expiresIn: number }> {
+  const raw = process.env.SUPABASE_JWT_SECRET;
+  if (!raw) throw new Error('SUPABASE_JWT_SECRET is not set');
+  const token = await new SignJWT({ role: 'authenticated' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setAudience('authenticated')
+    .setExpirationTime(`${SUPABASE_TTL_SECONDS}s`)
+    .sign(new TextEncoder().encode(raw));
+  return { token, expiresIn: SUPABASE_TTL_SECONDS };
+}

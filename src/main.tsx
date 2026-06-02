@@ -9,7 +9,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      refetchOnWindowFocus: false,
+      // Backstop for Realtime: if the WebSocket missed an event (sleep, network
+      // blip, JWT expiry between refresh cycles), a tab focus still pulls
+      // fresh data. Realtime + focus together cover the rare gap.
+      refetchOnWindowFocus: true,
     },
   },
 });
