@@ -304,6 +304,30 @@ export default async function handler(req: Req, res: Res) {
     }
   }
 
+  // ── Batch-queue mode: feeds extension's nightly auto-analyze runner ──────
+  // Returns only what's needed to drive MIS: medics_id (to type into search),
+  // surname (for progress UI), location_id (to pick the right workplace radio).
+  if (mode === 'batch_queue') {
+    const location = asString(q.location);
+    const onlyUnsynced = asString(q.only_unsynced) === '1';
+    const limit = Math.max(1, Math.min(5000, parseInt(asString(q.limit) ?? '5000', 10) || 5000));
+    let bq = supabase
+      .from('patients')
+      .select('id,medics_id,surname,first_name,patronymic,location_id,diagnoses_synced_at')
+      .eq('archived', false)
+      .not('medics_id', 'is', null);
+    if (location) bq = bq.eq('location_id', location);
+    if (onlyUnsynced) bq = bq.is('diagnoses_synced_at', null);
+    bq = bq.order('surname', { ascending: true }).range(0, limit - 1);
+    const { data, error } = await bq;
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.status(200).json({ queue: data ?? [] });
+    return;
+  }
+
   // ── Villages mode: distinct list for the multi-select filter ────────────
   if (mode === 'villages') {
     const { data, error } = await supabase

@@ -42,6 +42,7 @@
         "form-027-collector.js",
         "ui.js",
         "content.js",
+        "batch-runner.js",
         "tb-module-sync.js"
       ],
       "run_at": "document_idle"
