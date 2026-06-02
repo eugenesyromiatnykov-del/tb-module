@@ -184,6 +184,17 @@
   let driving = false;
   let lastSeenJobId = null;
   let lastCursor = -1;
+  // Tab-local guards. Each medics.ua tab has its own JS context, so these
+  // identify "what THIS tab is responsible for".
+  //   • journalDispatchedCursor — last cursor this journal tab handed off
+  //     to MIS (= clicked Підтвердити for). Prevents the same tab from
+  //     dispatching the same patient twice when SW pokes hammer poll().
+  //   • myMedCardMedicsId — the patient this med-card tab was opened for.
+  //     If SW pokes a stale med-card tab after its work is done and the
+  //     cursor has advanced, we'd otherwise drive a 90-s sync wait for the
+  //     WRONG patient, then heartbeat cursor+1 → real patient gets skipped.
+  let journalDispatchedCursor = -1;
+  let myMedCardMedicsId = null;
 
   // Watchdog: if the journal tab sees the SAME (jobId, cursor) for too many
   // polls without anything happening — modal stuck, AJAX hung, MIS quirk —
@@ -228,7 +239,7 @@
       }
       bannerEl.style.background = colors[tone] || colors.info;
       const ts = new Date().toLocaleTimeString('uk-UA');
-      bannerEl.textContent = `[TB ${ts}] v4.1.9\n${text}`;
+      bannerEl.textContent = `[TB ${ts}] v4.2.0\n${text}`;
     } catch (_) { /* DOM not ready or detached */ }
   }
   setBanner('loaded — waiting for poll');
@@ -422,6 +433,14 @@
   }
 
   async function driveJournal(job, item) {
+    // Per-tab dispatch guard. Multiple SW pokes in quick succession could
+    // otherwise have this tab re-run search→confirm for the SAME cursor
+    // while the previous med-card is still being processed (cross-tab lock
+    // window can race during the click→navigation gap).
+    if (journalDispatchedCursor === job.cursor) {
+      console.log('[TB Batch] this journal tab already dispatched cursor', job.cursor, '— waiting');
+      return;
+    }
     console.log('[TB Batch] journal → searching', item.medics_id, item.surname);
     setBanner(`journal → searching\n${item.medics_id} ${item.surname ?? ''}\ncursor ${job.cursor}/${job.queue.length}`);
     // Heartbeat — tell web UI "we picked it up, doing now".
@@ -492,8 +511,10 @@
 
       const confirmBtn = modal.querySelector(SELECTORS.confirmBtn);
       if (!confirmBtn) throw new Error('Кнопка «Підтвердити» не знайдена');
-      // Set dispatch lock BEFORE click — once MIS navigates, this script dies
-      // and a fresh batch-runner on the new med-card tab takes over.
+      // Mark THIS tab as having dispatched this cursor BEFORE writing the
+      // cross-tab lock or clicking — so any racing poll() in this same tab
+      // sees the guard and bails immediately.
+      journalDispatchedCursor = job.cursor;
       await writeDispatchLock({ job_id: job.id, cursor: job.cursor, at: Date.now() });
       confirmBtn.click();
     } catch (e) {
@@ -513,6 +534,19 @@
   }
 
   async function driveMedCard(job, item) {
+    // Stale-tab guard. Each med-card tab MUST process exactly one patient
+    // (the one whose Confirm click opened it). After we finish + heartbeat
+    // cursor+1, SW pokes still arrive at this tab until it closes. Those
+    // pokes carry the NEW cursor's item → without this guard we'd start a
+    // 90-s sync wait for the wrong patient on a page that's about to die,
+    // then heartbeat cursor+1 again → REAL patient skipped silently.
+    if (myMedCardMedicsId === null) {
+      myMedCardMedicsId = item.medics_id;
+    } else if (String(myMedCardMedicsId) !== String(item.medics_id)) {
+      console.log('[TB Batch] stale med-card tab (mine:', myMedCardMedicsId, '; current cursor:', item.medics_id, ') — ignoring poke');
+      setBanner(`stale tab — mine ${myMedCardMedicsId}\ncursor advanced to ${item.medics_id}\n(closing soon)`, 'warn');
+      return;
+    }
     // Don't re-process if the cursor has already moved on (e.g. heartbeat
     // landed and a fresh poll picked up the next patient before we acted).
     if (lastCursor === job.cursor) return;

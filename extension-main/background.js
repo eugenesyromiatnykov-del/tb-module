@@ -19,7 +19,12 @@ const JOURNAL_URL = 'https://medics.ua/doctors/journal';
 // foreground away. Without this, every patient interrupts whatever else the
 // doctor is doing — even other apps lose focus.
 let preferredTabId = null;
-const recentMedicsTabs = new Map(); // tabId → createdAt — tabs we should snap focus away from
+// Track ALL newly created tabs (not just medics.ua) — we can't reliably tell
+// at onCreated/onActivated time whether a brand-new tab is medics.ua because
+// tab.url is often empty until navigation actually starts. So we treat any
+// tab created during an active batch as a snap-back candidate and only
+// confirm/skip later in maybeSnapBack().
+const recentTabs = new Map(); // tabId → createdAt
 
 function ensureAlarm() {
   chrome.alarms.get(POLL_ALARM, (existing) => {
@@ -53,43 +58,86 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   checkAndEnsureTab().catch((e) => console.warn('[TB SW] poll failed', e));
 });
 
-// Track non-medics.ua active tab as the "preferred" target to restore focus to.
-chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+// Decide whether to snap focus away from `tabId` back to preferredTabId.
+// Cases:
+//   • Non-medics URL → that's the doctor's working tab; remember it.
+//   • EMPTY URL on a freshly created tab during active batch → MIS auto-spawn
+//     before navigation; snap immediately so the doctor isn't yanked away.
+//   • medics.ua /doctors/journal → user might want to watch progress; never
+//     snap from it.
+//   • Other medics.ua URL (= med-card) created recently during active batch
+//     → MIS auto-spawn; snap back.
+//   • Other medics.ua URL NOT recently created (older than 5 s) → user
+//     manually focused it; respect that.
+async function maybeSnapBack(tabId) {
+  let tab;
+  try { tab = await chrome.tabs.get(tabId); } catch (_) { return; }
+  const url = tab.url || tab.pendingUrl || '';
+
+  // Non-medics, non-chrome internal URL = the doctor's actual working tab.
+  if (url && !url.startsWith('https://medics.ua') && !url.startsWith('chrome')) {
+    preferredTabId = tabId;
+    return;
+  }
+
+  // Empty URL = brand-new tab pre-navigation. If created during active batch,
+  // assume MIS spawned it (window.open from Confirm click) and snap.
+  if (!url) {
+    const created = recentTabs.get(tabId);
+    if (!created || Date.now() - created > 2500) return;
+    if (!(await isActiveBatch())) return;
+    await snapToPreferred(tabId, 'unidentified new tab');
+    return;
+  }
+
+  // Never snap from /doctors/journal — user wants to watch progress.
+  if (url.includes('/doctors/journal')) return;
+
+  // Med-card URL. Snap only if auto-spawned recently AND active batch.
+  if (url.startsWith('https://medics.ua')) {
+    const created = recentTabs.get(tabId);
+    if (!created || Date.now() - created > 5000) return;
+    if (!(await isActiveBatch())) return;
+    await snapToPreferred(tabId, 'med-card tab');
+  }
+}
+
+async function isActiveBatch() {
+  const job = await getActiveJob();
+  return !!(job && (job.status === 'running' || job.status === 'queued'));
+}
+
+async function snapToPreferred(fromTabId, label) {
+  if (preferredTabId == null || preferredTabId === fromTabId) return;
   try {
-    const tab = await chrome.tabs.get(tabId);
-    const isMedics = tab.url?.startsWith('https://medics.ua') || tab.pendingUrl?.startsWith('https://medics.ua');
-    if (!isMedics) {
-      preferredTabId = tabId;
-      return;
-    }
-    // Snap focus away if this medics.ua tab was created by MIS auto-spawn
-    // (window.open from a script-driven click) AND there's an active batch.
-    const created = recentMedicsTabs.get(tabId);
-    if (!created || Date.now() - created > 8000) return;
-    const job = await getActiveJob();
-    if (!job || (job.status !== 'running' && job.status !== 'queued')) return;
-    if (preferredTabId == null || preferredTabId === tabId) return;
-    try {
-      await chrome.tabs.update(preferredTabId, { active: true });
-      console.log('[TB SW] focus snapped back from medcard tab', tabId, '→', preferredTabId);
-    } catch (e) {
-      // preferred tab might've been closed.
-      preferredTabId = null;
-    }
-  } catch (_) { /* tab might have been closed already */ }
+    await chrome.tabs.update(preferredTabId, { active: true });
+    console.log('[TB SW] focus snapped back from', label, fromTabId, '→', preferredTabId);
+  } catch (_) {
+    // Preferred tab was closed.
+    preferredTabId = null;
+  }
+}
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  maybeSnapBack(tabId);
 });
 
-// Note every new medics.ua tab — those born during a batch are the ones that
-// would otherwise yank focus from the doctor's other work.
+// URL changes after onActivated. If the now-active tab transitions into a
+// med-card URL we missed (because URL was empty when onActivated fired),
+// re-evaluate the snap-back decision.
+chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
+  if (!tab.active) return;
+  if (!info.url) return;
+  maybeSnapBack(tabId);
+});
+
 chrome.tabs.onCreated.addListener((tab) => {
-  const url = tab.url || tab.pendingUrl || '';
-  if (!url.startsWith('https://medics.ua')) return;
   if (tab.id == null) return;
-  recentMedicsTabs.set(tab.id, Date.now());
-  setTimeout(() => recentMedicsTabs.delete(tab.id), 15_000);
+  recentTabs.set(tab.id, Date.now());
+  setTimeout(() => recentTabs.delete(tab.id), 15_000);
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
-  recentMedicsTabs.delete(tabId);
+  recentTabs.delete(tabId);
   if (preferredTabId === tabId) preferredTabId = null;
 });
 
