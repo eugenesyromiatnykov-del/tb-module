@@ -87,10 +87,18 @@ async function checkAndEnsureTab() {
 
   // Any medics.ua tab is enough — the content script polls there.
   const tabs = await chrome.tabs.query({ url: 'https://medics.ua/*' });
-  if (tabs.length > 0) {
-    console.log(`[TB SW] active job ${job.id}: medics.ua tab already open (${tabs.length}), letting content script work`);
+  if (tabs.length === 0) {
+    console.log(`[TB SW] active job ${job.id}: opening journal in background tab`);
+    await chrome.tabs.create({ url: JOURNAL_URL, active: false });
     return;
   }
-  console.log(`[TB SW] active job ${job.id}: opening journal in background tab`);
-  await chrome.tabs.create({ url: JOURNAL_URL, active: false });
+  console.log(`[TB SW] active job ${job.id}: medics.ua tab already open (${tabs.length}), poking content scripts`);
+  // Background-tab setTimeout is throttled — extension messaging isn't. Wake
+  // the content scripts so they poll right now regardless of their own
+  // delayed timer.
+  for (const t of tabs) {
+    if (t.id != null) {
+      chrome.tabs.sendMessage(t.id, { type: 'tb-poke-poll' }).catch(() => { /* tab might have unloaded mid-message */ });
+    }
+  }
 }

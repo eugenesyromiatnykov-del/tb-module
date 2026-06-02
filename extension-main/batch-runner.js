@@ -193,6 +193,52 @@
   let stallSinceCursor = -1;
   let stallSinceTime = 0;
 
+  // ─── Tab keep-alive: defeat Chrome's background-tab throttling ──────────
+  // When the doctor switches away from the medics.ua tab Chrome aggressively
+  // throttles setTimeout (and may suspend execution entirely after 5 min in
+  // background). Two-pronged defence:
+  //   1. Play a silent looped <audio> — Chrome exempts "playing media" tabs
+  //      from throttling. Autoplay policy may block this initially; if it
+  //      does the SW kick (below) still keeps us going at a slower pace.
+  //   2. Listen for `tb-poke-poll` messages from the service-worker alarm.
+  //      Even fully-throttled background tabs still receive runtime messages
+  //      promptly, so the SW becomes our external heartbeat.
+  let keepAliveAudio = null;
+  function startKeepAlive() {
+    if (keepAliveAudio) return;
+    try {
+      const a = document.createElement('audio');
+      // 1s of 8kHz PCM zeroes — valid WAV header, no audible content.
+      a.src = 'data:audio/wav;base64,UklGRkAAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      a.loop = true;
+      a.style.display = 'none';
+      document.documentElement.appendChild(a);
+      const p = a.play();
+      if (p && p.catch) {
+        p.catch((e) => console.warn('[TB Batch] keep-alive audio blocked (autoplay):', e?.message));
+      }
+      keepAliveAudio = a;
+    } catch (e) {
+      console.warn('[TB Batch] keep-alive audio init failed:', e?.message);
+    }
+  }
+  function stopKeepAlive() {
+    if (!keepAliveAudio) return;
+    try { keepAliveAudio.pause(); keepAliveAudio.remove(); } catch (_) {}
+    keepAliveAudio = null;
+  }
+
+  // SW poke channel — fires poll() on demand, ignoring whatever throttled
+  // setTimeout was due to fire.
+  try {
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg && msg.type === 'tb-poke-poll') {
+        console.log('[TB Batch] SW poke received, polling now');
+        poll();
+      }
+    });
+  } catch (_) { /* not in extension context */ }
+
   const DISPATCH_LOCK_KEY = 'tb-batch-dispatched';
   const DISPATCH_LOCK_TTL_MS = 60_000; // give the medcard tab a minute to sync; stale lock recovers fast
 
@@ -221,6 +267,7 @@
 
     if (!job || (job.status !== 'running' && job.status !== 'queued')) {
       lastSeenJobId = null;
+      stopKeepAlive();
       schedule(TIMING.pollIntervalMs);
       return;
     }
@@ -231,6 +278,7 @@
       console.log('[TB Batch] new active job:', ourJob.id, `cursor=${ourJob.cursor}/${ourJob.queue.length}`);
       lastSeenJobId = ourJob.id;
       lastCursor = -1;
+      startKeepAlive();
     }
 
     if (ourJob.cursor >= ourJob.queue.length) {
