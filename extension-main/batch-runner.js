@@ -103,25 +103,50 @@
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  // Workplace modal cleanup. After «Підтвердити» MIS usually closes the
-  // modal — but not reliably; second/third patient saw it lingering and
-  // blocking the next viewBtn click. Try the close button first; if it
-  // doesn't go away, strip the is-open class as a last resort.
+  // Workplace modal cleanup. MIS sometimes leaves the modal open on the
+  // /doctors/journal tab after «Підтвердити» — by the next iteration it's
+  // sitting on top of everything and blocks viewBtn clicks. Three escalating
+  // fallbacks so we never get stuck on this:
+  //   1. Click the X close button (works most of the time)
+  //   2. Reach into AngularJS scope and call workplace_modal.close() directly
+  //   3. Strip the is-open class AND set display:none inline
   async function dismissAnyOpenModal() {
     let open = document.querySelector(SELECTORS.workplaceModal);
     if (!open) return;
     console.log('[TB Batch] dismissing leftover workplace modal');
+
     const closeBtn = open.querySelector('button[ng-click="workplace_modal.close()"]');
     if (closeBtn) {
       closeBtn.click();
       await wait(500);
     }
-    open = document.querySelector(SELECTORS.workplaceModal);
-    if (open) {
-      console.warn('[TB Batch] modal still open after close click, force-stripping is-open');
-      open.classList.remove('is-open');
-      await wait(200);
+    if (!document.querySelector(SELECTORS.workplaceModal)) return;
+
+    // Fallback: AngularJS scope.workplace_modal.close() + $apply.
+    try {
+      const ng = window.angular;
+      if (ng && open) {
+        const scope = ng.element(open).scope();
+        if (scope?.workplace_modal?.close) {
+          console.log('[TB Batch] closing modal via AngularJS scope');
+          scope.workplace_modal.close();
+          scope.$applyAsync ? scope.$applyAsync() : scope.$apply();
+          await wait(500);
+        }
+      }
+    } catch (e) {
+      console.warn('[TB Batch] scope close failed', e?.message);
     }
+    if (!document.querySelector(SELECTORS.workplaceModal)) return;
+
+    // Last resort: nuke from DOM perspective.
+    console.warn('[TB Batch] modal still up — force-stripping');
+    const stuck = document.querySelector('.custom-modal');
+    if (stuck) {
+      stuck.classList.remove('is-open');
+      stuck.style.display = 'none';
+    }
+    await wait(200);
   }
 
   // AngularJS radios bind via ng-model + ng-value. Native .click() flips the
@@ -301,7 +326,22 @@
         for (const b of btns) if (b.offsetParent !== null) return b;
         return null;
       }, 8_000);
-      if (!viewBtn) throw new Error('Кнопка «Переглянути» не зʼявилася');
+      if (!viewBtn) {
+        // Likely journal is in a bad state (stale filter list, modal still
+        // hiding it, AJAX hiccup). Reload the page — next page-load resumes
+        // the driver from the same cursor and tries again fresh.
+        const reloadKey = `tb-journal-reload-${item.medics_id}`;
+        const prev = sessionStorage.getItem(reloadKey);
+        if (!prev) {
+          console.warn('[TB Batch] viewBtn missing — reloading /doctors/journal once');
+          sessionStorage.setItem(reloadKey, '1');
+          location.assign(JOURNAL_URL);
+          await wait(3000); // let nav fire before falling through
+          return;
+        }
+        sessionStorage.removeItem(reloadKey);
+        throw new Error('Кнопка «Переглянути» не зʼявилася навіть після reload');
+      }
       viewBtn.click();
       await wait(TIMING.afterModalOpen);
 
