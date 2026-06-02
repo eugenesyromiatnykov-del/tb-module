@@ -11,6 +11,7 @@ import { ArrowUpDown, Download, Loader2, Search } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
 import { SyncFreshness } from '@/components/SyncFreshness';
+import { SyncCell } from '@/components/SyncCell';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -148,6 +149,12 @@ export function VaccinationsPage() {
           }
           return <span className="text-slate-400">—</span>;
         },
+      },
+      {
+        id: 'sync',
+        header: 'Sync',
+        accessorFn: (p) => p.diagnoses_synced_at ?? '',
+        cell: (info) => <SyncCell at={info.row.original.diagnoses_synced_at} />,
       },
     ],
     [],

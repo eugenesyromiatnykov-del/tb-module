@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { relativeAgo } from '@/lib/date-utils';
 
 type SyncMeta = {
   most_recent_synced_at: string | null;
@@ -14,18 +15,6 @@ function useSyncMeta() {
     queryFn: () => apiFetch<SyncMeta>('/api/patients?mode=sync_meta'),
     staleTime: 60_000,
   });
-}
-
-function relativeAgo(iso: string | null): string {
-  if (!iso) return 'ніколи';
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return 'щойно';
-  const m = Math.floor(diff / 60_000);
-  if (m < 60) return `${m} хв тому`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} год тому`;
-  const d = Math.floor(h / 24);
-  return `${d} ${d === 1 ? 'день' : d < 5 ? 'дні' : 'днів'} тому`;
 }
 
 // Slim caption shown under page headers on the registry tables. Tells the

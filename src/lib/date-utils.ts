@@ -93,6 +93,20 @@ export function daysSince(iso: string | null | undefined): number | null {
   return Math.round((today.getTime() - d.getTime()) / 86400_000);
 }
 
+/** "5 хв тому" / "3 год тому" / "2 дні тому" / "ніколи".
+ *  Used wherever we surface freshness of synced data. */
+export function relativeAgo(iso: string | null | undefined): string {
+  if (!iso) return 'ніколи';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60_000) return 'щойно';
+  const m = Math.floor(diff / 60_000);
+  if (m < 60) return `${m} хв тому`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} год тому`;
+  const d = Math.floor(h / 24);
+  return `${d} ${d === 1 ? 'день' : d < 5 ? 'дні' : 'днів'} тому`;
+}
+
 /** Classifies a planned-fluoro date relative to today. */
 export type FluoroBucket = 'overdue' | 'this_week' | 'next_30' | 'later' | 'none';
 export function fluoroBucket(plannedIso: string | null | undefined): FluoroBucket {

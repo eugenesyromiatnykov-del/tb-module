@@ -4,6 +4,7 @@ import { ArrowLeft, Pencil, Plus, Trash2, Loader2, AlertTriangle, FileText } fro
 import { useQuestionnaires } from '@/hooks/useQuestionnaires';
 import { RESULT_LABELS, type QuestionnaireResult } from '@/lib/questionnaire';
 import { PageHeader } from '@/components/PageHeader';
+import { SyncCell } from '@/components/SyncCell';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -114,6 +115,11 @@ export function PatientDetailPage() {
           </div>
         }
       />
+
+      <div className="-mt-2 mb-4 flex items-center gap-2 text-xs text-slate-500">
+        <span>Sync:</span>
+        <SyncCell at={patient.diagnoses_synced_at} />
+      </div>
 
       <div className="mb-4 flex gap-1 border-b border-slate-200">
         <TabButton active={tab === 'overview'} onClick={() => setTab('overview')}>

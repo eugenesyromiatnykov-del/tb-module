@@ -24,6 +24,7 @@ import {
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
 import { SyncFreshness } from '@/components/SyncFreshness';
+import { SyncCell } from '@/components/SyncCell';
 import { exportPatientsXlsx, exportReportXlsx } from '@/lib/xlsx-export';
 import { calcAge, formatDateUk, fluoroBucket, daysSince } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -193,6 +194,11 @@ export function PatientsPage() {
             </div>
           );
         },
+      },
+      {
+        header: 'Sync',
+        accessorKey: 'diagnoses_synced_at',
+        cell: ({ row }) => <SyncCell at={row.original.diagnoses_synced_at} />,
       },
     ],
     [],
