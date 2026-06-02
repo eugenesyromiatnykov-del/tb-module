@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '../_lib/supabase-server.js';
 import { requireAuth } from '../_lib/auth-guard.js';
+import { handlePreflight, setCors } from '../_lib/cors.js';
 
 type Req = {
   method?: string;
@@ -9,6 +10,7 @@ type Req = {
 };
 type Res = {
   status: (code: number) => Res;
+  setHeader: (key: string, value: string | string[]) => void;
   json: (data: unknown) => void;
 };
 
@@ -103,6 +105,8 @@ const ALLOWED_CREATE_FIELDS = new Set([
 ]);
 
 export default async function handler(req: Req, res: Res) {
+  if (handlePreflight(req, res)) return;
+  setCors(req, res);
   if (!(await requireAuth(req, res))) return;
 
   const supabase = getSupabaseAdmin();

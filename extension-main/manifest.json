@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Medics Indicators",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Аналіз виконання індикаторів якості надавача ПМД",
   "icons": {
     "16": "icon16.png",
@@ -21,11 +21,17 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "tabs",
+    "alarms"
   ],
   "host_permissions": [
-    "https://medics.ua/*"
+    "https://medics.ua/*",
+    "https://tb-module.vercel.app/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "options_page": "tb-options.html",
   "content_scripts": [
     {
