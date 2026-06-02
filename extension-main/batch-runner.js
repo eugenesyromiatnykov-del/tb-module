@@ -193,6 +193,46 @@
   let stallSinceCursor = -1;
   let stallSinceTime = 0;
 
+  // ─── Visible diagnostic banner ──────────────────────────────────────────
+  // Fixed overlay top-right of medics.ua tabs so the doctor can see what
+  // batch-runner is doing in real time without opening DevTools.
+  let bannerEl = null;
+  function setBanner(text, tone = 'info') {
+    const colors = {
+      info: '#1e293b',
+      ok: '#065f46',
+      warn: '#92400e',
+      err: '#7f1d1d',
+    };
+    try {
+      if (!bannerEl) {
+        bannerEl = document.createElement('div');
+        bannerEl.id = 'tb-batch-status';
+        bannerEl.style.cssText = [
+          'position:fixed','top:0','right:0','z-index:2147483647',
+          'background:#1e293b','color:#fff','padding:6px 10px',
+          'font:11px/1.4 SFMono-Regular,Consolas,Menlo,monospace',
+          'border-bottom-left-radius:8px','max-width:360px',
+          'box-shadow:0 4px 12px rgba(0,0,0,.3)','pointer-events:none',
+          'white-space:pre-wrap','word-break:break-word',
+        ].join(';');
+      }
+      if (!bannerEl.isConnected) {
+        const host = document.body || document.documentElement;
+        if (host) host.appendChild(bannerEl);
+        else {
+          document.addEventListener('DOMContentLoaded', () => {
+            (document.body || document.documentElement)?.appendChild(bannerEl);
+          }, { once: true });
+        }
+      }
+      bannerEl.style.background = colors[tone] || colors.info;
+      const ts = new Date().toLocaleTimeString('uk-UA');
+      bannerEl.textContent = `[TB ${ts}] v4.1.9\n${text}`;
+    } catch (_) { /* DOM not ready or detached */ }
+  }
+  setBanner('loaded — waiting for poll');
+
   // ─── Tab keep-alive: defeat Chrome's background-tab throttling ──────────
   // When the doctor switches away from the medics.ua tab Chrome aggressively
   // throttles setTimeout (and may suspend execution entirely after 5 min in
@@ -270,6 +310,7 @@
       job = await getActiveJob();
     } catch (e) {
       console.warn('[TB Batch] poll failed:', e?.message);
+      setBanner(`poll failed: ${e?.message ?? e}`, 'err');
       schedule(TIMING.pollIntervalMs);
       return;
     }
@@ -277,6 +318,7 @@
     if (!job || (job.status !== 'running' && job.status !== 'queued')) {
       lastSeenJobId = null;
       stopKeepAlive();
+      setBanner(`idle — no active job\nstatus: ${job?.status ?? 'null'}`);
       schedule(TIMING.pollIntervalMs);
       return;
     }
@@ -289,6 +331,7 @@
       lastCursor = -1;
       startKeepAlive();
     }
+    setBanner(`job ${ourJob.id.slice(0, 8)}…\ncursor ${ourJob.cursor}/${ourJob.queue.length} · status ${ourJob.status}\non ${isOnJournal() ? 'journal' : isOnMedCard() ? 'med-card' : 'other'} · driving ${driving}`);
 
     if (ourJob.cursor >= ourJob.queue.length) {
       console.log('[TB Batch] queue exhausted, completing');
@@ -380,6 +423,7 @@
 
   async function driveJournal(job, item) {
     console.log('[TB Batch] journal → searching', item.medics_id, item.surname);
+    setBanner(`journal → searching\n${item.medics_id} ${item.surname ?? ''}\ncursor ${job.cursor}/${job.queue.length}`);
     // Heartbeat — tell web UI "we picked it up, doing now".
     try {
       await heartbeat(job.id, {
@@ -454,6 +498,7 @@
       confirmBtn.click();
     } catch (e) {
       console.warn('[TB Batch] journal step failed:', e?.message);
+      setBanner(`journal failed: ${e?.message ?? e}\nadvancing cursor and continuing`, 'err');
       await heartbeat(job.id, {
         cursor: job.cursor + 1,
         failed: [...job.failed, {
@@ -474,6 +519,7 @@
     lastCursor = job.cursor;
 
     console.log('[TB Batch] med-card → waiting for sync of', item.medics_id);
+    setBanner(`med-card → analyzing\n${item.medics_id} ${item.surname ?? ''}\ncursor ${job.cursor}/${job.queue.length}`);
 
     // Force-click the Medics Indicators analyze button. The widget's own
     // auto-analyze is gated by the «АВТО» toggle — we don't care about that
@@ -486,6 +532,7 @@
         btn.click();
       } else {
         console.warn('[TB Batch] med-card: analyze button not found or disabled');
+        setBanner('med-card: analyze button not found', 'err');
       }
     }, TIMING.medCardBootDelay);
 
@@ -493,9 +540,11 @@
     try {
       await waitForSyncCompleted(item.medics_id, TIMING.syncTimeoutMs);
       console.log('[TB Batch] sync OK', item.medics_id);
+      setBanner(`sync OK ${item.medics_id}\nclosing tab in ${TIMING.betweenPatientsMs / 1000}s`, 'ok');
     } catch (e) {
       failedReason = e?.message ?? String(e);
       console.warn('[TB Batch] sync failed:', failedReason);
+      setBanner(`sync failed: ${failedReason}`, 'err');
     }
 
     const newFailed = failedReason
