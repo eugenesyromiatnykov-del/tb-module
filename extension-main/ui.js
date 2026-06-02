@@ -194,6 +194,53 @@ class MedicsIndicatorUI {
             /* Картка індикатора */
             .mi-indicator-card { transition: box-shadow 0.15s ease, transform 0.15s ease !important; }
             .mi-indicator-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1) !important; }
+            /* ── Analyze loading state (v5.0.1) ───────────────────────────── */
+            /* Indeterminate top strip — replaces the old #mi-progress-container.
+               Lives just under the patient banner; ~2px so it doesn't add
+               visual height when off, but is clearly noticeable when on. */
+            #mi-loading-strip {
+                position: relative !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                background: #e2e8f0 !important;
+                transition: height 0.15s ease !important;
+                flex-shrink: 0 !important;
+            }
+            #mi-loading-strip.is-on { height: 2px !important; }
+            #mi-loading-strip::before {
+                content: '' !important;
+                position: absolute !important;
+                left: -40% !important;
+                top: 0 !important;
+                height: 100% !important;
+                width: 40% !important;
+                background: linear-gradient(90deg, transparent 0%, #0f172a 50%, transparent 100%) !important;
+                animation: mi-loading-slide 1.2s ease-in-out infinite !important;
+            }
+            @keyframes mi-loading-slide {
+                0%   { left: -40%; }
+                100% { left: 100%; }
+            }
+            /* In-button spinner */
+            .mi-spinner {
+                display: inline-block !important;
+                width: 12px !important;
+                height: 12px !important;
+                border: 2px solid rgba(255, 255, 255, 0.35) !important;
+                border-top-color: #ffffff !important;
+                border-radius: 50% !important;
+                animation: mi-spin 0.7s linear infinite !important;
+                vertical-align: middle !important;
+                margin-right: 6px !important;
+            }
+            @keyframes mi-spin { to { transform: rotate(360deg); } }
+            #mi-analyze-btn.is-loading,
+            #mi-form027-btn.is-loading {
+                opacity: 0.85 !important;
+                cursor: progress !important;
+                pointer-events: none !important;
+            }
+
             /* Patient banner — slim single-row strip under header (v5.0.0) */
             .mi-patient-banner {
                 display: flex !important;
@@ -393,8 +440,9 @@ class MedicsIndicatorUI {
     createWidget() {
         const widget = document.createElement('div');
         widget.id = 'medics-indicators-widget';
-        // v5.0.0: slimmer chrome, capped at 50vh, max width respects 1/3 viewport.
-        widget.style.cssText = `position: fixed !important; bottom: 16px !important; right: 16px !important; width: 420px !important; max-width: min(33vw, calc(100vw - 32px)) !important; height: auto !important; max-height: 50vh !important; background: #ffffff !important; border-radius: 10px !important; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.06) !important; z-index: 999999 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; font-size: 13px !important; line-height: 1.45 !important; color: #0f172a !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 0 !important; transition: max-height 0.2s ease !important;`;
+        // v5.0.1: max-height auto-expands up to 67vh (2/3 screen) when content
+        // overflows; height stays at auto so small content gives small widget.
+        widget.style.cssText = `position: fixed !important; bottom: 16px !important; right: 16px !important; width: 420px !important; max-width: min(33vw, calc(100vw - 32px)) !important; height: auto !important; max-height: 67vh !important; background: #ffffff !important; border-radius: 10px !important; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.06) !important; z-index: 999999 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; font-size: 13px !important; line-height: 1.45 !important; color: #0f172a !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; border: 1px solid #e2e8f0 !important; margin: 0 !important; padding: 0 !important; transition: max-height 0.2s ease !important;`;
 
         widget.innerHTML = `
             <div id="mi-header" style="display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 8px !important; padding: 8px 12px !important; background: #0f172a !important; color: white !important; border-radius: 10px 10px 0 0 !important; cursor: move !important; flex-shrink: 0 !important; margin: 0 !important;">
@@ -415,6 +463,8 @@ class MedicsIndicatorUI {
                 <span id="mi-patient-name" class="mi-patient-banner-name"></span>
                 <span id="mi-patient-meta" class="mi-patient-banner-meta"></span>
             </div>
+
+            <div id="mi-loading-strip"></div>
 
             <div id="mi-widget-body" style="padding: 10px !important; overflow-y: auto !important; overflow-x: hidden !important; flex: 1 !important; background: #ffffff !important; margin: 0 !important; min-height: 0 !important;">
                 <div id="mi-results" style="display: none !important; margin: 0 !important;"></div>
@@ -446,30 +496,46 @@ class MedicsIndicatorUI {
         }
     }
 
-    updateProgress(percent, stage) {
-        const progressBar = document.getElementById('mi-progress-bar');
-        const progressPercent = document.getElementById('mi-progress-percent');
-        
-        if (progressBar) {
-            progressBar.style.width = `${percent}%`;
-        }
-        if (progressPercent) {
-            progressPercent.textContent = `${Math.round(percent)}% - ${stage}`;
-        }
-    }
+    // v5.0.1: progress bar replaced by indeterminate top strip. Method
+    // kept as a no-op so handleAnalyze/handleForm027 stage callbacks
+    // don't need to change. Stage text is shown in the button via the
+    // existing "Аналізуємо…" label.
+    updateProgress(_percent, _stage) { /* no-op */ }
 
+    // v5.0.1: showProgressBar now drives the slim loading strip + the
+    // in-button spinner instead of the old labeled progress container.
+    // Method names kept so callers (handleAnalyze, handleForm027) don't change.
     showProgressBar() {
-        const container = document.getElementById('mi-progress-container');
-        if (container) {
-            container.style.display = 'block';
-        }
+        const strip = document.getElementById('mi-loading-strip');
+        if (strip) strip.classList.add('is-on');
+        this._setButtonsLoading(true);
     }
 
     hideProgressBar() {
-        const container = document.getElementById('mi-progress-container');
-        if (container) {
-            container.style.display = 'none';
+        const strip = document.getElementById('mi-loading-strip');
+        if (strip) strip.classList.remove('is-on');
+        this._setButtonsLoading(false);
+    }
+
+    _setButtonsLoading(on) {
+        const btn = document.getElementById('mi-analyze-btn');
+        const f027 = document.getElementById('mi-form027-btn');
+        if (btn) {
+            if (on) {
+                if (!btn.dataset.origLabel) btn.dataset.origLabel = btn.innerHTML;
+                btn.classList.add('is-loading');
+                btn.innerHTML = '<span class="mi-spinner"></span><span class="mi-btn-text">Аналізуємо…</span>';
+            } else {
+                btn.classList.remove('is-loading');
+                if (btn.dataset.origLabel) {
+                    btn.innerHTML = btn.dataset.origLabel;
+                    delete btn.dataset.origLabel;
+                } else {
+                    btn.innerHTML = '<span class="mi-btn-text">Проаналізувати</span>';
+                }
+            }
         }
+        if (f027) f027.classList.toggle('is-loading', on);
     }
 
     updateCompletionBar(results) {
@@ -662,8 +728,8 @@ class MedicsIndicatorUI {
 
     expandToFullHeight() {
         if (!this.widget || !this.isExpanded) return;
-        // v5.0.0: cap at 50vh (was 80vh) — fits в нижню половину екрана.
-        this.widget.style.setProperty('max-height', '50vh', 'important');
+        // v5.0.1: cap at 67vh (2/3 screen); widget auto-grows up to that.
+        this.widget.style.setProperty('max-height', '67vh', 'important');
         this.widget.style.bottom = '16px';
         this.widget.style.top = 'auto';
     }
