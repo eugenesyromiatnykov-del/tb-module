@@ -15,6 +15,17 @@ import { cn } from '@/lib/utils';
 
 type Stage = 'idle' | 'parsing' | 'preview' | 'applying' | 'done';
 
+type ApplyResult = {
+  added: number;
+  updated: number;
+  archived: number;
+  promoted?: number;
+  failures?: {
+    insert: Array<{ medics_id: string; surname: string; first_name: string; reason: string }>;
+    update: Array<{ id: string; medics_id?: string; reason: string }>;
+  };
+};
+
 export function ImportDeclarantsPage() {
   const [stage, setStage] = useState<Stage>('idle');
   const [locationId, setLocationId] = useState<LocationId>('bilohirska');
@@ -22,7 +33,7 @@ export function ImportDeclarantsPage() {
   const [parse, setParse] = useState<ParseResult | null>(null);
   const [diff, setDiff] = useState<DeclarantsDiff | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ added: number; updated: number; archived: number } | null>(null);
+  const [result, setResult] = useState<ApplyResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const navigate = useNavigate();
@@ -67,7 +78,7 @@ export function ImportDeclarantsPage() {
   const apply = useMutation({
     mutationFn: async () => {
       if (!diff || !file) throw new Error('Немає даних для застосування');
-      return apiFetch<{ added: number; updated: number; archived: number }>(`/api/declarants/apply`, {
+      return apiFetch<ApplyResult>(`/api/declarants/apply`, {
         method: 'POST',
         json: {
           locationId,
@@ -225,6 +236,31 @@ export function ImportDeclarantsPage() {
               <Stat label="Оновлено" value={result.updated} tone="blue" />
               <Stat label="Архівовано" value={result.archived} tone="slate" />
             </div>
+
+            {(result.failures?.insert.length || result.failures?.update.length) ? (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                <div className="mb-2 font-medium">
+                  Не вдалось зберегти {(result.failures.insert.length + result.failures.update.length)} рядків —
+                  ймовірно конфлікт по medics_id з іншим активним пацієнтом. Перевір вручну в реєстрі.
+                </div>
+                <ul className="space-y-1 text-xs">
+                  {result.failures.insert.map((f, i) => (
+                    <li key={`i${i}`} className="font-mono">
+                      <span className="text-slate-700">{f.medics_id}</span>
+                      <span className="ml-2 text-slate-500">{f.surname} {f.first_name}</span>
+                      <span className="ml-2 text-red-700">: {f.reason}</span>
+                    </li>
+                  ))}
+                  {result.failures.update.map((f, i) => (
+                    <li key={`u${i}`} className="font-mono">
+                      <span className="text-slate-700">{f.medics_id ?? f.id}</span>
+                      <span className="ml-2 text-red-700">: {f.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             <div className="flex gap-2">
               <Button onClick={() => navigate('/patients')}>Перейти до реєстру</Button>
               <Button variant="secondary" onClick={reset}>

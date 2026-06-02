@@ -54,6 +54,7 @@ export default async function handler(req: Req, res: Res) {
   // surname+first+birth → assign medics_id, switch to risk, update fields).
   let added = 0;
   let promoted = 0;
+  const insertConflicts: Array<{ medics_id: string; surname: string; first_name: string; reason: string }> = [];
   if (body.add.length > 0) {
     // Pull all non-declarant patients (medics_id IS NULL) so we can match by ПІБ+ДН.
     const { data: candidates, error: candErr } = await supabase
@@ -81,7 +82,9 @@ export default async function handler(req: Req, res: Res) {
       else trulyNew.push(p);
     }
 
-    // INSERT truly new.
+    // INSERT truly new. Chunked optimistic path first; on conflict we drop
+    // to per-row inserts and surface the bad rows in a warning list so the
+    // doctor can see which medics_id collided instead of failing the run.
     if (trulyNew.length > 0) {
       const rows = trulyNew.map((p) => ({
         ...p,
@@ -92,11 +95,22 @@ export default async function handler(req: Req, res: Res) {
       }));
       for (const chunk of chunked(rows, 500)) {
         const { error, count } = await supabase.from('patients').insert(chunk, { count: 'exact' });
-        if (error) {
-          res.status(500).json({ error: `insert: ${error.message}` });
-          return;
+        if (!error) {
+          added += count ?? chunk.length;
+          continue;
         }
-        added += count ?? chunk.length;
+        // Fall back to per-row to keep the rest of the chunk going.
+        console.warn('[declarants apply] chunked insert failed, retrying per-row:', error.message);
+        for (const row of chunk) {
+          const { error: e2 } = await supabase.from('patients').insert(row);
+          if (!e2) { added += 1; continue; }
+          insertConflicts.push({
+            medics_id: row.medics_id,
+            surname: row.surname,
+            first_name: row.first_name,
+            reason: e2.message,
+          });
+        }
       }
     }
 
@@ -140,13 +154,20 @@ export default async function handler(req: Req, res: Res) {
   }
 
   // 2) UPDATE per-row (only changed fields per patient).
+  // Collect failures (e.g. medics_id collisions when reassigning IDs) so the
+  // doctor sees which row blew up and the rest of the batch still applies.
   let updated = 0;
+  const updateFailures: Array<{ id: string; medics_id?: string; reason: string }> = [];
   for (const u of body.update) {
     if (!u.id) continue;
     const { error } = await supabase.from('patients').update(u.patch).eq('id', u.id);
     if (error) {
-      res.status(500).json({ error: `update ${u.id}: ${error.message}` });
-      return;
+      updateFailures.push({
+        id: u.id,
+        medics_id: u.patch.medics_id ?? undefined,
+        reason: error.message,
+      });
+      continue;
     }
     updated += 1;
   }
@@ -184,7 +205,16 @@ export default async function handler(req: Req, res: Res) {
     },
   });
 
-  res.status(200).json({ added, updated, archived, promoted });
+  res.status(200).json({
+    added,
+    updated,
+    archived,
+    promoted,
+    failures: {
+      insert: insertConflicts,
+      update: updateFailures,
+    },
+  });
 }
 
 function* chunked<T>(arr: T[], size: number): Generator<T[]> {
