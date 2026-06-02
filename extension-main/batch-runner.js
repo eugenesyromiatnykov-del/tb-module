@@ -102,6 +102,28 @@
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
+
+  // AngularJS radios bind via ng-model + ng-value. Native .click() flips the
+  // DOM `checked` flag but the AngularJS digest sometimes misses it (no
+  // synthetic 'change' event), so workplace_modal.workplace stays undefined
+  // and «Підтвердити» becomes a no-op. Click the LABEL — it's what Angular's
+  // own ng-click bindings expect — and dispatch click+change for good measure.
+  function selectAngularRadio(input) {
+    let dispatched = false;
+    if (input.id) {
+      const label = document.querySelector(`label[for="${input.id}"]`);
+      if (label) {
+        label.click();
+        dispatched = true;
+      }
+    }
+    if (!dispatched) input.click();
+    // Belt-and-suspenders for AngularJS digest:
+    input.checked = true;
+    input.dispatchEvent(new Event('click', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
   function isOnJournal() {
     return location.pathname.includes('/doctors/journal');
   }
@@ -264,8 +286,8 @@
         }
       }
       if (!radioInput) throw new Error(`Радіо «${wantedLabel}» не знайдено`);
-      radioInput.click();
-      await wait(300);
+      selectAngularRadio(radioInput);
+      await wait(500);
 
       const confirmBtn = modal.querySelector(SELECTORS.confirmBtn);
       if (!confirmBtn) throw new Error('Кнопка «Підтвердити» не знайдена');
