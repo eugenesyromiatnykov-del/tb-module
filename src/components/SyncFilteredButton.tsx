@@ -41,6 +41,10 @@ export function SyncFilteredButton({ patients }: { patients: Patient[] }) {
         method: 'POST',
         json: { action: 'start', scope: 'subset', medics_id_list: ids },
       });
+      // Wake the extension SW immediately (otherwise it idles up to 30 s
+      // before the next chrome.alarms tick notices our new job). The
+      // tb-module-bridge content script forwards this to the SW.
+      try { window.dispatchEvent(new CustomEvent('tb-sync-poke')); } catch (_) {}
       navigate('/sync');
     } catch (e) {
       alert(`Не вдалось запустити: ${(e as Error).message}`);

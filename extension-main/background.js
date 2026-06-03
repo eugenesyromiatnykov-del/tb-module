@@ -114,27 +114,39 @@ async function checkAndEnsureTab() {
     }
   }
 
-  // Any medics.ua tab is enough — the content script polls there.
-  const tabs = await chrome.tabs.query({ url: 'https://medics.ua/*' });
-  if (tabs.length === 0) {
-    console.log(`[TB SW] active job ${job.id}: opening journal in foreground`);
-    const tab = await chrome.tabs.create({ url: JOURNAL_URL, active: true });
-    // Once the tab finishes loading, wake it up immediately rather than
-    // waiting for the next 30 s alarm.
-    if (tab.id != null) {
-      const onUpdated = (id, info) => {
-        if (id !== tab.id || info.status !== 'complete') return;
-        chrome.tabs.onUpdated.removeListener(onUpdated);
-        // Tiny delay so document_idle content scripts finish loading first.
-        setTimeout(() => wakeTab(tab.id), 1500);
-      };
-      chrome.tabs.onUpdated.addListener(onUpdated);
+  // Prefer an existing /doctors/journal tab — switch to it and wake. This
+  // is the path the doctor expects when they click "synchronize this
+  // patient" while medics.ua is already open in another tab.
+  const journalTabs = await chrome.tabs.query({ url: 'https://medics.ua/doctors/journal*' });
+  if (journalTabs.length > 0) {
+    const t = journalTabs[0];
+    if (t.id != null) {
+      try { await chrome.tabs.update(t.id, { active: true }); } catch (_) {}
+      if (t.windowId != null) {
+        try { await chrome.windows.update(t.windowId, { focused: true }); } catch (_) {}
+      }
+      console.log(`[TB SW] active job ${job.id}: switched focus to journal tab ${t.id}`);
+      wakeTab(t.id);
+    }
+    // Also poke any other medics.ua tabs (stale medcards from prior runs);
+    // their tab-local guards (myMedCardMedicsId) will keep them quiet.
+    const allMedics = await chrome.tabs.query({ url: 'https://medics.ua/*' });
+    for (const other of allMedics) {
+      if (other.id != null && other.id !== t.id) wakeTab(other.id);
     }
     return;
   }
-  console.log(`[TB SW] active job ${job.id}: medics.ua tab already open (${tabs.length}), poking content scripts`);
-  for (const t of tabs) {
-    if (t.id != null) wakeTab(t.id);
+
+  // No journal tab → open one. Foreground so the doctor sees it land.
+  console.log(`[TB SW] active job ${job.id}: opening journal tab`);
+  const tab = await chrome.tabs.create({ url: JOURNAL_URL, active: true });
+  if (tab.id != null) {
+    const onUpdated = (id, info) => {
+      if (id !== tab.id || info.status !== 'complete') return;
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      setTimeout(() => wakeTab(tab.id), 1500);
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
   }
 }
 

@@ -99,6 +99,14 @@ export function useSinglePatientSync(medicsId: string | null | undefined) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sync-job-active'] });
+      // Wake the extension SW immediately. Without this, the SW only
+      // notices the new job at its next chrome.alarms tick (≤30 s),
+      // which is the 5–45 s "тупорыла задержка" the doctor reported.
+      // The bridge content script on tb-module.vercel.app picks this up
+      // and forwards to the SW as a tb-sync-check message.
+      try {
+        window.dispatchEvent(new CustomEvent('tb-sync-poke'));
+      } catch (_) { /* SSR / no-window */ }
     },
   });
 

@@ -78,12 +78,20 @@ export function SyncPage() {
   const [busy, setBusy] = useState(false);
 
   const refreshNow = () => qc.invalidateQueries({ queryKey: ['sync-job-active'] });
+  // Bridge → SW. The tb-module-bridge.js content script forwards this
+  // to chrome.runtime.sendMessage({type:'tb-sync-check'}), so the SW
+  // opens /journal immediately instead of waiting for its next 30 s
+  // alarm tick.
+  const pokeSw = () => {
+    try { window.dispatchEvent(new CustomEvent('tb-sync-poke')); } catch (_) {}
+  };
 
   const onStart = async () => {
     setBusy(true);
     try {
       await startJob({ location, only_unsynced: onlyUnsynced });
       refreshNow();
+      pokeSw();
     } catch (e) {
       alert(`Не вдалось запустити: ${(e as Error).message}`);
     } finally {
@@ -107,6 +115,7 @@ export function SyncPage() {
       if (r.reset) {
         alert('Минуло більше 24 годин — черга побудована з нуля.');
       }
+      pokeSw();
       refreshNow();
     } finally { setBusy(false); }
   };
