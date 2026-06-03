@@ -114,18 +114,16 @@ async function checkAndEnsureTab() {
     }
   }
 
-  // Prefer an existing /doctors/journal tab — switch to it and wake. This
-  // is the path the doctor expects when they click "synchronize this
-  // patient" while medics.ua is already open in another tab.
+  // Prefer an existing /doctors/journal tab — wake it. We DO NOT
+  // chrome.tabs.update({active:true}) here anymore: the alarm fires every
+  // 30 s, and each fire was yanking the doctor away from whichever
+  // med-card they were watching analyze. Wake-via-executeScript runs the
+  // poll() in the journal tab without touching focus.
   const journalTabs = await chrome.tabs.query({ url: 'https://medics.ua/doctors/journal*' });
   if (journalTabs.length > 0) {
     const t = journalTabs[0];
     if (t.id != null) {
-      try { await chrome.tabs.update(t.id, { active: true }); } catch (_) {}
-      if (t.windowId != null) {
-        try { await chrome.windows.update(t.windowId, { focused: true }); } catch (_) {}
-      }
-      console.log(`[TB SW] active job ${job.id}: switched focus to journal tab ${t.id}`);
+      console.log(`[TB SW] active job ${job.id}: poking existing journal tab ${t.id}`);
       wakeTab(t.id);
     }
     // Also poke any other medics.ua tabs (stale medcards from prior runs);

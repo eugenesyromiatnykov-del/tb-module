@@ -244,6 +244,27 @@
       && !!document.querySelector('.c-patient-info-card--user-name');
   }
 
+  // Sticky tab role. Once we detect this tab is a med-card we never
+  // demote — MIS's Angular re-renders briefly remove .c-patient-info-card
+  // mid-analysis (episode expand/collapse triggers ng-if churn). Without
+  // sticky, isOnMedCard() flapped → driveOneCycle off-route branch fired
+  // → location.assign(JOURNAL_URL) turned the medcard tab into a journal
+  // mid-analysis. That was the doctor's "после 10 секунд скрипт
+  // переключает фокус со страницы пациента на /journal" bug.
+  let stickyTabRole = null; // 'journal' | 'medcard' | null
+  function currentTabRole() {
+    if (stickyTabRole === 'medcard') return 'medcard';
+    if (isOnMedCard()) {
+      stickyTabRole = 'medcard';
+      return 'medcard';
+    }
+    if (isOnJournal()) {
+      if (stickyTabRole !== 'journal') stickyTabRole = 'journal';
+      return 'journal';
+    }
+    return null;
+  }
+
   // ─── Driver state (in-memory, ephemeral) ─────────────────────────────────
   let driving = false;
   let lastSeenJobId = null;
@@ -443,7 +464,9 @@
       return;
     }
 
-    if (isOnJournal()) {
+    const role = currentTabRole();
+
+    if (role === 'journal') {
       // Watchdog: if cursor hasn't moved in WATCHDOG_STALE_THRESHOLD_MS,
       // suspect we're stuck on a hidden modal / mid-AJAX limbo and reload
       // the page. Note: triggers BEFORE the dispatch-lock check so a stuck
@@ -476,13 +499,17 @@
       await driveJournal(job, item);
       return;
     }
-    if (isOnMedCard()) {
+    if (role === 'medcard') {
       await driveMedCard(job, item);
       return;
     }
-    // Not on a useful page — try to go to journal once.
-    if (location.host === 'medics.ua') {
-      console.log('[TB Batch] off-route, navigating to journal');
+    // role is null — DOM not matching either pattern. Only navigate to
+    // journal if we NEVER had a role on this tab (i.e. first poll after
+    // content-script load on some unrelated medics.ua page). If we WERE
+    // on a medcard/journal before but Angular is mid-rerender, just wait;
+    // sticky role keeps the next poll on track.
+    if (!stickyTabRole && location.host === 'medics.ua') {
+      console.log('[TB Batch] off-route on first poll, navigating to journal');
       location.assign(JOURNAL_URL);
     }
   }
