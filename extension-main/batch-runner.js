@@ -475,28 +475,33 @@
     const role = currentTabRole();
 
     if (role === 'journal') {
-      // Watchdog: if cursor hasn't moved in WATCHDOG_STALE_THRESHOLD_MS,
-      // suspect we're stuck on a hidden modal / mid-AJAX limbo and reload
-      // the page. Note: triggers BEFORE the dispatch-lock check so a stuck
-      // lock can't trap us either.
+      // Read the cross-tab dispatch lock once, up front: the watchdog
+      // needs to know "is a medcard alive right now?" so it doesn't kick
+      // the journal out from under an in-flight analysis. A fresh lock
+      // means we already dispatched and a medcard is processing — even
+      // if cursor hasn't advanced in a long time (3 min analyses are
+      // normal). Only when the lock is missing / stale should we treat
+      // the journal as truly stuck.
+      const lock = await readDispatchLock();
+      const lockFresh = !!(lock && lock.job_id === job.id
+        && lock.cursor === job.cursor
+        && Date.now() - lock.at < DISPATCH_LOCK_TTL_MS);
+
+      // Watchdog
       if (stallSinceCursor !== job.cursor) {
         stallSinceCursor = job.cursor;
         stallSinceTime = Date.now();
-      } else if (stallSinceTime && Date.now() - stallSinceTime > WATCHDOG_STALE_THRESHOLD_MS) {
-        console.warn('[TB Batch] watchdog: cursor stuck for', Math.round((Date.now() - stallSinceTime) / 1000), 's — reloading journal');
-        await clearDispatchLock(); // belt-and-suspenders
+      } else if (!lockFresh && stallSinceTime
+          && Date.now() - stallSinceTime > WATCHDOG_STALE_THRESHOLD_MS) {
+        console.warn('[TB Batch] watchdog: cursor stuck for', Math.round((Date.now() - stallSinceTime) / 1000), 's, no fresh dispatch — reloading journal');
+        await clearDispatchLock();
         stallSinceTime = 0;
         location.reload();
         return;
       }
 
-      // Cross-tab dispatch lock: when this (or any other) journal tab clicked
-      // «Підтвердити» recently, MIS spawned a med-card tab and is syncing.
-      // Don't re-dispatch from here until the cursor moves on or the lock
-      // expires — otherwise we double-open the same patient.
-      const lock = await readDispatchLock();
-      if (lock && lock.job_id === job.id && lock.cursor === job.cursor &&
-          Date.now() - lock.at < DISPATCH_LOCK_TTL_MS) {
+      // Active med-card: stand down for this poll.
+      if (lockFresh) {
         console.log('[TB Batch] dispatch lock active (', Math.round((Date.now() - lock.at) / 1000), 's), waiting');
         return;
       }
@@ -674,6 +679,18 @@
       }
     }, TIMING.medCardBootDelay);
 
+    // Refresh the cross-tab dispatch lock while we analyze. Analysis on
+    // a complex patient runs 2–3 minutes — well past DISPATCH_LOCK_TTL_MS
+    // (60 s). Without this the journal tab sees the lock as stale, clears
+    // it, and re-dispatches the same cursor — duplicate medcards stack
+    // up until we eventually heartbeat cursor+1. Refresh every 30 s keeps
+    // the lock fresh for as long as this medcard is alive; if the tab
+    // crashes the refresh stops and the lock genuinely goes stale at TTL.
+    const lockRefresh = setInterval(() => {
+      writeDispatchLock({ job_id: job.id, cursor: job.cursor, at: Date.now() })
+        .catch(() => {});
+    }, 30_000);
+
     let failedReason = null;
     try {
       await waitForSyncCompleted(item.medics_id, TIMING.syncTimeoutMs);
@@ -683,6 +700,8 @@
       failedReason = e?.message ?? String(e);
       console.warn('[TB Batch] sync failed:', failedReason);
       setBanner(`sync failed: ${failedReason}`, 'err');
+    } finally {
+      clearInterval(lockRefresh);
     }
 
     const newFailed = failedReason
