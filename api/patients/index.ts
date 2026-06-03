@@ -725,26 +725,36 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     if (Array.isArray(body.failed)) patch.failed = body.failed;
     if (typeof body.current_medics_id === 'string' || body.current_medics_id === null)
       patch.current_medics_id = body.current_medics_id;
-    // CAS-claim. Only this device-id (or the unclaimed nullable row) can
-    // win the update — second device sends its id, gets 0 rows back, knows
-    // it lost the race and idles.
+    // CAS guards: heartbeat is only allowed when the row is currently in
+    // ('queued','running'). If the doctor pressed Зупинити mid-cycle, the
+    // row is 'stopped' — without this guard the extension's tail heartbeat
+    // (e.g. after a 90 s medcard wait) would silently flip 'stopped' back
+    // to 'running' and the job would resurrect itself. Same idea for
+    // 'cancelled' — terminal, no resurrection.
+    const PROGRESSABLE = ['queued', 'running'];
     if (deviceId) {
+      // Plus device-ownership CAS (laptop A vs laptop B).
       patch.owner_device_id = deviceId;
       if (deviceLabel) patch.owner_device_label = deviceLabel;
       const { data, error } = await supabase
         .from('sync_jobs')
         .update(patch)
         .eq('id', jobId)
+        .in('status', PROGRESSABLE)
         .or(`owner_device_id.is.null,owner_device_id.eq.${deviceId}`)
         .select('*')
         .maybeSingle();
       if (error) { res.status(500).json({ error: error.message }); return; }
       if (!data) {
-        // Someone else owns this job. Tell client to stand down.
         const { data: cur } = await supabase
           .from('sync_jobs').select('owner_device_id,owner_device_label,status').eq('id', jobId).maybeSingle();
+        // Distinguish "not running anymore" (Зупинити/Скасувати) from
+        // "another device owns it" so the extension can log a meaningful
+        // reason. Both states → extension stands down.
+        const isOurDevice = !cur?.owner_device_id || cur.owner_device_id === deviceId;
         res.status(409).json({
-          error: 'job_owned_by_other_device',
+          error: isOurDevice ? 'job_not_running' : 'job_owned_by_other_device',
+          status: cur?.status ?? null,
           owner_device_id: cur?.owner_device_id ?? null,
           owner_device_label: cur?.owner_device_label ?? null,
         });
@@ -753,11 +763,22 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       res.status(200).json({ job: data });
       return;
     }
-    // Legacy path: no device_id sent (older extension build). Update as
-    // before — first to send a deviceId wins later anyway.
+    // Legacy path: no device_id sent (older extension build). Same status
+    // gate — heartbeats on a stopped/cancelled job must NOT resurrect it.
     const { data, error } = await supabase
-      .from('sync_jobs').update(patch).eq('id', jobId).select('*').maybeSingle();
+      .from('sync_jobs')
+      .update(patch)
+      .eq('id', jobId)
+      .in('status', PROGRESSABLE)
+      .select('*')
+      .maybeSingle();
     if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data) {
+      const { data: cur } = await supabase
+        .from('sync_jobs').select('status').eq('id', jobId).maybeSingle();
+      res.status(409).json({ error: 'job_not_running', status: cur?.status ?? null });
+      return;
+    }
     res.status(200).json({ job: data });
     return;
   }

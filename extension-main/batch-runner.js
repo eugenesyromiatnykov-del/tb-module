@@ -123,12 +123,17 @@
         }),
       });
     } catch (e) {
-      // 409 = job was claimed by another device while we were running.
-      // Surface a distinct error type so caller cycles can abandon work
-      // for this run instead of looping on a job that isn't ours.
+      // 409 = either (a) another device owns the job, or (b) the job has
+      // been stopped/cancelled while we were mid-cycle. Both → stand down
+      // immediately; the next poll() sees the canonical state and idles.
       if (e?.status === 409) {
-        console.warn('[TB Batch] heartbeat rejected — job owned by another device');
-        const e2 = new Error('job_owned_by_other_device');
+        let reason = 'rejected';
+        try {
+          const parsed = JSON.parse(e.body || '{}');
+          reason = parsed.error || reason;
+        } catch (_) {}
+        console.warn('[TB Batch] heartbeat rejected:', reason);
+        const e2 = new Error(reason);
         e2.handover = true;
         throw e2;
       }
