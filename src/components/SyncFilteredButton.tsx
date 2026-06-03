@@ -16,21 +16,25 @@ export function SyncFilteredButton({ patients }: { patients: Patient[] }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
-  // Watch active job state so we can disable the button while one is running.
+  // Surface whether something's already running, so we can tell the doctor
+  // it'll be auto-paused (no longer a hard block).
   const { data: activeJob } = useQuery({
     queryKey: ['sync-job-active'],
     queryFn: () => apiFetch<{ job: SyncJob | null }>(`/api/patients?mode=sync_job`),
     refetchInterval: 5000,
   });
-  const blocked = !!activeJob?.job;
+  const willInterrupt = !!activeJob?.job;
 
   const eligible = patients.filter((p) => !!p.medics_id);
   const count = eligible.length;
 
   const onClick = async () => {
-    if (busy || blocked || count === 0) return;
+    if (busy || count === 0) return;
+    const interruptMsg = willInterrupt
+      ? `\n\n⚠ Поточну синхронізацію буде поставлено на паузу — продовжите вручну з /sync.`
+      : '';
     const ok = confirm(
-      `Запустити синхронізацію по ${count} пацієнтах з поточної вибірки?\n\n` +
+      `Запустити синхронізацію по ${count} пацієнтах з поточної вибірки?${interruptMsg}\n\n` +
         `Прогрес відображатиметься на сторінці «Синхронізація».`,
     );
     if (!ok) return;
@@ -57,12 +61,12 @@ export function SyncFilteredButton({ patients }: { patients: Patient[] }) {
     <Button
       variant="secondary"
       onClick={onClick}
-      disabled={busy || blocked || count === 0}
+      disabled={busy || count === 0}
       title={
-        blocked
-          ? 'Уже є активне завдання — зупиніть або скасуйте його на сторінці «Синхронізація»'
-          : count === 0
-            ? 'У вибірці немає пацієнтів з Medics ID'
+        count === 0
+          ? 'У вибірці немає пацієнтів з Medics ID'
+          : willInterrupt
+            ? `Синхронізувати ${count} пацієнтів — поточну синхронізацію буде поставлено на паузу`
             : `Синхронізувати ${count} пацієнтів з поточної вибірки`
       }
     >

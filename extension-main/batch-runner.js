@@ -666,16 +666,16 @@
 
     await wait(TIMING.betweenPatientsMs);
 
-    // If we were spawned by MIS in a new tab (window.open from the Confirm
-    // button), close ourselves so tabs don't pile up. Otherwise just navigate
-    // back to journal — the original tab is still around.
-    if (window.opener || document.referrer.includes('medics.ua')) {
-      console.log('[TB Batch] closing spawned med-card tab');
-      try { chrome.runtime.sendMessage({ type: 'tb-close-tab' }); } catch (_) {}
-      setTimeout(() => { try { window.close(); } catch (_) {} }, 1000);
-    } else {
-      location.assign(JOURNAL_URL);
-    }
+    // This tab is a batch worker (myMedCardMedicsId was set at the top of
+    // driveMedCard — that's how we got here). Always close. The old
+    // window.opener / referrer check fell back to location.assign(JOURNAL_URL)
+    // when MIS used a noopener-style window.open, turning the medcard into
+    // a second journal tab; over a 1000-patient overnight run that
+    // accumulated 100+ stale journal tabs in the browser. The journal tab
+    // the SW controls is alive elsewhere — we don't need to "return" to it.
+    console.log('[TB Batch] closing batch-worker med-card tab');
+    try { chrome.runtime.sendMessage({ type: 'tb-close-tab' }); } catch (_) {}
+    setTimeout(() => { try { window.close(); } catch (_) {} }, 1000);
   }
 
   function waitForSyncCompleted(expectedMedicsId, timeoutMs) {

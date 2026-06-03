@@ -51,6 +51,9 @@ export function useSinglePatientSync(medicsId: string | null | undefined) {
   const busy =
     isOurAdHocJob && (job?.status === 'queued' || job?.status === 'running');
 
+  // Legacy: was used to block clicks while another job ran. Kept as a
+  // hint for callers that might want to visually highlight "your big
+  // sync will pause"; the server auto-pauses regardless.
   const blocked =
     !isOurAdHocJob && job != null && (job.status === 'queued' || job.status === 'running');
 

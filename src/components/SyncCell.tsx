@@ -96,18 +96,13 @@ export function SyncCell({
     e.stopPropagation();
     e.preventDefault();
     if (!interactive) return;
-    if (sync.blocked) {
-      // Another job is in flight (e.g. overnight batch). Don't 409 noisily —
-      // just nudge the doctor.
-      alert(
-        'Інша синхронізація вже виконується. Дочекайтесь її завершення або скасуйте на сторінці «Синхронізація».',
-      );
-      return;
-    }
     if (sync.error) {
       alert(`Не вдалось запустити синхронізацію: ${sync.error}`);
       return;
     }
+    // No more "blocked" branch — the API auto-pauses any running/queued
+    // job when start is called. The big overnight sync will sit in the
+    // paused list, ready to resume from /sync.
     sync.start();
   };
 

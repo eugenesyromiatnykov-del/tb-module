@@ -674,22 +674,36 @@ export default async function handler(req: Req, res: Res) {
 //   POST {action:'resume', job_id}  → 24h rule: if last_heartbeat_at > 24h
 //                                     ago, rebuild queue from scratch.
 //   POST {action:'complete', job_id, failed}
-const ACTIVE_STATUSES = ['queued', 'running', 'paused', 'stopped'];
+//
+// v5.5.0 multi-job model: only one row at a time can be in
+// ('queued','running'). start + resume auto-pause anything else into
+// 'stopped'. The /sync UI lists 'stopped' as a "paused" stack the
+// doctor can resume later. 'done', 'cancelled', 'error' are terminal.
 
 async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof getSupabaseAdmin>) {
   if (req.method === 'GET') {
-    const { data, error } = await supabase
+    // Truly active (running / queued) — the extension polls this and
+    // starts driving the moment it sees a non-null. Only one at a time:
+    // start/resume below auto-pause any others to keep that invariant.
+    const { data: active, error: actErr } = await supabase
       .from('sync_jobs')
       .select('*')
-      .in('status', ACTIVE_STATUSES)
+      .in('status', ['queued', 'running'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
-    }
-    res.status(200).json({ job: data ?? null });
+    if (actErr) { res.status(500).json({ error: actErr.message }); return; }
+    // Paused jobs the doctor might want to resume later. No time bound —
+    // a sync paused last week is still resumable until cancelled. UI
+    // shows them as a "Paused" stack under the active card.
+    const { data: paused, error: pErr } = await supabase
+      .from('sync_jobs')
+      .select('*')
+      .eq('status', 'stopped')
+      .order('updated_at', { ascending: false })
+      .limit(20);
+    if (pErr) { res.status(500).json({ error: pErr.message }); return; }
+    res.status(200).json({ job: active ?? null, paused: paused ?? [] });
     return;
   }
   if (req.method !== 'POST') {
@@ -701,17 +715,15 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
   const action = body.action as string | undefined;
 
   if (action === 'start') {
-    // Refuse if there's already an active job.
-    const { data: existing } = await supabase
+    // Auto-pause any currently running/queued job so the new one becomes
+    // the active driver. Doctor's workflow: big overnight sync paused,
+    // run a quick 10-20 patient subset (or single ad-hoc), then manually
+    // resume the big one from /sync. Previously this 409'd; now it just
+    // works.
+    await supabase
       .from('sync_jobs')
-      .select('id, status')
-      .in('status', ACTIVE_STATUSES)
-      .limit(1)
-      .maybeSingle();
-    if (existing) {
-      res.status(409).json({ error: 'Активне завдання вже існує', job_id: existing.id });
-      return;
-    }
+      .update({ status: 'stopped', stopped_at: new Date().toISOString() })
+      .in('status', ['queued', 'running']);
     const location = (body.location as string | undefined) ?? null;
     const onlyUnsynced = body.only_unsynced !== false;
     const scope = (body.scope as string | undefined) ?? 'location';
@@ -862,6 +874,13 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     const { data: cur, error: curErr } = await supabase
       .from('sync_jobs').select('*').eq('id', jobId).maybeSingle();
     if (curErr || !cur) { res.status(404).json({ error: 'job not found' }); return; }
+    // Pause whatever else is running first. Same invariant as start: only
+    // one job is queued/running at a time; everything else sits in 'stopped'.
+    await supabase
+      .from('sync_jobs')
+      .update({ status: 'stopped', stopped_at: new Date().toISOString() })
+      .in('status', ['queued', 'running'])
+      .neq('id', jobId);
 
     const beat = cur.last_heartbeat_at ? new Date(cur.last_heartbeat_at as string).getTime() : 0;
     const ageMs = Date.now() - beat;

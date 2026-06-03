@@ -38,7 +38,10 @@ export type SyncJob = {
 function useActiveSyncJob() {
   return useQuery({
     queryKey: ['sync-job-active'],
-    queryFn: () => apiFetch<{ job: SyncJob | null }>(`/api/patients?mode=sync_job`),
+    queryFn: () =>
+      apiFetch<{ job: SyncJob | null; paused: SyncJob[] }>(
+        `/api/patients?mode=sync_job`,
+      ),
     refetchInterval: 3000, // belt-and-suspenders alongside Realtime
   });
 }
@@ -71,6 +74,7 @@ async function cancelJob(jobId: string) {
 export function SyncPage() {
   const { data, isLoading } = useActiveSyncJob();
   const job = data?.job ?? null;
+  const pausedJobs = data?.paused ?? [];
   const qc = useQueryClient();
 
   const [location, setLocation] = useState<LocationId>('bilohirska');
@@ -129,6 +133,30 @@ export function SyncPage() {
     } finally { setBusy(false); }
   };
 
+  // Acting on a specific paused job (when there are multiple). The
+  // active job (if any) is auto-paused on the server side when this
+  // resume hits — so the doctor never has to think about "but my big
+  // sync is running".
+  const onResumePaused = async (id: string) => {
+    setBusy(true);
+    try {
+      const r = await resumeJob(id);
+      if (r.reset) alert('Минуло більше 24 годин — черга побудована з нуля.');
+      pokeSw();
+      refreshNow();
+    } catch (e) {
+      alert(`Не вдалось продовжити: ${(e as Error).message}`);
+    } finally { setBusy(false); }
+  };
+  const onCancelPaused = async (id: string) => {
+    if (!confirm('Скасувати цей збережений запуск? Відновити не можна буде.')) return;
+    setBusy(true);
+    try {
+      await cancelJob(id);
+      refreshNow();
+    } finally { setBusy(false); }
+  };
+
   return (
     <div>
       <PageHeader
@@ -151,6 +179,38 @@ export function SyncPage() {
         />
       ) : (
         <ActiveJobCard job={job} busy={busy} onStop={onStop} onResume={onResume} onCancel={onCancel} />
+      )}
+
+      {pausedJobs.length > 0 && (
+        <PausedJobsList
+          jobs={pausedJobs}
+          busy={busy}
+          onResume={onResumePaused}
+          onCancel={onCancelPaused}
+          activeJobId={job?.id ?? null}
+        />
+      )}
+
+      {/* Show the "start new" form below the active card, so the doctor
+          can launch a quick subset run while the big one is mid-flight.
+          Server auto-pauses the running job — see action=start in api. */}
+      {job && (
+        <details className="mt-4 rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            + Запустити паралельну синхронізацію (поточну поставимо на паузу)
+          </summary>
+          <div className="border-t border-slate-200 p-4">
+            <StartCard
+              location={location}
+              setLocation={setLocation}
+              onlyUnsynced={onlyUnsynced}
+              setOnlyUnsynced={setOnlyUnsynced}
+              busy={busy}
+              onStart={onStart}
+              dense
+            />
+          </div>
+        </details>
       )}
 
       <Card className="mt-4">
@@ -177,7 +237,7 @@ export function SyncPage() {
 }
 
 function StartCard({
-  location, setLocation, onlyUnsynced, setOnlyUnsynced, busy, onStart,
+  location, setLocation, onlyUnsynced, setOnlyUnsynced, busy, onStart, dense = false,
 }: {
   location: LocationId;
   setLocation: (l: LocationId) => void;
@@ -185,36 +245,104 @@ function StartCard({
   setOnlyUnsynced: (v: boolean) => void;
   busy: boolean;
   onStart: () => void;
+  dense?: boolean;
 }) {
+  const body = (
+    <div className={dense ? 'space-y-3' : 'space-y-4'}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
+          <Select value={location} onChange={(e) => setLocation(e.target.value as LocationId)}>
+            {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
+              <option key={id} value={id}>{LOCATION_LABELS[id]}</option>
+            ))}
+          </Select>
+        </div>
+        <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300"
+            checked={onlyUnsynced}
+            onChange={(e) => setOnlyUnsynced(e.target.checked)}
+          />
+          Тільки нові (без diagnoses_synced_at)
+        </label>
+      </div>
+      <Button onClick={onStart} disabled={busy}>
+        <Play className="h-4 w-4" />
+        {busy ? 'Запускаємо…' : 'Запустити синхронізацію'}
+      </Button>
+    </div>
+  );
+  if (dense) return body;
   return (
     <Card>
       <CardHeader>
         <CardTitle>Новий запуск</CardTitle>
       </CardHeader>
-      <CardBody className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
-            <Select value={location} onChange={(e) => setLocation(e.target.value as LocationId)}>
-              {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
-                <option key={id} value={id}>{LOCATION_LABELS[id]}</option>
-              ))}
-            </Select>
-          </div>
-          <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300"
-              checked={onlyUnsynced}
-              onChange={(e) => setOnlyUnsynced(e.target.checked)}
-            />
-            Тільки нові (без diagnoses_synced_at)
-          </label>
-        </div>
-        <Button onClick={onStart} disabled={busy}>
-          <Play className="h-4 w-4" />
-          {busy ? 'Запускаємо…' : 'Запустити синхронізацію'}
-        </Button>
+      <CardBody>{body}</CardBody>
+    </Card>
+  );
+}
+
+function PausedJobsList({
+  jobs, busy, onResume, onCancel,
+}: {
+  jobs: SyncJob[];
+  busy: boolean;
+  onResume: (id: string) => void;
+  onCancel: (id: string) => void;
+  activeJobId: string | null;
+}) {
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>На паузі</span>
+          <span className="text-xs font-normal text-slate-500">{jobs.length}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-2">
+        {jobs.map((j) => {
+          const total = j.queue.length;
+          const done = j.cursor;
+          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+          const label =
+            j.scope === 'subset'
+              ? `Підмножина · ${total} пацієнтів`
+              : j.location
+                ? LOCATION_LABELS[j.location as LocationId]
+                : 'Усі амбулаторії';
+          return (
+            <div
+              key={j.id}
+              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-800">{label}</div>
+                <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                  <span>{done}/{total} ({pct}%)</span>
+                  {j.failed.length > 0 && <span className="text-red-600">· помилок {j.failed.length}</span>}
+                  <span>· зупинено {relativeTime(j.stopped_at)}</span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full bg-slate-400" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+              <Button variant="primary" onClick={() => onResume(j.id)} disabled={busy}>
+                <Play className="h-3.5 w-3.5" /> Продовжити
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => onCancel(j.id)}
+                disabled={busy}
+                className="!border-red-200 !bg-red-50 !text-red-700 hover:!bg-red-100"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        })}
       </CardBody>
     </Card>
   );
