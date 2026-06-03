@@ -118,7 +118,7 @@ export function PatientDetailPage() {
 
       <div className="-mt-2 mb-4 flex items-center gap-2 text-xs text-slate-500">
         <span>Sync:</span>
-        <SyncCell at={patient.diagnoses_synced_at} />
+        <SyncCell at={patient.diagnoses_synced_at} medicsId={patient.medics_id} />
       </div>
 
       <div className="mb-4 flex gap-1 border-b border-slate-200">

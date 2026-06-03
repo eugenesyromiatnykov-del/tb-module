@@ -155,7 +155,12 @@ export function VaccinationsPage() {
         id: 'sync',
         header: 'Sync',
         accessorFn: (p) => p.diagnoses_synced_at ?? '',
-        cell: (info) => <SyncCell at={info.row.original.diagnoses_synced_at} />,
+        cell: (info) => (
+          <SyncCell
+            at={info.row.original.diagnoses_synced_at}
+            medicsId={info.row.original.medics_id}
+          />
+        ),
       },
     ],
     [],

@@ -199,7 +199,12 @@ export function PatientsPage() {
       {
         header: 'Sync',
         accessorKey: 'diagnoses_synced_at',
-        cell: ({ row }) => <SyncCell at={row.original.diagnoses_synced_at} />,
+        cell: ({ row }) => (
+          <SyncCell
+            at={row.original.diagnoses_synced_at}
+            medicsId={row.original.medics_id}
+          />
+        ),
       },
     ],
     [],

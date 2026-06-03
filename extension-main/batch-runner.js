@@ -391,6 +391,17 @@
     if (ourJob.cursor >= ourJob.queue.length) {
       console.log('[TB Batch] queue exhausted, completing');
       try { await completeJob(ourJob.id, ourJob.cursor, ourJob.failed); } catch (_) {}
+      // Tell SW to close the journal tab and refocus the tb-module tab.
+      // Especially important for ad-hoc 1-patient runs (clicked from the
+      // freshness pill) — the doctor stays on /patients and shouldn't have
+      // to manually clean up the medics.ua tab afterwards.
+      try {
+        chrome.runtime.sendMessage({
+          type: 'tb-job-complete',
+          job_id: ourJob.id,
+          adhoc: ourJob.scope === 'subset' && ourJob.queue.length === 1,
+        });
+      } catch (_) {}
       schedule(TIMING.pollIntervalMs);
       return;
     }

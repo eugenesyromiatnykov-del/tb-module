@@ -54,6 +54,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return false;
   }
+  if (msg && msg.type === 'tb-job-complete') {
+    // Job's queue is exhausted. Close all medics.ua/doctors/journal tabs
+    // (the batch-runner doesn't have a tabs API), then bring focus back
+    // to a tb-module tab so the doctor can keep working there.
+    console.log('[TB SW] job complete, cleaning up tabs');
+    finishJobCleanup(msg.adhoc === true).catch((e) =>
+      console.warn('[TB SW] cleanup failed', e),
+    );
+    sendResponse({ ok: true });
+    return false;
+  }
   return false;
 });
 
@@ -124,6 +135,44 @@ async function checkAndEnsureTab() {
   console.log(`[TB SW] active job ${job.id}: medics.ua tab already open (${tabs.length}), poking content scripts`);
   for (const t of tabs) {
     if (t.id != null) wakeTab(t.id);
+  }
+}
+
+// Job-complete cleanup. Always closes any /doctors/journal tab so it
+// doesn't linger; for ad-hoc 1-patient runs we also try to restore focus
+// to a tb-module tab (the doctor clicked the freshness pill there and
+// expects to land back where they started).
+async function finishJobCleanup(isAdhoc) {
+  try {
+    const journalTabs = await chrome.tabs.query({
+      url: 'https://medics.ua/doctors/journal*',
+    });
+    for (const t of journalTabs) {
+      if (t.id != null) {
+        try { await chrome.tabs.remove(t.id); } catch (_) {}
+      }
+    }
+  } catch (e) { console.warn('[TB SW] journal close failed:', e?.message); }
+
+  if (isAdhoc) {
+    try {
+      const tbTabs = await chrome.tabs.query({
+        url: ['https://tb-module.vercel.app/*', 'http://localhost/*'],
+      });
+      // Prefer a tab in the user's last focused window, else first match.
+      const focusedWin = await chrome.windows.getLastFocused().catch(() => null);
+      const pick =
+        (focusedWin && tbTabs.find((t) => t.windowId === focusedWin.id)) ||
+        tbTabs[0];
+      if (pick?.id != null) {
+        await chrome.tabs.update(pick.id, { active: true });
+        if (pick.windowId != null) {
+          await chrome.windows.update(pick.windowId, { focused: true });
+        }
+      }
+    } catch (e) {
+      console.warn('[TB SW] focus restore failed:', e?.message);
+    }
   }
 }
 
