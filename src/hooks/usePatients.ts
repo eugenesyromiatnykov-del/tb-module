@@ -18,6 +18,23 @@ export type AdpmFilter =
   | 'this_year'
   | 'overdue';
 
+// Disjoint bins that match the SyncCell color bands (green/slate/orange/red).
+// OR-combined when multi-selected.
+export type SyncFreshFilter =
+  | 'never'   // diagnoses_synced_at IS NULL
+  | 'gt90'    // > 90 днів тому
+  | '30to90'  // 30–90 днів тому
+  | '7to30'   // 7–30 днів тому
+  | 'lt7';    // < 7 днів тому
+
+export const SYNC_FILTER_LABELS: Record<SyncFreshFilter, string> = {
+  never: 'Ніколи',
+  gt90: 'Понад 90 днів',
+  '30to90': 'Від 30 до 90 днів',
+  '7to30': 'Від 7 до 30 днів',
+  lt7: 'Менше 7 днів',
+};
+
 export type PatientFilters = {
   location?: string;
   status?: string;
@@ -27,6 +44,7 @@ export type PatientFilters = {
   archived?: boolean;
   filter?: PatientFilter;
   adpm?: AdpmFilter[];  // OR-combined statuses
+  sync?: SyncFreshFilter[]; // OR-combined freshness bins
   address?: string;     // ILIKE on address (street/house substring)
   villages?: string[];  // exact match on derived `village` column
   cleared?: 'include' | 'only'; // default: exclude tb_status='cleared'
@@ -52,6 +70,9 @@ function buildQuery(filters: PatientFilters): string {
   if (filters.filter) params.set('filter', filters.filter);
   if (filters.adpm && filters.adpm.length > 0) {
     params.set('adpm', filters.adpm.join(','));
+  }
+  if (filters.sync && filters.sync.length > 0) {
+    params.set('sync', filters.sync.join(','));
   }
   if (filters.address) params.set('address', filters.address);
   if (filters.villages && filters.villages.length > 0) {

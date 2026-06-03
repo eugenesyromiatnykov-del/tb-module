@@ -18,8 +18,10 @@ import {
   useVillages,
   fetchReportRows,
   FILTER_LABELS,
+  SYNC_FILTER_LABELS,
   type PatientFilters,
   type PatientFilter,
+  type SyncFreshFilter,
 } from '@/hooks/usePatients';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
@@ -63,6 +65,7 @@ export function PatientsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
   const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
+  const [syncFresh, setSyncFresh] = useState<SyncFreshFilter[]>([]);
   const search = useDebounced(searchInput, 300);
 
   const filters: PatientFilters = useMemo(
@@ -73,10 +76,11 @@ export function PatientsPage() {
       external: external || undefined,
       search: search || undefined,
       villages: selectedVillages.length > 0 ? selectedVillages : undefined,
+      sync: syncFresh.length > 0 ? syncFresh : undefined,
       archived,
       filter,
     }),
-    [location, status, group, external, search, selectedVillages, archived, filter],
+    [location, status, group, external, search, selectedVillages, syncFresh, archived, filter],
   );
 
   const { data, isLoading, isFetching, error } = usePatients(filters);
@@ -362,6 +366,18 @@ export function PatientsPage() {
             <option value="0">Декларанти</option>
             <option value="1">Не декларанти</option>
           </Select>
+        </div>
+        <div className="w-56">
+          <label className="mb-1 block text-xs font-medium text-slate-600">Свіжість синку</label>
+          <MultiSelect
+            options={(Object.keys(SYNC_FILTER_LABELS) as SyncFreshFilter[]).map((k) => ({
+              value: k,
+              label: SYNC_FILTER_LABELS[k],
+            }))}
+            selected={syncFresh}
+            onChange={(next) => setSyncFresh(next as SyncFreshFilter[])}
+            placeholder="Усі"
+          />
         </div>
         <div className="flex items-center gap-2 pb-2">
           <input

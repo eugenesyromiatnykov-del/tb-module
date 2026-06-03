@@ -18,7 +18,13 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { MultiSelect } from '@/components/ui/MultiSelect';
-import { usePatients, useVillages, type AdpmFilter } from '@/hooks/usePatients';
+import {
+  usePatients,
+  useVillages,
+  SYNC_FILTER_LABELS,
+  type AdpmFilter,
+  type SyncFreshFilter,
+} from '@/hooks/usePatients';
 import { exportAdpmXlsx } from '@/lib/xlsx-export';
 import { formatDateUk, calcAge } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -47,6 +53,7 @@ export function VaccinationsPage() {
   const [location, setLocation] = useState<'' | LocationId>('');
   const [adpmStatuses, setAdpmStatuses] = useState<AdpmFilter[]>([]);
   const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
+  const [syncFresh, setSyncFresh] = useState<SyncFreshFilter[]>([]);
   const search = useDebounced(searchInput, 300);
 
   const filters = useMemo(
@@ -55,11 +62,12 @@ export function VaccinationsPage() {
       location: location || undefined,
       adpm: adpmStatuses.length > 0 ? adpmStatuses : undefined,
       villages: selectedVillages.length > 0 ? selectedVillages : undefined,
+      sync: syncFresh.length > 0 ? syncFresh : undefined,
       // АДП-М робиться всім, незалежно від ризику по ТБ — показуємо й
       // пацієнтів зі статусом 'cleared', яких реєстр флюоро вже не показує.
       cleared: 'include' as const,
     }),
-    [search, location, adpmStatuses, selectedVillages],
+    [search, location, adpmStatuses, selectedVillages, syncFresh],
   );
 
   const { data, isLoading, isFetching } = usePatients(filters);
@@ -251,6 +259,18 @@ export function VaccinationsPage() {
             options={STATUS_OPTIONS}
             selected={adpmStatuses}
             onChange={(next) => setAdpmStatuses(next as AdpmFilter[])}
+            placeholder="Усі"
+          />
+        </div>
+        <div className="w-56">
+          <label className="mb-1 block text-xs font-medium text-slate-600">Свіжість синку</label>
+          <MultiSelect
+            options={(Object.keys(SYNC_FILTER_LABELS) as SyncFreshFilter[]).map((k) => ({
+              value: k,
+              label: SYNC_FILTER_LABELS[k],
+            }))}
+            selected={syncFresh}
+            onChange={(next) => setSyncFresh(next as SyncFreshFilter[])}
             placeholder="Усі"
           />
         </div>

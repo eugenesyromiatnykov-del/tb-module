@@ -165,6 +165,8 @@ export default async function handler(req: Req, res: Res) {
     const clearedParam = asString(q.cleared);
     const adpmRaw = (asString(q.adpm) ?? '').trim();
     const adpmValues = adpmRaw ? adpmRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    const syncRaw = (asString(q.sync) ?? '').trim();
+    const syncValues = syncRaw ? syncRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
     const address = (asString(q.address) ?? '').trim();
     const villageParam = (asString(q.village) ?? '').trim();
     const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
@@ -194,6 +196,20 @@ export default async function handler(req: Req, res: Res) {
         else if (v === 'pending') parts.push('and(adpm_contraindication.eq.false,adpm_refused.eq.false)');
         else if (v === 'this_year') parts.push(`and(next_adpm_date.gte.${year}-01-01,next_adpm_date.lte.${year}-12-31)`);
         else if (v === 'overdue') parts.push(`and(next_adpm_date.lt.${today},next_adpm_date.not.is.null)`);
+      }
+      if (parts.length > 0) pQuery = pQuery.or(parts.join(','));
+    }
+    if (syncValues.length > 0) {
+      const d90 = daysFromNow(-90);
+      const d30 = daysFromNow(-30);
+      const d7 = daysFromNow(-7);
+      const parts: string[] = [];
+      for (const v of syncValues) {
+        if (v === 'never') parts.push('diagnoses_synced_at.is.null');
+        else if (v === 'gt90') parts.push(`diagnoses_synced_at.lte.${d90}`);
+        else if (v === '30to90') parts.push(`and(diagnoses_synced_at.gt.${d90},diagnoses_synced_at.lte.${d30})`);
+        else if (v === '7to30') parts.push(`and(diagnoses_synced_at.gt.${d30},diagnoses_synced_at.lte.${d7})`);
+        else if (v === 'lt7') parts.push(`diagnoses_synced_at.gt.${d7}`);
       }
       if (parts.length > 0) pQuery = pQuery.or(parts.join(','));
     }
@@ -530,6 +546,8 @@ export default async function handler(req: Req, res: Res) {
   const search = (asString(q.search) ?? '').trim();
   const adpmRaw = (asString(q.adpm) ?? '').trim();
   const adpmValues = adpmRaw ? adpmRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const syncRaw = (asString(q.sync) ?? '').trim();
+  const syncValues = syncRaw ? syncRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
   const address = (asString(q.address) ?? '').trim();
   const villageParam = (asString(q.village) ?? '').trim();
   const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
@@ -572,6 +590,27 @@ export default async function handler(req: Req, res: Res) {
         parts.push(`and(next_adpm_date.gte.${year}-01-01,next_adpm_date.lte.${year}-12-31)`);
       else if (v === 'overdue')
         parts.push(`and(next_adpm_date.lt.${today},next_adpm_date.not.is.null)`);
+    }
+    if (parts.length > 0) {
+      query = query.or(parts.join(','));
+    }
+  }
+
+  // Sync-freshness filter — disjoint age bins matching SyncCell tone bands.
+  // Multi-select, OR-combined. Bin boundaries are inclusive on the older
+  // side, exclusive on the newer side (so a row exactly 30 days old falls
+  // in '30to90', not '7to30').
+  if (syncValues.length > 0) {
+    const d90 = daysFromNow(-90);
+    const d30 = daysFromNow(-30);
+    const d7 = daysFromNow(-7);
+    const parts: string[] = [];
+    for (const v of syncValues) {
+      if (v === 'never') parts.push('diagnoses_synced_at.is.null');
+      else if (v === 'gt90') parts.push(`diagnoses_synced_at.lte.${d90}`);
+      else if (v === '30to90') parts.push(`and(diagnoses_synced_at.gt.${d90},diagnoses_synced_at.lte.${d30})`);
+      else if (v === '7to30') parts.push(`and(diagnoses_synced_at.gt.${d30},diagnoses_synced_at.lte.${d7})`);
+      else if (v === 'lt7') parts.push(`diagnoses_synced_at.gt.${d7}`);
     }
     if (parts.length > 0) {
       query = query.or(parts.join(','));
