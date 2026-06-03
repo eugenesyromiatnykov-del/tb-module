@@ -204,12 +204,39 @@
     return null;
   }
 
+  // Last-resort lookup: if a batch run is in flight, the active sync_job
+  // row has `current_medics_id` set to the patient the journal tab just
+  // dispatched here. Pages where MIS doesn't expose the ID in URL / data-
+  // attribute / card text would otherwise pop "не вдалось знайти Medics
+  // ID" even though we (the orchestrator) just put the doctor on that
+  // page on purpose. We also save the mapping so the next manual visit
+  // resolves instantly.
+  async function resolveFromActiveSyncJob() {
+    if (!isConfigured()) return null;
+    try {
+      const r = await fetch(`${STATE.config.url}/api/patients?mode=sync_job`, {
+        headers: { Authorization: `Bearer ${STATE.config.pin}` },
+      });
+      if (!r.ok) return null;
+      const j = await r.json();
+      const cur = j?.job?.current_medics_id;
+      if (cur && /^\d{4,}$/.test(String(cur))) return String(cur);
+    } catch (_) {}
+    return null;
+  }
+
   async function resolveMedicsId() {
     const auto = tryAutoExtractMedicsId();
     if (auto) return { id: auto, source: 'auto' };
     const map = await getManualMappings();
     const m = map[pageKey()];
     if (m) return { id: m, source: 'manual' };
+    const fromJob = await resolveFromActiveSyncJob();
+    if (fromJob) {
+      // Cache so future visits to this URL skip the network call.
+      try { await saveManualMapping(pageKey(), fromJob); } catch (_) {}
+      return { id: fromJob, source: 'sync_job' };
+    }
     return { id: null, source: null };
   }
 
@@ -1189,16 +1216,17 @@
     if (fluoro) payload.fluoro = fluoro;
 
     // Indicator analysis snapshot — sending the array (even empty) makes
-    // the server replace the patient's stored results. We send ONLY when
-    // we actually have matcher output, so a sync triggered without an
-    // analysis (e.g. just a manual ПІБ change) doesn't wipe history.
-    if (Array.isArray(analyzedResults) && analyzedResults.length > 0) {
+    // the server replace the patient's stored results AND stamp
+    // patients.last_indicators_synced_at, which is what drives the
+    // "щойно" label and tells batch-runner the run is done. We send
+    // whenever displayResults handed us an array (even empty — a patient
+    // who fits no rules is still "analyzed just now"). We skip only when
+    // caller didn't pass results at all (e.g. a manual ПІБ-only sync) —
+    // that path leaves prior indicators untouched.
+    if (Array.isArray(analyzedResults)) {
       payload.indicators = analyzedResults
         .map(serializeIndicator)
         .filter(Boolean);
-      // Patient-wide raw analyzer data — observations, referrals, episodes
-      // etc. Shared across all indicators for this patient; saved once on
-      // patients.last_analysis_snapshot.
       const snap = serializeAnalyzerSnapshot(analyzedData);
       if (snap) payload.analysis_snapshot = snap;
     }
