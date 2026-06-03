@@ -715,6 +715,8 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
   }
 
   if (action === 'heartbeat') {
+    const deviceId = body.device_id as string | undefined;
+    const deviceLabel = body.device_label as string | undefined;
     const patch: Record<string, unknown> = {
       last_heartbeat_at: new Date().toISOString(),
       status: 'running',
@@ -723,6 +725,36 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     if (Array.isArray(body.failed)) patch.failed = body.failed;
     if (typeof body.current_medics_id === 'string' || body.current_medics_id === null)
       patch.current_medics_id = body.current_medics_id;
+    // CAS-claim. Only this device-id (or the unclaimed nullable row) can
+    // win the update — second device sends its id, gets 0 rows back, knows
+    // it lost the race and idles.
+    if (deviceId) {
+      patch.owner_device_id = deviceId;
+      if (deviceLabel) patch.owner_device_label = deviceLabel;
+      const { data, error } = await supabase
+        .from('sync_jobs')
+        .update(patch)
+        .eq('id', jobId)
+        .or(`owner_device_id.is.null,owner_device_id.eq.${deviceId}`)
+        .select('*')
+        .maybeSingle();
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      if (!data) {
+        // Someone else owns this job. Tell client to stand down.
+        const { data: cur } = await supabase
+          .from('sync_jobs').select('owner_device_id,owner_device_label,status').eq('id', jobId).maybeSingle();
+        res.status(409).json({
+          error: 'job_owned_by_other_device',
+          owner_device_id: cur?.owner_device_id ?? null,
+          owner_device_label: cur?.owner_device_label ?? null,
+        });
+        return;
+      }
+      res.status(200).json({ job: data });
+      return;
+    }
+    // Legacy path: no device_id sent (older extension build). Update as
+    // before — first to send a deviceId wins later anyway.
     const { data, error } = await supabase
       .from('sync_jobs').update(patch).eq('id', jobId).select('*').maybeSingle();
     if (error) { res.status(500).json({ error: error.message }); return; }

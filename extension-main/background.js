@@ -81,10 +81,27 @@ async function getActiveJob() {
   }
 }
 
+async function getMyDeviceId() {
+  return new Promise((r) => {
+    chrome.storage.local.get(['tb_device_id'], (v) => r(v.tb_device_id || null));
+  });
+}
+
 async function checkAndEnsureTab() {
   const job = await getActiveJob();
   if (!job) return;
   if (job.status !== 'running' && job.status !== 'queued') return;
+  // Device-ownership gate. If this job belongs to another browser/laptop,
+  // don't spin up a journal tab here. The batch-runner content script
+  // does the same check on its side; the SW gate prevents the noisier
+  // case of a brand-new tab opening on the wrong device.
+  if (job.owner_device_id) {
+    const myId = await getMyDeviceId();
+    if (myId && job.owner_device_id !== myId) {
+      console.log('[TB SW] active job belongs to another device, standing down');
+      return;
+    }
+  }
 
   // Any medics.ua tab is enough — the content script polls there.
   const tabs = await chrome.tabs.query({ url: 'https://medics.ua/*' });

@@ -31,6 +31,8 @@ export type SyncJob = {
   error: string | null;
   created_at: string;
   updated_at: string;
+  owner_device_id: string | null;
+  owner_device_label: string | null;
 };
 
 function useActiveSyncJob() {
@@ -288,6 +290,16 @@ function ActiveJobCard({
           <Row label="Останнє оновлення">{relativeTime(job.last_heartbeat_at)}</Row>
           <Row label="Запущено">{relativeTime(job.started_at)}</Row>
           {eta && <Row label="Орієнтовно залишилось">{eta}</Row>}
+          <Row label="Виконує">
+            {job.owner_device_id ? (
+              <span className="font-mono text-xs">
+                {job.owner_device_label || 'Пристрій'}
+                <span className="ml-1 text-slate-400">·{job.owner_device_id.slice(0, 6)}</span>
+              </span>
+            ) : (
+              <span className="text-slate-400">очікує claim</span>
+            )}
+          </Row>
         </div>
 
         {stale && (job.status === 'running' || job.status === 'queued') && (

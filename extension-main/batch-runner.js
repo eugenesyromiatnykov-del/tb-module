@@ -53,6 +53,39 @@
       ),
     );
   }
+
+  // ─── Device identity ─────────────────────────────────────────────────────
+  // Stable UUID generated once per browser profile, kept in chrome.storage.
+  // Every sync_jobs heartbeat carries this so the server can CAS-lock the
+  // job to whichever device claims it first — second laptop with the same
+  // PIN sees the job is owned, idles instead of stomping the run.
+  let DEVICE_ID = null;
+  let DEVICE_LABEL = null;
+  function guessDeviceLabel() {
+    const ua = navigator.userAgent || '';
+    let os = 'Browser';
+    if (/Mac/i.test(ua)) os = 'Mac';
+    else if (/Windows/i.test(ua)) os = 'Windows';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+    // Append a short suffix from the device-id so two Macs are
+    // distinguishable in the /sync UI.
+    return os;
+  }
+  async function ensureDeviceId() {
+    if (DEVICE_ID) return DEVICE_ID;
+    return new Promise((r) => {
+      chrome.storage.local.get(['tb_device_id', 'tb_device_label'], (v) => {
+        DEVICE_ID = v.tb_device_id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+        DEVICE_LABEL = v.tb_device_label || guessDeviceLabel();
+        const toSet = {};
+        if (!v.tb_device_id) toSet.tb_device_id = DEVICE_ID;
+        if (!v.tb_device_label) toSet.tb_device_label = DEVICE_LABEL;
+        if (Object.keys(toSet).length) chrome.storage.local.set(toSet);
+        r(DEVICE_ID);
+      });
+    });
+  }
+
   async function api(path, init) {
     const cfg = await loadCfg();
     if (!cfg.url || !cfg.pin) throw new Error('Модуль не налаштовано');
@@ -64,17 +97,43 @@
         ...(init?.headers || {}),
       },
     });
-    if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+    if (!r.ok) {
+      const text = await r.text();
+      const err = new Error(`HTTP ${r.status}: ${text}`);
+      err.status = r.status;
+      err.body = text;
+      throw err;
+    }
     return r.json();
   }
   function getActiveJob() {
     return api('/api/patients?mode=sync_job', { method: 'GET' }).then((j) => j.job ?? null);
   }
-  function heartbeat(jobId, patch) {
-    return api('/api/patients?mode=sync_job', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'heartbeat', job_id: jobId, ...patch }),
-    });
+  async function heartbeat(jobId, patch) {
+    await ensureDeviceId();
+    try {
+      return await api('/api/patients?mode=sync_job', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'heartbeat',
+          job_id: jobId,
+          device_id: DEVICE_ID,
+          device_label: DEVICE_LABEL,
+          ...patch,
+        }),
+      });
+    } catch (e) {
+      // 409 = job was claimed by another device while we were running.
+      // Surface a distinct error type so caller cycles can abandon work
+      // for this run instead of looping on a job that isn't ours.
+      if (e?.status === 409) {
+        console.warn('[TB Batch] heartbeat rejected — job owned by another device');
+        const e2 = new Error('job_owned_by_other_device');
+        e2.handover = true;
+        throw e2;
+      }
+      throw e;
+    }
   }
   function completeJob(jobId, cursor, failed) {
     return api('/api/patients?mode=sync_job', {
@@ -297,6 +356,19 @@
       lastSeenJobId = null;
       stopKeepAlive();
       setBanner(`idle — no active job\nstatus: ${job?.status ?? 'null'}`);
+      schedule(TIMING.pollIntervalMs);
+      return;
+    }
+
+    // Device-ownership gate. If this job has been claimed by another
+    // device (laptop B started a run while laptop A was already on it),
+    // stand down here — don't drive, don't open med-cards. We keep
+    // polling at the slow rate so we pick the job up if the other
+    // device drops it (network gone, user pressed Скасувати, etc.).
+    await ensureDeviceId();
+    if (job.owner_device_id && job.owner_device_id !== DEVICE_ID) {
+      stopKeepAlive();
+      setBanner(`idle — sync owned by other device\n(${job.owner_device_label || job.owner_device_id.slice(0, 8)})`);
       schedule(TIMING.pollIntervalMs);
       return;
     }
