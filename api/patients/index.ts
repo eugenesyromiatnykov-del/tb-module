@@ -47,6 +47,25 @@ function daysFromNow(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// The МІС extension only knows two workplace labels (see
+// WORKPLACE_LABEL in extension-main/batch-runner.js). Any patient row
+// whose location_id is NULL or something else (non-declarants, legacy
+// imports without a tagged location, future locations the extension
+// hasn't shipped support for) would make the workplace-radio step throw
+// `Невідомий location_id` and the row gets skipped. Defaulting to
+// 'bilohirska' lets sync proceed; the doctor can manually re-tag the
+// patient afterwards if it was wrong.
+const SUPPORTED_WORKPLACES = new Set(['bilohirska', 'zaluzhe']);
+function normalizeQueueLocations<
+  T extends { location_id: string | null | undefined },
+>(rows: T[]): T[] {
+  return rows.map((r) =>
+    SUPPORTED_WORKPLACES.has(r.location_id ?? '')
+      ? r
+      : { ...r, location_id: 'bilohirska' },
+  );
+}
+
 function applyFilter<Q extends { eq: Function; neq: Function; lt: Function; gt: Function; gte: Function; lte: Function; is: Function; not: Function; contains: Function }>(
   q: Q,
   filter: Filter | undefined,
@@ -722,6 +741,11 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       if (error) { res.status(500).json({ error: error.message }); return; }
       queue = (data ?? []) as typeof queue;
     }
+    // Default to Білогірська when location_id is null or anything the
+    // extension's WORKPLACE_LABEL map doesn't know about — non-declarants,
+    // historical imports without a tagged location, etc. Otherwise the
+    // extension throws "Невідомий location_id" mid-cycle and skips the row.
+    queue = normalizeQueueLocations(queue);
 
     const { data: created, error: insErr } = await supabase
       .from('sync_jobs')
@@ -874,7 +898,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         const { data } = await q;
         queue = (data ?? []) as typeof queue;
       }
-      patch.queue = queue;
+      patch.queue = normalizeQueueLocations(queue);
       patch.cursor = 0;
       patch.failed = [];
       patch.started_at = new Date().toISOString();
