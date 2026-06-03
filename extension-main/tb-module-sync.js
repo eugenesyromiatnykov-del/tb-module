@@ -961,10 +961,81 @@
     try {
       const res = await apiGet(r.id);
       if (!res.found) return renderEmpty(r.id, r.source);
-      return renderExisting(res.patient, r.source, res.indicators ?? []);
+      renderExisting(res.patient, r.source, res.indicators ?? []);
+      // Paint the cached full analysis (TODO list + indicator cards) into
+      // the main widget body, so re-visiting a previously analyzed patient
+      // shows last-known state instantly without re-running the analyzer.
+      // The fresh analyze, when it runs, overwrites this in-place.
+      renderCachedAnalysis(res.patient, res.indicators ?? []);
+      return;
     } catch (e) {
       console.error('[TB Module] apiGet:', e);
       return renderError(`Помилка запиту: ${e.message}`);
+    }
+  }
+
+  // Convert one stored indicator_results row back into the shape the МІС
+  // widget's displayResults() expects. We hydrate just enough fields for
+  // the TODO list, the collapsed indicator cards, and the applicability
+  // tooltip — `rule.applies` / `rule.frequency` are inert here since we're
+  // not re-running the matcher, only re-painting its prior output.
+  function hydrateCachedResult(ind) {
+    const rule = {
+      id: ind.rule_id,
+      name: ind.rule_name || ind.rule_id,
+      category: ind.rule_category || 'general',
+      type: ind.rule_type || 'ОБСТЕЖЕННЯ',
+      requiredActions: Array.isArray(ind.required_actions) ? ind.required_actions : [],
+      frequency: ind.frequency_months || 12,
+      gender: 'BOTH',
+    };
+    const actions = (ind.required_actions || []).map((a) => ({
+      ...a,
+      date: a.date ? new Date(a.date) : null,
+    }));
+    return {
+      rule,
+      status: ind.state,
+      requiredActions: actions,
+      isCompleted: ind.state === 'completed',
+      isPartial: ind.state === 'partial',
+      isOverdue: !!ind.is_overdue,
+      lastDate: ind.last_date ? new Date(ind.last_date) : null,
+      nextDate: ind.next_date ? new Date(ind.next_date) : null,
+      details: Array.isArray(ind.details) ? ind.details : [],
+      applicabilityReason: ind.applicability_reason || '',
+    };
+  }
+
+  // Minimal `data` object for displayResults — patient banner uses
+  // age/gender; collectTodoActions + renderIndicatorCard only consume
+  // fields off `results`. The `__cached` flag tells our displayResults
+  // hook to skip the doSync side effect (we're not re-analyzing).
+  function buildCachedData(patient) {
+    let age = null;
+    if (patient?.birth_date) {
+      const bd = new Date(patient.birth_date);
+      if (!isNaN(bd)) age = Math.floor((Date.now() - bd.getTime()) / (365.25 * 86400000));
+    }
+    return {
+      __cached: true,
+      patient: { age, gender: patient?.gender ?? null, diagnoses: [] },
+      analyzer: {
+        observations: {}, referrals: {}, diagnosticReports: {},
+        episodes: {}, encounterActions: {},
+      },
+    };
+  }
+
+  function renderCachedAnalysis(patient, indicators) {
+    if (!Array.isArray(indicators) || indicators.length === 0) return;
+    const ui = window.__miUI;
+    if (!ui || typeof ui.displayResults !== 'function') return;
+    try {
+      const results = indicators.map(hydrateCachedResult);
+      ui.displayResults(results, buildCachedData(patient));
+    } catch (e) {
+      console.error('[TB Module] renderCachedAnalysis failed:', e);
     }
   }
 
@@ -1175,6 +1246,9 @@
       origDisplay.call(this, results, collectedData);
       hideOverlay();
       revealSection();
+      // Cached repaint (renderCachedAnalysis) — no re-sync, no new
+      // indicator_results write, no tb-sync-completed event.
+      if (collectedData && collectedData.__cached) return;
       try {
         doSync(false, collectedData, results).catch((e) => console.error('[TB Module] auto-sync:', e));
       } catch (e) {

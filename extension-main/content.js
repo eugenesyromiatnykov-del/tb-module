@@ -35,6 +35,9 @@ function initializeExtension() {
   try {
     const uiWidget = new MedicsIndicatorUI();
     uiWidget.init();
+    // Expose so tb-module-sync can paint cached analysis on med-card
+    // load (before/instead of re-running the full analyzer).
+    window.__miUI = uiWidget;
     console.log('Medics Indicators: ✅ UI ініціалізовано');
     return true;
   } catch (error) {

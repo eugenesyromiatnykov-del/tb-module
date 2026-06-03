@@ -759,7 +759,11 @@ class MedicsIndicatorUI {
         this.expandToFullHeight();
 
         const grouped = this.groupByCategory(results);
-        const todoActions = this.collectTodoActions(results);
+        // v5.4.0: diagnostic-report TODOs hidden — doctor sees them in МІС
+        // anyway, they aren't actionable from here.
+        const todoActions = this.collectTodoActions(results).filter(
+            (a) => !a.isDiagnosticReport,
+        );
 
         // v5.0.0: TODO list is the main thing. Indicator cards moved behind
         // a collapsible "Деталі індикаторів" toggle below — doctor said he
@@ -859,9 +863,7 @@ class MedicsIndicatorUI {
     renderTodoList(todoActions) {
         // v5.0.0: flat, scannable list. Each TODO is one row: dot (urgency
         // colour) + name + tiny meta. Type/category dropped from the main
-        // view — it's available in the info tooltip if needed. The doctor
-        // works through this list top-to-bottom; type-grouping headers
-        // were visual noise that didn't help.
+        // view — it's available in the info tooltip if needed.
         // Sort: overdue first, then by name.
         const sorted = [...todoActions].sort((a, b) => {
             if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
