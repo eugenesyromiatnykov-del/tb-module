@@ -386,17 +386,25 @@
       return;
     }
 
-    // Device-ownership gate. If this job has been claimed by another
-    // device (laptop B started a run while laptop A was already on it),
-    // stand down here — don't drive, don't open med-cards. We keep
-    // polling at the slow rate so we pick the job up if the other
-    // device drops it (network gone, user pressed Скасувати, etc.).
+    // Device-ownership gate with staleness override. Stand down only if
+    // the existing owner is actively heart-beating. If their last
+    // heartbeat is > 5 min old we treat the lock as orphaned and start
+    // driving — the heartbeat CAS on the server has the same threshold,
+    // so whichever device sends one first becomes the new owner.
     await ensureDeviceId();
     if (job.owner_device_id && job.owner_device_id !== DEVICE_ID) {
-      stopKeepAlive();
-      setBanner(`idle — sync owned by other device\n(${job.owner_device_label || job.owner_device_id.slice(0, 8)})`);
-      schedule(TIMING.pollIntervalMs);
-      return;
+      const OWNER_STALE_MS = 5 * 60 * 1000;
+      const lastBeat = job.last_heartbeat_at
+        ? new Date(job.last_heartbeat_at).getTime()
+        : 0;
+      const isStale = Date.now() - lastBeat > OWNER_STALE_MS;
+      if (!isStale) {
+        stopKeepAlive();
+        setBanner(`idle — sync owned by other device\n(${job.owner_device_label || job.owner_device_id.slice(0, 8)})`);
+        schedule(TIMING.pollIntervalMs);
+        return;
+      }
+      console.log('[TB Batch] owner stale, taking over');
     }
 
     // If queued, first heartbeat will flip it to running.

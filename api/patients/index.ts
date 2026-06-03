@@ -807,6 +807,14 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     // to 'running' and the job would resurrect itself. Same idea for
     // 'cancelled' — terminal, no resurrection.
     const PROGRESSABLE = ['queued', 'running'];
+    // Owner-staleness override. If the existing owner hasn't heartbeat in
+    // OWNER_STALE_MS the lock is considered orphaned and any device can
+    // take over. Covers: doctor reloaded extension and lost device_id,
+    // laptop crashed mid-run, user moved to a different machine after
+    // hours, etc. Otherwise device-ownership locks could permanently
+    // strand a job after a device_id changes.
+    const OWNER_STALE_MS = 5 * 60 * 1000;
+    const staleCutoff = new Date(Date.now() - OWNER_STALE_MS).toISOString();
     if (deviceId) {
       // Plus device-ownership CAS (laptop A vs laptop B).
       patch.owner_device_id = deviceId;
@@ -816,7 +824,9 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         .update(patch)
         .eq('id', jobId)
         .in('status', PROGRESSABLE)
-        .or(`owner_device_id.is.null,owner_device_id.eq.${deviceId}`)
+        .or(
+          `owner_device_id.is.null,owner_device_id.eq.${deviceId},last_heartbeat_at.lt.${staleCutoff}`,
+        )
         .select('*')
         .maybeSingle();
       if (error) { res.status(500).json({ error: error.message }); return; }

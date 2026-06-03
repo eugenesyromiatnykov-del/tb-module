@@ -102,15 +102,23 @@ async function checkAndEnsureTab() {
   const job = await getActiveJob();
   if (!job) return;
   if (job.status !== 'running' && job.status !== 'queued') return;
-  // Device-ownership gate. If this job belongs to another browser/laptop,
-  // don't spin up a journal tab here. The batch-runner content script
-  // does the same check on its side; the SW gate prevents the noisier
-  // case of a brand-new tab opening on the wrong device.
+  // Device-ownership gate with staleness override. If the existing
+  // owner hasn't heartbeat in OWNER_STALE_MS we consider the lock
+  // orphaned (laptop disconnected, extension reloaded with new
+  // device_id, etc) and any device can take over.
   if (job.owner_device_id) {
     const myId = await getMyDeviceId();
     if (myId && job.owner_device_id !== myId) {
-      console.log('[TB SW] active job belongs to another device, standing down');
-      return;
+      const OWNER_STALE_MS = 5 * 60 * 1000;
+      const lastBeat = job.last_heartbeat_at
+        ? new Date(job.last_heartbeat_at).getTime()
+        : 0;
+      const isStale = Date.now() - lastBeat > OWNER_STALE_MS;
+      if (!isStale) {
+        console.log('[TB SW] active job belongs to another device (fresh), standing down');
+        return;
+      }
+      console.log('[TB SW] active job owner is stale — taking over');
     }
   }
 
