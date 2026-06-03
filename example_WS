@@ -1,0 +1,3025 @@
+background.js:30 [TB SW] installed
+background.js:147 [TB SW] active job 8cdf0544-841b-4544-81b3-c59dff3272bd: opening journal tab
+background.js:40 [TB SW] poll failed Error: Tabs cannot be edited right now (user may be dragging a tab).
+(anonymous) @ background.js:40
+background.js:147 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: opening journal tab
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995487 by request from content script
+background.js:51 [TB SW] closing tab 1336995491 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995501 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995504 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995508 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995512 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995516 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995519 by request from content script
+background.js:51 [TB SW] closing tab 1336995523 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995527 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995531 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995537 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995541 by request from content script
+background.js:51 [TB SW] closing tab 1336995545 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995549 by request from content script
+background.js:51 [TB SW] closing tab 1336995553 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995557 by request from content script
+background.js:51 [TB SW] closing tab 1336995561 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995565 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995569 by request from content script
+background.js:51 [TB SW] closing tab 1336995573 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995577 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995581 by request from content script
+background.js:51 [TB SW] closing tab 1336995585 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995589 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995593 by request from content script
+background.js:51 [TB SW] closing tab 1336995597 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995601 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995605 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995609 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995613 by request from content script
+background.js:51 [TB SW] closing tab 1336995617 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995621 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995625 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995629 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995632 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995636 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995640 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995644 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995648 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995652 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995656 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995660 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995664 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995668 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995672 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995676 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995680 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995684 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995688 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995692 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995696 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995700 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995704 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995708 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995712 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995716 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:51 [TB SW] closing tab 1336995781 by request from content script
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:51 [TB SW] closing tab 1336995802 by request from content script
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:51 [TB SW] closing tab 1336995804 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336995872 by request from content script
+background.js:51 [TB SW] closing tab 1336995922 by request from content script
+background.js:51 [TB SW] closing tab 1336995920 by request from content script
+background.js:51 [TB SW] closing tab 1336995923 by request from content script
+background.js:51 [TB SW] closing tab 1336995875 by request from content script
+background.js:51 [TB SW] closing tab 1336995870 by request from content script
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:135
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:135
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:135
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:135
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:135
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484
+background.js:51 [TB SW] closing tab 1336996150 by request from content script
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:209 [TB SW] executeScript wake failed, fell back to sendMessage: Frame with ID 0 was removed.
+wakeTab @ background.js:209
+await in wakeTab
+checkAndEnsureTab @ background.js:141
+await in checkAndEnsureTab
+(anonymous) @ background.js:40
+background.js:134 [TB SW] active job b16a93e8-aaa6-4479-abec-7487af162cef: poking existing journal tab 1336995484

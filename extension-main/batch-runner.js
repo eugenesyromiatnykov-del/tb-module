@@ -237,7 +237,17 @@
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
   function isOnJournal() {
-    return location.pathname.includes('/doctors/journal');
+    // STRICT match: the list page is exactly /doctors/journal (optional
+    // trailing slash). Anything under it (e.g. /doctors/journal/12345 —
+    // the per-patient med-card URL MIS routes to from the workplace
+    // modal) is NOT journal. Before v5.6.4 this used .includes(),
+    // which made every freshly opened med-card briefly look like a
+    // journal in the window between content-script load and Angular
+    // mounting #med-card-block — currentTabRole() pinned the tab to
+    // 'journal', driveJournal clicked confirm in MIS, MIS spawned
+    // another med-card, that one repeated the same race, and tabs
+    // multiplied recursively.
+    return /^\/doctors\/journal\/?$/.test(location.pathname);
   }
   function isOnMedCard() {
     return !!document.querySelector(SELECTORS.medCardMounted)
@@ -516,15 +526,20 @@
       await driveMedCard(job, item);
       return;
     }
-    // role is null — DOM not matching either pattern. Only navigate to
-    // journal if we NEVER had a role on this tab (i.e. first poll after
-    // content-script load on some unrelated medics.ua page). If we WERE
-    // on a medcard/journal before but Angular is mid-rerender, just wait;
-    // sticky role keeps the next poll on track.
-    if (!stickyTabRole && location.host === 'medics.ua') {
-      console.log('[TB Batch] off-route on first poll, navigating to journal');
-      location.assign(JOURNAL_URL);
-    }
+    // role is null — either Angular hasn't mounted med-card yet, or we
+    // landed on some unrelated MIS page (login, settings, …).
+    //
+    // Do NOT auto-navigate to journal here. The old fallback
+    // (location.assign(JOURNAL_URL)) turned freshly opened med-card tabs
+    // — whose Angular was still mid-render — into journal tabs, which
+    // then dispatched another patient, which spawned another med-card,
+    // which again raced its Angular mount, and so on. That's how the
+    // browser ended up with hundreds of tabs after a 30-min run.
+    //
+    // Quiet wait is correct: the next poll runs in 1 s, by which time
+    // Angular will have mounted #med-card-block on a real med-card and
+    // sticky role pins it. On a truly unrelated page we just sit idle —
+    // no harm done, the doctor can close the tab manually.
   }
 
   async function driveJournal(job, item) {
