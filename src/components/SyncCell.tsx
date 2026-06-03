@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { relativeAgo, formatDateUk } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import { useSinglePatientSync } from '@/hooks/useSinglePatientSync';
@@ -36,6 +36,27 @@ export function SyncCell({
       >
         <Loader2 className="h-3 w-3 animate-spin" />
         синхронізую…
+      </Pill>
+    );
+  }
+
+  // Last attempt failed (most often "пацієнт не знайдено в журналі MIS").
+  // Shown for ~6 s, then the pill drops back to its normal freshness state.
+  if (interactive && sync.lastError) {
+    return (
+      <Pill
+        cls="text-red-700 bg-red-50 border border-red-200"
+        title={`Помилка: ${sync.lastError}\nКлік — спробувати ще раз`}
+        clickable={true}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          sync.dismissLastError();
+          sync.start();
+        }}
+      >
+        <AlertCircle className="h-3 w-3" />
+        помилка
       </Pill>
     );
   }

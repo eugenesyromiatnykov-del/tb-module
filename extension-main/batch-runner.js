@@ -524,22 +524,36 @@
       setAngularInputValue(searchInput, item.medics_id);
       await wait(TIMING.afterSearchType);
 
+      // Wait up to 3 s for «Переглянути». If the medics_id doesn't exist
+      // in MIS (deleted patient, typo, wrong workplace), filter returns
+      // an empty list and viewBtn never appears — there's no point
+      // waiting 8 s + reloading. Reload retry remains only as a safety
+      // net for transient MIS hiccups, and is gated by `dirtyState` so
+      // we don't reload when the page is clearly empty rather than mid-
+      // loading.
       const viewBtn = await waitFor(() => {
         const btns = document.querySelectorAll(SELECTORS.viewBtn);
         for (const b of btns) if (b.offsetParent !== null) return b;
         return null;
-      }, 8_000);
+      }, 3_000);
       if (!viewBtn) {
-        // Likely journal is in a bad state (stale filter list, modal still
-        // hiding it, AJAX hiccup). Reload the page — next page-load resumes
-        // the driver from the same cursor and tries again fresh.
+        // If the filter has clearly settled into an empty result set (no
+        // viewBtn anywhere on the page, not just hidden), the patient
+        // isn't findable in journal — fail this row fast, don't reload.
+        const anyHiddenBtn = document.querySelector(SELECTORS.viewBtn);
+        const looksEmpty = !anyHiddenBtn;
+        if (looksEmpty) {
+          throw new Error(`Пацієнта з ID ${item.medics_id} не знайдено в журналі MIS`);
+        }
+        // Some viewBtn exists in the DOM but isn't visible — that's the
+        // "modal still up / mid-AJAX" case the reload retry was built for.
         const reloadKey = `tb-journal-reload-${item.medics_id}`;
         const prev = sessionStorage.getItem(reloadKey);
         if (!prev) {
-          console.warn('[TB Batch] viewBtn missing — reloading /doctors/journal once');
+          console.warn('[TB Batch] viewBtn hidden — reloading /doctors/journal once');
           sessionStorage.setItem(reloadKey, '1');
           location.assign(JOURNAL_URL);
-          await wait(1500); // let nav fire before falling through
+          await wait(1500);
           return;
         }
         sessionStorage.removeItem(reloadKey);

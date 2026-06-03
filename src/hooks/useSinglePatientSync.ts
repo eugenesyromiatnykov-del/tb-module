@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 
@@ -7,6 +7,7 @@ type ActiveJob = {
   status: 'queued' | 'running' | 'paused' | 'stopped' | 'cancelled' | 'done' | 'error';
   scope: 'location' | 'subset' | 'all';
   queue: Array<{ medics_id: string }>;
+  failed: Array<{ medics_id: string | null; surname: string | null; reason: string }>;
   current_medics_id: string | null;
 };
 
@@ -67,6 +68,24 @@ export function useSinglePatientSync(medicsId: string | null | undefined) {
     wasBusy.current = busy;
   }, [busy, qc]);
 
+  // Snapshot any failure for THIS patient that lands in job.failed[]
+  // before the job moves to terminal status (after which GET returns null
+  // and we lose visibility). The error is shown on the pill for 6 s and
+  // auto-cleared so a re-attempt starts clean.
+  const [lastError, setLastError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!medicsId || !isOurAdHocJob || !job) return;
+    const failedEntry = job.failed?.find(
+      (f) => String(f.medics_id) === String(medicsId),
+    );
+    if (failedEntry?.reason) setLastError(failedEntry.reason);
+  }, [job, medicsId, isOurAdHocJob]);
+  useEffect(() => {
+    if (!lastError) return;
+    const t = setTimeout(() => setLastError(null), 6000);
+    return () => clearTimeout(t);
+  }, [lastError]);
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!medicsId) throw new Error('medics_id required');
@@ -75,9 +94,10 @@ export function useSinglePatientSync(medicsId: string | null | undefined) {
         json: { action: 'start', scope: 'subset', medics_id_list: [medicsId] },
       });
     },
+    onMutate: () => {
+      setLastError(null);
+    },
     onSuccess: () => {
-      // Force immediate refetch so the SyncCell pill flips into "busy"
-      // state without waiting for the next 2 s poll tick.
       qc.invalidateQueries({ queryKey: ['sync-job-active'] });
     },
   });
@@ -88,5 +108,7 @@ export function useSinglePatientSync(medicsId: string | null | undefined) {
     busy,
     blocked,
     error: mutation.error?.message ?? null,
+    lastError,
+    dismissLastError: () => setLastError(null),
   };
 }
