@@ -60,6 +60,85 @@ const VALID_TABS: Tab[] = [
   'overview', 'fluoro', 'sputum', 'quantiferon', 'adpm', 'contacts', 'questionnaires',
 ];
 
+// Click-to-edit inline field. View mode shows the value as text (or "—"
+// placeholder) with a pencil that appears on hover. Click anywhere on the
+// row to enter edit mode — autoFocus, blur/Enter saves, Esc cancels.
+//
+// MUST live at module scope, NOT inside PatientDetailPage. When defined
+// inside the parent, every parent re-render (e.g. useMutation status flip)
+// creates a fresh function identity → React unmounts + remounts the field
+// → useState's initialiser runs again with the latest patient.medics_id
+// (still null until the PATCH round-trips) → your "3990123" silently
+// reverts to empty the moment you click away. That was the doctor's bug.
+function EditableField({
+  label,
+  value,
+  type = 'text',
+  placeholder,
+  onSave,
+}: {
+  label: string;
+  value: string | null;
+  type?: string;
+  placeholder?: string;
+  onSave: (next: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>(value ?? '');
+
+  // Keep `draft` in sync with the source-of-truth `value` while we're NOT
+  // editing — covers external updates (other tabs, batch sync, etc).
+  useEffect(() => {
+    if (!editing) setDraft(value ?? '');
+  }, [value, editing]);
+
+  const commit = () => {
+    const next = draft.trim() === '' ? null : draft.trim();
+    setEditing(false);
+    if (next !== (value ?? null)) onSave(next);
+  };
+  const cancel = () => {
+    setDraft(value ?? '');
+    setEditing(false);
+  };
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-slate-600">{label}</label>
+      {editing ? (
+        <Input
+          type={type}
+          value={draft}
+          placeholder={placeholder}
+          autoFocus
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="group flex w-full min-h-[36px] items-center justify-between gap-2 rounded-md border border-transparent px-2.5 py-1.5 text-left text-sm transition hover:border-slate-200 hover:bg-slate-50"
+        >
+          <span className={value ? 'text-slate-900' : 'italic text-slate-400'}>
+            {value || placeholder || '—'}
+          </span>
+          <Pencil className="h-3.5 w-3.5 flex-shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -303,28 +382,28 @@ function OverviewTab({
     update.mutate({ is_external: checked });
   };
 
-  // Inline editable text field — saves on blur if value actually changed.
-  const TextField = ({
-    label, field, type = 'text', placeholder,
-  }: { label: string; field: keyof typeof patient; type?: string; placeholder?: string }) => {
-    const initial = (patient[field] as string | null) ?? '';
-    const [val, setVal] = useState<string>(initial);
-    return (
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">{label}</label>
-        <Input
-          type={type}
-          value={val}
-          placeholder={placeholder}
-          onChange={(e) => setVal(e.target.value)}
-          onBlur={() => {
-            const next = val.trim() === '' ? null : val.trim();
-            if (next !== initial) update.mutate({ [field]: next } as Partial<typeof patient>);
-          }}
-        />
-      </div>
-    );
-  };
+  // Helper that returns an <EditableField/> element wired to this patient.
+  // NOT a React component — if we wrap EditableField in a TextField
+  // component defined inside the parent, every parent re-render creates a
+  // new function reference for TextField, React treats it as a new
+  // component type, and unmounts/remounts EditableField + resets its
+  // local useState. Returning a JSX element directly keeps React's
+  // reconciliation on the stable EditableField type.
+  const field = (
+    label: string,
+    key: keyof typeof patient,
+    opts: { type?: string; placeholder?: string } = {},
+  ) => (
+    <EditableField
+      label={label}
+      value={(patient[key] as string | null) ?? null}
+      type={opts.type}
+      placeholder={opts.placeholder}
+      onSave={(next) =>
+        update.mutate({ [key]: next } as Partial<typeof patient>)
+      }
+    />
+  );
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -333,10 +412,10 @@ function OverviewTab({
           <CardTitle>Особисті дані</CardTitle>
         </CardHeader>
         <CardBody className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          <TextField label="Прізвище" field="surname" />
-          <TextField label="Імʼя" field="first_name" />
-          <TextField label="По батькові" field="patronymic" />
-          <TextField label="Дата народження" field="birth_date" type="date" />
+          {field('Прізвище', 'surname')}
+          {field('Імʼя', 'first_name')}
+          {field('По батькові', 'patronymic')}
+          {field('Дата народження', 'birth_date', { type: 'date' })}
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Стать</label>
             <Select
@@ -348,17 +427,13 @@ function OverviewTab({
               <option value="F">Жіноча</option>
             </Select>
           </div>
-          <TextField label="Medics ID" field="medics_id" placeholder="напр. 3990123" />
-          <TextField label="Телефон" field="phone" placeholder="+380…" />
+          {field('Medics ID', 'medics_id', { placeholder: 'напр. 3990123' })}
+          {field('Телефон', 'phone', { placeholder: '+380…' })}
           <div className="sm:col-span-2">
-            <TextField label="Адреса (вулиця, №)" field="address" />
+            {field('Адреса (вулиця, №)', 'address')}
           </div>
           <div className="sm:col-span-2">
-            <TextField
-              label="Населений пункт"
-              field="village"
-              placeholder="напр. Білогірськ"
-            />
+            {field('Населений пункт', 'village', { placeholder: 'напр. Білогірськ' })}
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
