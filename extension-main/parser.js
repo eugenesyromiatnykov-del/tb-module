@@ -4,6 +4,11 @@
 // (не "Дії:", не "Причини звернення:") + білий список ICPC-2
 // ============================================================================
 
+// R-ОГК (рентген ОГК) коди — однозначно ідентифікують візуалізацію
+// грудної клітки. Винесено з tb-module-sync.js: логіка парсингу медкарти
+// має жити з іншим парсингом, а не в integration-шарі.
+const RX_CHEST_CODES = ['58500-00', '56301-00'];
+
 class MedicsParser {
   constructor() {
     this.patientData = null;
@@ -18,6 +23,7 @@ class MedicsParser {
         diagnoses: this.parseDiagnoses(),
         immunizations: this.parseImmunizations(),
         lastAdpM: null,
+        lastFluoro: null,
         hasRiskFactors: false,
       };
 
@@ -27,6 +33,7 @@ class MedicsParser {
 
       this.patientData.hasRiskFactors = this.checkRiskFactors(this.patientData.diagnoses);
       this.patientData.lastAdpM = this.getLastAdpM();
+      this.patientData.lastFluoro = this.getLastFluoro();
 
       log('Парсинг завершено', 'success');
       log(`Вік=${this.patientData.age}, Стать=${this.patientData.gender}, Діагнозів=${this.patientData.diagnoses.length}, Імунізацій=${this.patientData.immunizations.length}`, 'info');
@@ -253,6 +260,104 @@ class MedicsParser {
       }
     });
     return pairs;
+  }
+
+  // Остання R-ОГК (рентгенографія органів грудної клітки) — діагностичний
+  // звіт з кодами 58500-00 / 56301-00. Витягуємо дату, текст висновку,
+  // класифіковане result_code і обчислюємо next_planned_date = date + 12 міс.
+  // Anchor — .c-collapse--item-name з кодом на початку тексту; висновок —
+  // .c-collapse--output-item де title містить «висновок».
+  getLastFluoro() {
+    const RX_NAME_RX = new RegExp(`^\\s*(${RX_CHEST_CODES.map((c) => c.replace(/[-/]/g, '\\$&')).join('|')})\\b`);
+
+    const candidates = [];
+    document.querySelectorAll('.c-collapse--item-name').forEach((nameEl) => {
+      const nameText = (nameEl.textContent || '').trim();
+      if (!RX_NAME_RX.test(nameText)) return;
+      const item = nameEl.closest('.c-collapse--item');
+      if (!item) return;
+
+      // Date — within the same .c-collapse--item-text container as the name.
+      // Fallback to any .c-collapse--item-info inside the item.
+      const itemText = nameEl.closest('.c-collapse--item-text');
+      const info = itemText?.querySelector('.c-collapse--item-info')
+        || item.querySelector(':scope > .c-collapse--item-header .c-collapse--item-info');
+      const infoText = (info?.textContent || '').trim();
+      const parsed = this._parseLooseDate(infoText);
+      if (!parsed) return;
+      const iso = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+
+      // Conclusion in .c-collapse--item-body of THIS item only.
+      // :scope-rooted selector so we don't bleed into sibling items.
+      let result = null;
+      const body = item.querySelector(':scope > .c-collapse--item-body');
+      if (body) {
+        body.querySelectorAll('.c-collapse--output-item').forEach((oi) => {
+          if (result) return;
+          const t = oi.querySelector('.c-collapse--output-title');
+          if (!t || !/висновок/i.test((t.textContent || '').trim())) return;
+          const txt = oi.querySelector('.c-collapse--output-text');
+          const text = (txt?.textContent || '').trim();
+          if (text) result = text;
+        });
+      }
+
+      candidates.push({ iso, result, nameText, hasBody: !!body });
+    });
+
+    if (candidates.length === 0) return null;
+    // Pick latest by ISO; if its body isn't expanded, fall back to the
+    // latest one that DOES have a conclusion text.
+    candidates.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0));
+    const latest = candidates[0];
+    let chosen = latest;
+    if (!latest.result) {
+      const withResult = candidates.find((c) => c.result);
+      if (withResult) chosen = withResult;
+    }
+
+    return {
+      date: chosen.iso,
+      result: chosen.result,
+      result_code: this._classifyFluoroResult(chosen.result),
+      next_planned_date: this._addMonthsIso(chosen.iso, 12),
+    };
+  }
+
+  // R-ОГК conclusion text → semantic code.
+  _classifyFluoroResult(text) {
+    if (!text) return 'unknown';
+    const s = text.toLowerCase();
+    if (/без\s*патолог|у\s*меж[аі]х\s*норм|без\s*особлив|норм/.test(s)) return 'normal';
+    if (/патолог|зміни|інфільтрат|тінь|вогнищ|туберкульоз|зззтб|хр\.\s*бр/.test(s)) return 'pathology';
+    if (/відмов/.test(s)) return 'refused';
+    if (/очік|pending/.test(s)) return 'pending';
+    return 'unknown';
+  }
+
+  // Parse "25 груд. 2025 р. 16:54" / "25.12.2025" / "12/25/2025" → Date.
+  _parseLooseDate(s) {
+    if (!s) return null;
+    if (typeof parseDate === 'function') {
+      const d = parseDate(s);
+      if (d && !isNaN(d.getTime())) return d;
+    }
+    const ddmmyyyy = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (ddmmyyyy) return new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
+    const mdY = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if (mdY) {
+      let y = +mdY[3]; if (y < 100) y = y >= 30 ? 1900 + y : 2000 + y;
+      return new Date(y, +mdY[1] - 1, +mdY[2]);
+    }
+    return null;
+  }
+
+  // ISO date + N months → ISO date.
+  _addMonthsIso(iso, months) {
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1 + months, +m[3]);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   // Остання валідна АДП-М (вакцина проти дифтерії та правця, зменшений вміст

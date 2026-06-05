@@ -290,113 +290,10 @@
     };
   }
 
-  // ─── R-ОГК: pull last diagnostic report + its conclusion text ────────
-  // Only codes that unambiguously identify chest imaging (per indicator 10
-  // requiredActions). A34030 was removed: in medics.ua it's also used
-  // for "Аналіз; біохімія" and other non-imaging reports — too generic.
-  const RX_CHEST_CODES = ['58500-00', '56301-00'];
-
-  function classifyResult(text) {
-    if (!text) return 'unknown';
-    const s = text.toLowerCase();
-    // "norm" / "without pathology" / "without features"
-    if (/без\s*патолог|у\s*меж[аі]х\s*норм|без\s*особлив|норм/.test(s)) return 'normal';
-    if (/патолог|зміни|інфільтрат|тінь|вогнищ|туберкульоз|зззтб|хр\.\s*бр/.test(s)) return 'pathology';
-    if (/відмов/.test(s)) return 'refused';
-    if (/очік|pending/.test(s)) return 'pending';
-    return 'unknown';
-  }
-
-  // Pull last R-ОГК from the DOM. Anchors on .c-collapse--item-name
-  // (the only element whose text starts with the code, e.g.
-  // "58500-00 Рентгенографія грудної клітки"), climbs to its parent
-  // .c-collapse--item, then reads the date + conclusion from THAT item.
-  function extractLastFluoro(_collectedData) {
-    const RX_NAME_RX = new RegExp(`^\\s*(${RX_CHEST_CODES.map((c) => c.replace(/[-/]/g, '\\$&')).join('|')})\\b`);
-
-    const candidates = [];
-    document.querySelectorAll('.c-collapse--item-name').forEach((nameEl) => {
-      const nameText = (nameEl.textContent || '').trim();
-      if (!RX_NAME_RX.test(nameText)) return;
-      const item = nameEl.closest('.c-collapse--item');
-      if (!item) return;
-
-      // Date — within the same .c-collapse--item-text container that holds name.
-      // Falls back to any .c-collapse--item-info inside the item.
-      const itemText = nameEl.closest('.c-collapse--item-text');
-      const info = itemText?.querySelector('.c-collapse--item-info')
-        || item.querySelector(':scope > .c-collapse--item-header .c-collapse--item-info');
-      const infoText = (info?.textContent || '').trim();
-      const parsed = parseLooseDate(infoText);
-      if (!parsed) return;
-      const iso = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
-
-      // Conclusion lives in .c-collapse--item-body of THIS item only.
-      // Use a :scope-rooted selector so we don't bleed into sibling items.
-      let result = null;
-      const body = item.querySelector(':scope > .c-collapse--item-body');
-      if (body) {
-        body.querySelectorAll('.c-collapse--output-item').forEach((oi) => {
-          if (result) return;
-          const t = oi.querySelector('.c-collapse--output-title');
-          if (!t || !/висновок/i.test((t.textContent || '').trim())) return;
-          const txt = oi.querySelector('.c-collapse--output-text');
-          const text = (txt?.textContent || '').trim();
-          if (text) result = text;
-        });
-      }
-
-      candidates.push({ iso, result, nameText, hasBody: !!body, item });
-    });
-
-    console.log('[TB Module] R-ОГК candidates:', candidates.map((c) => ({
-      name: c.nameText, iso: c.iso, hasBody: c.hasBody, result: c.result,
-    })));
-
-    if (candidates.length === 0) return null;
-    // Pick the latest by ISO date; if it has no expanded body, fall back
-    // to the latest one that DOES have a body (conclusion).
-    candidates.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0));
-    const latest = candidates[0];
-    let chosen = latest;
-    if (!latest.result) {
-      const withResult = candidates.find((c) => c.result);
-      if (withResult) chosen = withResult;
-    }
-    console.log('[TB Module] R-ОГК chosen:', { name: chosen.nameText, iso: chosen.iso, result: chosen.result });
-
-    return {
-      date: chosen.iso,
-      result: chosen.result,
-      result_code: classifyResult(chosen.result),
-      next_planned_date: addMonthsIso(chosen.iso, 12),
-    };
-  }
-
-  // Parse "25 груд. 2025 р. 16:54" / "25.12.2025" / "12/25/2025" → Date.
-  function parseLooseDate(s) {
-    if (!s) return null;
-    // Reuse helpers.parseDate if it covers the Ukrainian-text format.
-    if (typeof parseDate === 'function') {
-      const d = parseDate(s);
-      if (d && !isNaN(d.getTime())) return d;
-    }
-    const ddmmyyyy = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-    if (ddmmyyyy) return new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
-    const mdY = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
-    if (mdY) {
-      let y = +mdY[3]; if (y < 100) y = y >= 30 ? 1900 + y : 2000 + y;
-      return new Date(y, +mdY[1] - 1, +mdY[2]);
-    }
-    return null;
-  }
-
-  function addMonthsIso(iso, months) {
-    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return null;
-    const d = new Date(+m[1], +m[2] - 1 + months, +m[3]);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
+  // R-ОГК parsing (RX_CHEST_CODES + extractLastFluoro + classifyResult +
+  // parseLooseDate + addMonthsIso) MOVED to parser.js. Lives there with the
+  // rest of medcard DOM parsing — this file is now strictly integration
+  // (sync with TB-module backend).
 
   // ─── API ──────────────────────────────────────────────────────────────
   async function apiGet(medicsId) {
@@ -1183,8 +1080,11 @@
       }).filter((d) => d.code);
     }
 
-    // R-ОГК last record + planned next.
-    const fluoro = analyzedData ? extractLastFluoro(analyzedData) : null;
+    // R-ОГК last record + planned next. Parsing moved into MedicsParser
+    // (parser.js getLastFluoro) — patient.lastFluoro is populated by
+    // parseAll() the same way patient.lastAdpM is. Integration-layer
+    // (this file) no longer touches DOM for that.
+    const fluoro = analyzedData?.patient?.lastFluoro ?? null;
 
     // АДП-М from page — UI only for now, no backend storage yet.
     const adpm = analyzedData?.patient?.lastAdpM;
