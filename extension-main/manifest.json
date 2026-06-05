@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Medics Indicators",
-  "version": "5.6.5",
+  "version": "5.6.6",
   "description": "Аналіз виконання індикаторів якості надавача ПМД",
   "icons": {
     "16": "icon16.png",
@@ -42,16 +42,16 @@
     {
       "matches": ["https://medics.ua/*"],
       "js": [
-        "helpers.js",
-        "gender-detector.js",
-        "gender-selector.js",
-        "parser.js",
-        "analyzer.js",
-        "indicators-rules.js",
-        "data-collector.js",
-        "indicator-matcher.js",
-        "form-027-collector.js",
-        "ui.js",
+        "core/helpers.js",
+        "core/gender-detector.js",
+        "core/gender-selector.js",
+        "core/parser.js",
+        "core/analyzer.js",
+        "core/indicators-rules.js",
+        "core/data-collector.js",
+        "core/indicator-matcher.js",
+        "core/form-027-collector.js",
+        "core/ui.js",
         "content.js",
         "batch-runner.js",
         "tb-module-sync.js"
