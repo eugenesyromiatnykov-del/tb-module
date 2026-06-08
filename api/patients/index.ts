@@ -398,24 +398,21 @@ export default async function handler(req: Req, res: Res) {
   }
 
   // ── Villages mode: distinct list for the multi-select filter ────────────
+  // Uses the get_villages() SQL function (migration 0018) so the DISTINCT
+  // happens in Postgres. Selecting from `patients` directly silently
+  // hits Supabase's 1000-row response cap regardless of .range() and
+  // truncates villages alphabetically past "Залужжя".
   if (mode === 'villages') {
-    const { data, error } = await supabase
-      .from('patients')
-      .select('village')
-      .not('village', 'is', null)
-      .eq('archived', false)
-      .order('village', { ascending: true })
-      .range(0, 19999);
+    const { data, error } = await supabase.rpc('get_villages');
     if (error) {
       res.status(500).json({ error: error.message });
       return;
     }
-    const set = new Set<string>();
-    for (const row of (data ?? []) as Array<{ village: string | null }>) {
-      const v = (row.village ?? '').trim();
-      if (v) set.add(v);
-    }
-    res.status(200).json({ villages: Array.from(set).sort((a, b) => a.localeCompare(b, 'uk')) });
+    const villages = ((data ?? []) as Array<{ village: string | null }>)
+      .map((r) => (r.village ?? '').trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'uk'));
+    res.status(200).json({ villages });
     return;
   }
 
