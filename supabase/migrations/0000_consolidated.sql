@@ -17,11 +17,15 @@
 create extension if not exists "uuid-ossp";
 
 -- ── ENUMS ───────────────────────────────────────────────────────────────────
--- tb_status: only values actually used post-0007. The historic
--- 'contact'/'cleared'/'external'/'observed' enum values are intentionally
--- omitted — none of them are written by current code.
+-- tb_status: includes legacy values 'contact'/'cleared'/'external'/
+-- 'observed' even though no current code writes them. They MUST exist
+-- in the enum because /api/patients applies a default `.neq('tb_status',
+-- 'cleared')` filter to hide cleared-status rows on the registry list —
+-- if 'cleared' isn't a valid enum value, the filter throws 22P02
+-- "invalid input value for enum tb_status: cleared". Same for any other
+-- code path that still mentions these values for backward compat.
 do $$ begin
-  create type tb_status as enum ('risk', 'detected', 'archived');
+  create type tb_status as enum ('risk', 'detected', 'contact', 'cleared', 'external', 'observed', 'archived');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
