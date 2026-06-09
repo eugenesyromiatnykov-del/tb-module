@@ -389,6 +389,20 @@
     }
 
     if (!job || (job.status !== 'running' && job.status !== 'queued')) {
+      // Transition: if we WERE driving and the job just flipped to a
+      // terminal/paused state, the doctor (or another device) hit Stop on
+      // /sync or on the blocking overlay. Tell the SW to close every
+      // /doctors/journal tab the runner opened — without this they linger
+      // open and the doctor sees stale med-card content.
+      if (lastSeenJobId) {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'tb-job-complete',
+            job_id: lastSeenJobId,
+            adhoc: false,
+          });
+        } catch (_) {}
+      }
       lastSeenJobId = null;
       stopKeepAlive();
       setBanner(`idle — no active job\nstatus: ${job?.status ?? 'null'}`);
