@@ -173,6 +173,27 @@ export function SyncPage() {
         subtitle="Автоматичний обхід усіх декларантів через МІС, з прогресом у реальному часі"
       />
 
+      {/* Device-binding indicator — surfaces whether the bridge handshake
+          completed. Null state means subsequent {action:'start'} sends
+          device_id=null and falls back to first-to-poll race; the doctor
+          should reload the extension / refresh the page before clicking. */}
+      <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs">
+        <span className={cn(
+          'h-2 w-2 rounded-full',
+          device.id ? 'bg-emerald-500' : 'bg-amber-500',
+        )} />
+        {device.id ? (
+          <span className="text-slate-700">
+            Цей пристрій: <span className="font-medium">{device.label || 'Browser'}</span>
+            <span className="ml-1 text-slate-400">·{device.id.slice(0, 6)}</span>
+          </span>
+        ) : (
+          <span className="text-amber-700">
+            Розширення не відповіло. Перезавантаж сторінку або chrome://extensions → Reload.
+          </span>
+        )}
+      </div>
+
       {isLoading ? (
         <div className="flex h-32 items-center justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />

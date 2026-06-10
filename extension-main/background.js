@@ -72,11 +72,34 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // both logged into the TB module and both have the extension, the
     // first one to poll wins the CAS — meaning the wrong laptop drives
     // medics.ua under the wrong MIS profile.
+    //
+    // Generate-on-demand: previously this returned null if the user had
+    // never opened medics.ua yet (batch-runner generates lazily there).
+    // Returning null leaked the click into the legacy first-to-poll race.
+    // Now we mirror batch-runner's ensureDeviceId() so the SW alone can
+    // produce a stable id — both sites read/write the SAME storage keys.
     chrome.storage.local.get(['tb_device_id', 'tb_device_label'], (v) => {
-      sendResponse({
-        device_id: v.tb_device_id ?? null,
-        device_label: v.tb_device_label ?? null,
-      });
+      let id = v.tb_device_id;
+      let label = v.tb_device_label;
+      const toSet = {};
+      if (!id) {
+        id = (self.crypto && self.crypto.randomUUID)
+          ? self.crypto.randomUUID()
+          : Math.random().toString(36).slice(2) + Date.now().toString(36);
+        toSet.tb_device_id = id;
+      }
+      if (!label) {
+        // We can't read navigator.userAgent reliably in SW context,
+        // so just stamp 'Browser' here — batch-runner will refine to
+        // 'Mac' / 'Windows' / 'Linux' on its first run on medics.ua
+        // and overwrite this key.
+        label = 'Browser';
+        toSet.tb_device_label = label;
+      }
+      if (Object.keys(toSet).length > 0) {
+        chrome.storage.local.set(toSet);
+      }
+      sendResponse({ device_id: id, device_label: label });
     });
     return true; // async response
   }
