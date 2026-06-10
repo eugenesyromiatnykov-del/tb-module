@@ -126,14 +126,16 @@ const ALLOWED_CREATE_FIELDS = new Set([
 export default async function handler(req: Req, res: Res) {
   if (handlePreflight(req, res)) return;
   setCors(req, res);
-  if (!(await requireAuth(req, res))) return;
+  const session = await requireAuth(req, res);
+  if (!session) return;
+  const doctorId = session.doctor_id;
 
   const supabase = getSupabaseAdmin();
   const reqMode = asString((req.query ?? {}).mode);
 
   // ── Sync-job dispatcher (action lives in body.action for POST) ───────────
   if (reqMode === 'sync_job') {
-    return handleSyncJob(req, res, supabase);
+    return handleSyncJob(req, res, supabase, doctorId);
   }
 
   if (req.method === 'POST') {
@@ -152,6 +154,7 @@ export default async function handler(req: Req, res: Res) {
     if (!('social_risk_groups' in row)) row.social_risk_groups = [];
     if (!('diagnoses_codes' in row)) row.diagnoses_codes = [];
 
+    row.doctor_id = doctorId;
     const { data, error } = await supabase.from('patients').insert(row).select('*').maybeSingle();
     if (error) {
       res.status(500).json({ error: error.message });
@@ -192,7 +195,7 @@ export default async function handler(req: Req, res: Res) {
     const villageParam = (asString(q.village) ?? '').trim();
     const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
 
-    let pQuery = supabase.from('patient_dashboard').select(SELECT_FULL);
+    let pQuery = supabase.from('patient_dashboard').select(SELECT_FULL).eq('doctor_id', doctorId);
     if (filter) pQuery = applyFilter(pQuery, filter, location);
     else {
       if (!includeArchived) pQuery = pQuery.eq('archived', false);
@@ -369,15 +372,17 @@ export default async function handler(req: Req, res: Res) {
     const { data: maxRow, error: e1 } = await supabase
       .from('patients')
       .select('diagnoses_synced_at')
+      .eq('doctor_id', doctorId)
       .not('diagnoses_synced_at', 'is', null)
       .order('diagnoses_synced_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (e1) { res.status(500).json({ error: e1.message }); return; }
-    const totalRes = await supabase.from('patients').select('id', { count: 'exact', head: true }).eq('archived', false);
+    const totalRes = await supabase.from('patients').select('id', { count: 'exact', head: true }).eq('doctor_id', doctorId).eq('archived', false);
     const syncedRes = await supabase
       .from('patients')
       .select('id', { count: 'exact', head: true })
+      .eq('doctor_id', doctorId)
       .eq('archived', false)
       .not('diagnoses_synced_at', 'is', null);
     res.status(200).json({
@@ -398,6 +403,7 @@ export default async function handler(req: Req, res: Res) {
     let bq = supabase
       .from('patients')
       .select('id,medics_id,surname,first_name,patronymic,location_id,diagnoses_synced_at')
+      .eq('doctor_id', doctorId)
       .eq('archived', false)
       .not('medics_id', 'is', null);
     if (location) bq = bq.eq('location_id', location);
@@ -418,7 +424,7 @@ export default async function handler(req: Req, res: Res) {
   // hits Supabase's 1000-row response cap regardless of .range() and
   // truncates villages alphabetically past "Залужжя".
   if (mode === 'villages') {
-    const { data, error } = await supabase.rpc('get_villages');
+    const { data, error } = await supabase.rpc('get_villages', { p_doctor_id: doctorId });
     if (error) {
       res.status(500).json({ error: error.message });
       return;
@@ -436,6 +442,7 @@ export default async function handler(req: Req, res: Res) {
     const { data, error } = await supabase
       .from('patients')
       .select(SELECT_FOR_DIFF)
+      .eq('doctor_id', doctorId)
       .order('medics_id', { ascending: true })
       .range(0, 19999);
     if (error) {
@@ -451,7 +458,7 @@ export default async function handler(req: Req, res: Res) {
     const filters: Filter[] = ['overdue', 'this_week', 'next_30', 'no_fluoro', 'contacts_no_fluoro', 'detected'];
     const out: Record<string, number> = {};
     for (const f of filters) {
-      const base = supabase.from('patient_dashboard').select('id', { count: 'exact', head: true });
+      const base = supabase.from('patient_dashboard').select('id', { count: 'exact', head: true }).eq('doctor_id', doctorId);
       const { count, error } = await applyFilter(base, f);
       if (error) {
         res.status(500).json({ error: `stats ${f}: ${error.message}` });
@@ -459,10 +466,11 @@ export default async function handler(req: Req, res: Res) {
       }
       out[f] = count ?? 0;
     }
-    // Last MIS import
+    // Last MIS import (for this doctor only — scoping changes across tenants)
     const { data: lastImport, error: liErr } = await supabase
       .from('mis_imports')
       .select('imported_at')
+      .eq('doctor_id', doctorId)
       .order('imported_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -478,6 +486,7 @@ export default async function handler(req: Req, res: Res) {
     const { count: totalActive } = await supabase
       .from('patients')
       .select('id', { count: 'exact', head: true })
+      .eq('doctor_id', doctorId)
       .eq('archived', false);
     out.totalActive = totalActive ?? 0;
 
@@ -507,6 +516,7 @@ export default async function handler(req: Req, res: Res) {
           last_indicators_synced_at
         )
       `)
+      .eq('doctor_id', doctorId)
       .order('analyzed_at', { ascending: false });
     if (ruleId) qb = qb.eq('rule_id', ruleId);
     if (stateParam) {
@@ -540,6 +550,7 @@ export default async function handler(req: Req, res: Res) {
     let qb = supabase
       .from('indicator_results')
       .select('rule_id, rule_name, state, patients!inner(location_id, archived)')
+      .eq('doctor_id', doctorId)
       .eq('patients.archived', false)
       .range(0, 99999);
     if (location) qb = qb.eq('patients.location_id', location);
@@ -589,7 +600,7 @@ export default async function handler(req: Req, res: Res) {
   // ?cleared=include to keep them.
   const clearedParam = asString(q.cleared); // undefined | 'include' | 'only'
 
-  let query = supabase.from('patient_dashboard').select(SELECT_FULL);
+  let query = supabase.from('patient_dashboard').select(SELECT_FULL).eq('doctor_id', doctorId);
   if (filter) {
     query = applyFilter(query, filter, location);
   } else {
@@ -713,14 +724,17 @@ export default async function handler(req: Req, res: Res) {
 // 'stopped'. The /sync UI lists 'stopped' as a "paused" stack the
 // doctor can resume later. 'done', 'cancelled', 'error' are terminal.
 
-async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof getSupabaseAdmin>) {
+async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof getSupabaseAdmin>, doctorId: string) {
   if (req.method === 'GET') {
     // Truly active (running / queued) — the extension polls this and
     // starts driving the moment it sees a non-null. Only one at a time:
     // start/resume below auto-pause any others to keep that invariant.
+    // Scoped to THIS doctor's tenant so doctor A's job never appears in
+    // doctor B's /sync UI.
     const { data: active, error: actErr } = await supabase
       .from('sync_jobs')
       .select('*')
+      .eq('doctor_id', doctorId)
       .in('status', ['queued', 'running'])
       .order('created_at', { ascending: false })
       .limit(1)
@@ -732,6 +746,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     const { data: paused, error: pErr } = await supabase
       .from('sync_jobs')
       .select('*')
+      .eq('doctor_id', doctorId)
       .eq('status', 'stopped')
       .order('updated_at', { ascending: false })
       .limit(20);
@@ -756,6 +771,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     await supabase
       .from('sync_jobs')
       .update({ status: 'stopped', stopped_at: new Date().toISOString() })
+      .eq('doctor_id', doctorId)
       .in('status', ['queued', 'running']);
     const location = (body.location as string | undefined) ?? null;
     const onlyUnsynced = body.only_unsynced !== false;
@@ -777,6 +793,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       const { data, error } = await supabase
         .from('patients')
         .select('medics_id,surname,location_id')
+        .eq('doctor_id', doctorId)
         .in('medics_id', medicsList)
         .eq('archived', false)
         .not('medics_id', 'is', null);
@@ -786,6 +803,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       let q = supabase
         .from('patients')
         .select('medics_id,surname,location_id')
+        .eq('doctor_id', doctorId)
         .eq('archived', false)
         .not('medics_id', 'is', null);
       if (location) q = q.eq('location_id', location);
@@ -816,6 +834,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         last_heartbeat_at: new Date().toISOString(),
         owner_device_id: deviceId,
         owner_device_label: deviceLabel,
+        doctor_id: doctorId,
       })
       .select('*')
       .maybeSingle();
@@ -867,6 +886,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         .from('sync_jobs')
         .update(patch)
         .eq('id', jobId)
+        .eq('doctor_id', doctorId)
         .in('status', PROGRESSABLE)
         .or(
           `owner_device_id.is.null,owner_device_id.eq.${deviceId},last_heartbeat_at.lt.${staleCutoff}`,
@@ -876,7 +896,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       if (error) { res.status(500).json({ error: error.message }); return; }
       if (!data) {
         const { data: cur } = await supabase
-          .from('sync_jobs').select('owner_device_id,owner_device_label,status').eq('id', jobId).maybeSingle();
+          .from('sync_jobs').select('owner_device_id,owner_device_label,status').eq('id', jobId).eq('doctor_id', doctorId).maybeSingle();
         // Distinguish "not running anymore" (Зупинити/Скасувати) from
         // "another device owns it" so the extension can log a meaningful
         // reason. Both states → extension stands down.
@@ -898,13 +918,14 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       .from('sync_jobs')
       .update(patch)
       .eq('id', jobId)
+      .eq('doctor_id', doctorId)
       .in('status', PROGRESSABLE)
       .select('*')
       .maybeSingle();
     if (error) { res.status(500).json({ error: error.message }); return; }
     if (!data) {
       const { data: cur } = await supabase
-        .from('sync_jobs').select('status').eq('id', jobId).maybeSingle();
+        .from('sync_jobs').select('status').eq('id', jobId).eq('doctor_id', doctorId).maybeSingle();
       res.status(409).json({ error: 'job_not_running', status: cur?.status ?? null });
       return;
     }
@@ -917,6 +938,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       .from('sync_jobs')
       .update({ status: 'stopped', stopped_at: new Date().toISOString() })
       .eq('id', jobId)
+      .eq('doctor_id', doctorId)
       .select('*')
       .maybeSingle();
     if (error) { res.status(500).json({ error: error.message }); return; }
@@ -926,13 +948,14 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
 
   if (action === 'resume') {
     const { data: cur, error: curErr } = await supabase
-      .from('sync_jobs').select('*').eq('id', jobId).maybeSingle();
+      .from('sync_jobs').select('*').eq('id', jobId).eq('doctor_id', doctorId).maybeSingle();
     if (curErr || !cur) { res.status(404).json({ error: 'job not found' }); return; }
     // Pause whatever else is running first. Same invariant as start: only
     // one job is queued/running at a time; everything else sits in 'stopped'.
     await supabase
       .from('sync_jobs')
       .update({ status: 'stopped', stopped_at: new Date().toISOString() })
+      .eq('doctor_id', doctorId)
       .in('status', ['queued', 'running'])
       .neq('id', jobId);
 
@@ -965,6 +988,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         const { data } = await supabase
           .from('patients')
           .select('medics_id,surname,location_id')
+          .eq('doctor_id', doctorId)
           .in('medics_id', medicsList)
           .eq('archived', false)
           .not('medics_id', 'is', null);
@@ -973,6 +997,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         let q = supabase
           .from('patients')
           .select('medics_id,surname,location_id')
+          .eq('doctor_id', doctorId)
           .eq('archived', false)
           .not('medics_id', 'is', null);
         if (location) q = q.eq('location_id', location);
@@ -987,7 +1012,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
       patch.started_at = new Date().toISOString();
     }
     const { data, error } = await supabase
-      .from('sync_jobs').update(patch).eq('id', jobId).select('*').maybeSingle();
+      .from('sync_jobs').update(patch).eq('id', jobId).eq('doctor_id', doctorId).select('*').maybeSingle();
     if (error) { res.status(500).json({ error: error.message }); return; }
     res.status(200).json({ job: data, reset: ageMs > TWENTY_FOUR_H });
     return;
@@ -1002,7 +1027,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     if (Array.isArray(body.failed)) patch.failed = body.failed;
     if (typeof body.cursor === 'number') patch.cursor = body.cursor;
     const { data, error } = await supabase
-      .from('sync_jobs').update(patch).eq('id', jobId).select('*').maybeSingle();
+      .from('sync_jobs').update(patch).eq('id', jobId).eq('doctor_id', doctorId).select('*').maybeSingle();
     if (error) { res.status(500).json({ error: error.message }); return; }
     res.status(200).json({ job: data });
     return;
@@ -1020,6 +1045,7 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         current_medics_id: null,
       })
       .eq('id', jobId)
+      .eq('doctor_id', doctorId)
       .select('*')
       .maybeSingle();
     if (error) { res.status(500).json({ error: error.message }); return; }

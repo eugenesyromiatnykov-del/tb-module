@@ -8,9 +8,11 @@ import {
   ListChecks,
   Settings as SettingsIcon,
   LogOut,
+  UserCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logout } from '@/lib/auth';
+import { useDoctor } from '@/hooks/useDoctor';
 
 type Item = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -25,6 +27,7 @@ const items: Item[] = [
 ];
 
 export function Sidebar() {
+  const { data: doctor } = useDoctor();
   async function onLogout() {
     await logout();
     window.location.href = '/login';
@@ -62,7 +65,13 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-slate-200 p-3">
+      <div className="border-t border-slate-200 p-3 space-y-1">
+        {doctor && (
+          <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-500">
+            <UserCircle2 className="h-4 w-4" />
+            <span className="truncate">{doctor.name}</span>
+          </div>
+        )}
         <button
           type="button"
           onClick={onLogout}

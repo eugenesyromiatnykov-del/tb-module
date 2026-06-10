@@ -35,7 +35,8 @@ type ApplyBody = {
 };
 
 export default async function handler(req: Req, res: Res) {
-  if (!(await requireAuth(req, res))) return;
+  const session = await requireAuth(req, res);
+  if (!session) return;
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -72,6 +73,7 @@ export default async function handler(req: Req, res: Res) {
       const { data, error } = await supabase
         .from('patients')
         .select('id, medics_id, archived')
+        .eq('doctor_id', session.doctor_id)
         .in('medics_id', slice);
       if (error) {
         res.status(500).json({ error: `precheck medics_id: ${error.message}` });
@@ -86,6 +88,7 @@ export default async function handler(req: Req, res: Res) {
     const { data: candidates, error: candErr } = await supabase
       .from('patients')
       .select('id, surname, first_name, patronymic, birth_date')
+      .eq('doctor_id', session.doctor_id)
       .is('medics_id', null);
     if (candErr) {
       res.status(500).json({ error: `lookup external: ${candErr.message}` });
@@ -137,6 +140,7 @@ export default async function handler(req: Req, res: Res) {
         medical_risk_groups: [],
         social_risk_groups: [],
         diagnoses_codes: [],
+        doctor_id: session.doctor_id,
       }));
       for (const chunk of chunked(rows, 500)) {
         const { error, count } = await supabase.from('patients').insert(chunk, { count: 'exact' });
@@ -176,7 +180,7 @@ export default async function handler(req: Req, res: Res) {
     if (toPromote.length > 0) {
       const ids = toPromote.map((p) => p.id);
       const { data: curRows } = await supabase
-        .from('patients').select('id, tb_status').in('id', ids);
+        .from('patients').select('id, tb_status').eq('doctor_id', session.doctor_id).in('id', ids);
       const statusById = new Map<string, string>();
       for (const r of curRows ?? []) statusById.set(r.id as string, r.tb_status as string);
       for (let i = 0; i < toPromote.length; i += PROMOTE_CONCURRENCY) {
@@ -200,7 +204,8 @@ export default async function handler(req: Req, res: Res) {
                 location_id: row.location_id,
                 tb_status: finalStatus,
               })
-              .eq('id', id);
+              .eq('id', id)
+              .eq('doctor_id', session.doctor_id);
             return { id, error };
           }),
         );
@@ -236,7 +241,7 @@ export default async function handler(req: Req, res: Res) {
     const results = await Promise.all(
       slice.map(async (u) => {
         if (!u.id) return { ok: true, u, error: null as null | { message: string } };
-        const { error } = await supabase.from('patients').update(u.patch).eq('id', u.id);
+        const { error } = await supabase.from('patients').update(u.patch).eq('id', u.id).eq('doctor_id', session.doctor_id);
         return { ok: !error, u, error };
       }),
     );
@@ -261,6 +266,7 @@ export default async function handler(req: Req, res: Res) {
       const { error } = await supabase
         .from('patients')
         .update({ archived: true, archived_reason: 'left_practice', archived_at: new Date().toISOString() })
+        .eq('doctor_id', session.doctor_id)
         .in('id', ids);
       if (error) {
         res.status(500).json({ error: `archive: ${error.message}` });
@@ -277,6 +283,7 @@ export default async function handler(req: Req, res: Res) {
     patients_added: added,
     patients_updated: updated + promoted,
     patients_archived: archived,
+    doctor_id: session.doctor_id,
     diff_summary: {
       locationId: body.locationId,
       add: body.add.length,

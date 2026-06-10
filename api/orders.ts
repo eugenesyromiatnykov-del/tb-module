@@ -28,8 +28,11 @@ function normalizeUrl(u: string): string {
   return `https://${s}`;
 }
 
+// Накази (MOZ orders) are NOT per-doctor — same regulations across the
+// whole country. We require auth but don't filter by doctor_id.
 export default async function handler(req: Req, res: Res) {
-  if (!(await requireAuth(req, res))) return;
+  const session = await requireAuth(req, res);
+  if (!session) return;
   const supabase = getSupabaseAdmin();
   const q = req.query ?? {};
 

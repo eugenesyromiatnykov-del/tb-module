@@ -39,15 +39,26 @@ function setCors(req: Req, res: Res) {
   res.setHeader('Access-Control-Max-Age', '86400');
 }
 
-async function authenticate(req: Req): Promise<boolean> {
+// Multi-doctor PIN auth: extension sends `Bearer <PIN>`; we resolve which
+// active doctor's tenant this PIN belongs to so the resulting writes go
+// to the right registry. Returns null on no match.
+async function authenticate(req: Req): Promise<{ doctor_id: string } | null> {
   const raw = req.headers.authorization;
   const header = Array.isArray(raw) ? raw[0] : raw;
-  if (!header || !header.startsWith('Bearer ')) return false;
+  if (!header || !header.startsWith('Bearer ')) return null;
   const pin = header.slice('Bearer '.length).trim();
-  if (!/^\d{4,12}$/.test(pin)) return false;
-  const hash = process.env.PIN_HASH;
-  if (!hash) return false;
-  return await bcrypt.compare(pin, hash);
+  if (!/^\d{4,12}$/.test(pin)) return null;
+  const supabase = getSupabaseAdmin();
+  const { data: doctors } = await supabase
+    .from('doctors')
+    .select('id, pin_hash')
+    .eq('active', true);
+  for (const d of doctors ?? []) {
+    if (await bcrypt.compare(pin, d.pin_hash)) {
+      return { doctor_id: d.id as string };
+    }
+  }
+  return null;
 }
 
 export default async function handler(req: Req, res: Res) {
@@ -57,7 +68,8 @@ export default async function handler(req: Req, res: Res) {
     return;
   }
 
-  if (!(await authenticate(req))) {
+  const session = await authenticate(req);
+  if (!session) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -84,6 +96,7 @@ export default async function handler(req: Req, res: Res) {
         last_indicators_synced_at
       `)
       .eq('medics_id', medics)
+      .eq('doctor_id', session.doctor_id)
       .maybeSingle();
     if (error) {
       res.status(500).json({ error: error.message });
@@ -104,6 +117,7 @@ export default async function handler(req: Req, res: Res) {
         required_actions, details, analyzed_at
       `)
       .eq('patient_id', data.id as string)
+      .eq('doctor_id', session.doctor_id)
       .order('rule_id');
     res.status(200).json({ found: true, patient: data, indicators: indicators ?? [] });
     return;
@@ -170,11 +184,12 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    // Look up existing patient.
+    // Look up existing patient within THIS doctor's tenant.
     const { data: existing, error: lookupErr } = await supabase
       .from('patients')
       .select('id, medical_risk_groups, social_risk_groups, diagnoses_codes, tb_status')
       .eq('medics_id', body.medics_id)
+      .eq('doctor_id', session.doctor_id)
       .maybeSingle();
     if (lookupErr) {
       res.status(500).json({ error: lookupErr.message });
@@ -238,7 +253,7 @@ export default async function handler(req: Req, res: Res) {
       }
 
       if (Object.keys(patch).length > 0) {
-        const { error } = await supabase.from('patients').update(patch).eq('id', patientId);
+        const { error } = await supabase.from('patients').update(patch).eq('id', patientId).eq('doctor_id', session.doctor_id);
         if (error) {
           res.status(500).json({ error: `update: ${error.message}` });
           return;
@@ -265,6 +280,7 @@ export default async function handler(req: Req, res: Res) {
         social_risk_groups: body.social_risk_groups ?? [],
         diagnoses_codes: body.diagnoses_codes ?? [],
         diagnoses_synced_at: body.diagnoses_codes ? new Date().toISOString() : null,
+        doctor_id: session.doctor_id,
       };
       const { data: created, error: insertErr } = await supabase
         .from('patients')
@@ -298,6 +314,7 @@ export default async function handler(req: Req, res: Res) {
           result_code: code,
           next_planned_date: body.fluoro.next_planned_date ?? null,
           source: 'extension',
+          doctor_id: session.doctor_id,
         });
         if (error) {
           res.status(500).json({ error: `fluoro: ${error.message}` });
@@ -325,6 +342,7 @@ export default async function handler(req: Req, res: Res) {
           lot_number: body.adpm.lot_number ?? null,
           notes: body.adpm.notes ?? null,
           source: 'extension',
+          doctor_id: session.doctor_id,
         });
         if (error) {
           res.status(500).json({ error: `adpm: ${error.message}` });
@@ -347,7 +365,8 @@ export default async function handler(req: Req, res: Res) {
       const { error: delErr } = await supabase
         .from('indicator_results')
         .delete()
-        .eq('patient_id', patientId);
+        .eq('patient_id', patientId)
+        .eq('doctor_id', session.doctor_id);
       if (delErr) {
         res.status(500).json({ error: `indicators clear: ${delErr.message}` });
         return;
@@ -370,6 +389,7 @@ export default async function handler(req: Req, res: Res) {
           required_actions: Array.isArray(ind.required_actions) ? ind.required_actions : [],
           details: Array.isArray(ind.details) ? ind.details : [],
           analyzed_at: now,
+          doctor_id: session.doctor_id,
         }));
         const { error: insErr } = await supabase.from('indicator_results').insert(rows);
         if (insErr) {
@@ -382,7 +402,7 @@ export default async function handler(req: Req, res: Res) {
       if (body.analysis_snapshot !== undefined) {
         snapshotPatch.last_analysis_snapshot = body.analysis_snapshot;
       }
-      await supabase.from('patients').update(snapshotPatch).eq('id', patientId);
+      await supabase.from('patients').update(snapshotPatch).eq('id', patientId).eq('doctor_id', session.doctor_id);
     }
 
     res.status(200).json({

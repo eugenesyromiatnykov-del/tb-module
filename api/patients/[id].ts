@@ -65,7 +65,8 @@ function asString(v: string | string[] | undefined): string | undefined {
 }
 
 export default async function handler(req: Req, res: Res) {
-  if (!(await requireAuth(req, res))) return;
+  const session = await requireAuth(req, res);
+  if (!session) return;
 
   const id = asString(req.query?.id);
   if (!id) {
@@ -112,6 +113,7 @@ export default async function handler(req: Req, res: Res) {
       .from('patients')
       .select('adpm_refusal_photo_path')
       .eq('id', id)
+      .eq('doctor_id', session.doctor_id)
       .maybeSingle();
     if (!patient?.adpm_refusal_photo_path) {
       res.status(404).json({ error: 'Фото відсутнє' });
@@ -129,12 +131,14 @@ export default async function handler(req: Req, res: Res) {
   }
 
   if (req.method === 'GET') {
+    // doctor_id filter on every read so a doctor can't open another's
+    // patient by guessing/sharing an id. Records tables also scoped.
     const [patientRes, fluoroRes, sputumRes, quantRes, adpmRes] = await Promise.all([
-      supabase.from('patient_dashboard').select(PATIENT_FIELDS).eq('id', id).maybeSingle(),
-      supabase.from('fluorography').select('*').eq('patient_id', id).order('date', { ascending: false }),
-      supabase.from('sputum_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
-      supabase.from('quantiferon_tests').select('*').eq('patient_id', id).order('date', { ascending: false }),
-      supabase.from('adpm_vaccinations').select('*').eq('patient_id', id).order('date', { ascending: false }),
+      supabase.from('patient_dashboard').select(PATIENT_FIELDS).eq('id', id).eq('doctor_id', session.doctor_id).maybeSingle(),
+      supabase.from('fluorography').select('*').eq('patient_id', id).eq('doctor_id', session.doctor_id).order('date', { ascending: false }),
+      supabase.from('sputum_tests').select('*').eq('patient_id', id).eq('doctor_id', session.doctor_id).order('date', { ascending: false }),
+      supabase.from('quantiferon_tests').select('*').eq('patient_id', id).eq('doctor_id', session.doctor_id).order('date', { ascending: false }),
+      supabase.from('adpm_vaccinations').select('*').eq('patient_id', id).eq('doctor_id', session.doctor_id).order('date', { ascending: false }),
     ]);
     if (patientRes.error) {
       res.status(500).json({ error: patientRes.error.message });
@@ -164,7 +168,11 @@ export default async function handler(req: Req, res: Res) {
       res.status(400).json({ error: 'Nothing to update' });
       return;
     }
-    const { error: updErr } = await supabase.from('patients').update(patch).eq('id', id);
+    const { error: updErr } = await supabase
+      .from('patients')
+      .update(patch)
+      .eq('id', id)
+      .eq('doctor_id', session.doctor_id);
     if (updErr) {
       res.status(500).json({ error: updErr.message });
       return;
@@ -174,6 +182,7 @@ export default async function handler(req: Req, res: Res) {
       .from('patient_dashboard')
       .select(PATIENT_FIELDS)
       .eq('id', id)
+      .eq('doctor_id', session.doctor_id)
       .maybeSingle();
     if (error) {
       res.status(500).json({ error: error.message });
@@ -188,7 +197,7 @@ export default async function handler(req: Req, res: Res) {
     // quantiferon_tests / adpm_vaccinations removes the dependent rows.
     // Doctor uses this for genuine mistakes (duplicate, wrong person);
     // for "left the practice" use PATCH archived=true instead.
-    const { error } = await supabase.from('patients').delete().eq('id', id);
+    const { error } = await supabase.from('patients').delete().eq('id', id).eq('doctor_id', session.doctor_id);
     if (error) {
       res.status(500).json({ error: error.message });
       return;

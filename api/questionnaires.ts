@@ -30,7 +30,8 @@ function asString(v: string | string[] | undefined): string | undefined {
 }
 
 export default async function handler(req: Req, res: Res) {
-  if (!(await requireAuth(req, res))) return;
+  const session = await requireAuth(req, res);
+  if (!session) return;
 
   const supabase = getSupabaseAdmin();
   const q = req.query ?? {};
@@ -42,6 +43,7 @@ export default async function handler(req: Req, res: Res) {
         .from('questionnaires')
         .select('*')
         .eq('id', id)
+        .eq('doctor_id', session.doctor_id)
         .maybeSingle();
       if (error) {
         res.status(500).json({ error: error.message });
@@ -58,6 +60,7 @@ export default async function handler(req: Req, res: Res) {
           .from('patients')
           .select('id, surname, first_name, patronymic, birth_date, location_id, address, phone, medics_id')
           .eq('id', data.patient_id)
+          .eq('doctor_id', session.doctor_id)
           .maybeSingle();
         patient = r.data ?? null;
       }
@@ -70,6 +73,7 @@ export default async function handler(req: Req, res: Res) {
     let query = supabase
       .from('questionnaires')
       .select('id, patient_id, filled_at, result, filled_by, answers, notes')
+      .eq('doctor_id', session.doctor_id)
       .order('filled_at', { ascending: false })
       .limit(500);
     if (patientId) query = query.eq('patient_id', patientId);
@@ -99,6 +103,7 @@ export default async function handler(req: Req, res: Res) {
       result: body.result,
       filled_by: body.filled_by ?? null,
       notes: body.notes ?? null,
+      doctor_id: session.doctor_id,
     };
     const { data, error } = await supabase.from('questionnaires').insert(row).select('*').maybeSingle();
     if (error) {
@@ -114,7 +119,7 @@ export default async function handler(req: Req, res: Res) {
       res.status(400).json({ error: 'Missing id' });
       return;
     }
-    const { error } = await supabase.from('questionnaires').delete().eq('id', id);
+    const { error } = await supabase.from('questionnaires').delete().eq('id', id).eq('doctor_id', session.doctor_id);
     if (error) {
       res.status(500).json({ error: error.message });
       return;

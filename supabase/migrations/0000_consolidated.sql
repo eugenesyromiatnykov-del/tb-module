@@ -13,6 +13,12 @@
 -- produce. Numbering 0000 so existing migrations 0001–0018 stay in repo
 -- for history, but on a fresh DB you only run THIS file.
 
+-- Note: this consolidated migration does NOT yet include the multi-tenant
+-- 0019 changes (doctors table + doctor_id columns). Until folded in, a
+-- fresh deploy needs to run THIS file first, then 0019_multi_tenant.sql
+-- separately (insert Doctor 1 between Part 1 and Part 2 — see comments
+-- in that file).
+
 -- ── EXTENSIONS ──────────────────────────────────────────────────────────────
 create extension if not exists "uuid-ossp";
 

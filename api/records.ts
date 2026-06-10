@@ -36,7 +36,8 @@ function asString(v: string | string[] | undefined): string | undefined {
 }
 
 export default async function handler(req: Req, res: Res) {
-  if (!(await requireAuth(req, res))) return;
+  const session = await requireAuth(req, res);
+  if (!session) return;
 
   const q = req.query ?? {};
   const kind = asString(q.kind) as Kind | undefined;
@@ -60,7 +61,7 @@ export default async function handler(req: Req, res: Res) {
       res.status(400).json({ error: 'patient_id и date обовʼязкові' });
       return;
     }
-    const row: Record<string, unknown> = { patient_id: patientId, date };
+    const row: Record<string, unknown> = { patient_id: patientId, date, doctor_id: session.doctor_id };
     if (kind === 'fluoro') {
       row.result = body.result ?? null;
       row.result_code = body.result_code ?? 'unknown';
@@ -109,7 +110,7 @@ export default async function handler(req: Req, res: Res) {
       res.status(400).json({ error: 'Nothing to update' });
       return;
     }
-    const { data, error } = await supabase.from(table).update(patch).eq('id', id).select('*').maybeSingle();
+    const { data, error } = await supabase.from(table).update(patch).eq('id', id).eq('doctor_id', session.doctor_id).select('*').maybeSingle();
     if (error) {
       res.status(500).json({ error: error.message });
       return;
@@ -119,7 +120,7 @@ export default async function handler(req: Req, res: Res) {
   }
 
   if (req.method === 'DELETE') {
-    const { error } = await supabase.from(table).delete().eq('id', id);
+    const { error } = await supabase.from(table).delete().eq('id', id).eq('doctor_id', session.doctor_id);
     if (error) {
       res.status(500).json({ error: error.message });
       return;
