@@ -22,7 +22,9 @@ const SELECT_FULL = `
   medical_risk_groups, social_risk_groups, diagnoses_codes, diagnoses_detail, diagnoses_synced_at,
   notes, archived, archived_reason, archived_at, is_external, created_at, updated_at,
   last_fluoro_date, next_planned_date, last_result_code,
-  last_adpm_date, next_adpm_date, adpm_contraindication, adpm_refused
+  last_adpm_date, next_adpm_date,
+  adpm_contraindication, adpm_contraindication_reason,
+  adpm_refused, adpm_refusal_date
 `;
 
 const SELECT_FOR_DIFF = `
