@@ -413,6 +413,7 @@ function ActiveJobCard({
         </div>
 
         <div className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+          <Row label="Тип запуску">{describeScope(job)}</Row>
           <Row label="Амбулаторія">
             {job.location ? LOCATION_LABELS[job.location as LocationId] : '—'}
           </Row>
@@ -521,6 +522,22 @@ function formatDurationMs(ms: number): string {
   if (h > 0) return `${h} год ${m} хв`;
   if (m > 0) return `${m} хв`;
   return `${s} с`;
+}
+
+// One-line "what kind of run is this" summary. For subset jobs the actual
+// filter set (villages, fluoro status, etc.) isn't persisted on sync_jobs
+// — we only have the resulting medics_id_list — so we show the size, not
+// the predicate. Add a `filter_snapshot` column later if recall matters.
+function describeScope(job: SyncJob): string {
+  if (job.scope === 'all') return 'Усі пацієнти';
+  if (job.scope === 'location') {
+    return job.location
+      ? `По амбулаторії · ${LOCATION_LABELS[job.location as LocationId]}`
+      : 'По амбулаторії';
+  }
+  const n = job.medics_id_list?.length ?? job.queue.length;
+  if (n === 1) return 'Один пацієнт (ad-hoc)';
+  return `Вибірка · ${n} пацієнтів`;
 }
 
 function relativeTime(iso: string | null): string {
