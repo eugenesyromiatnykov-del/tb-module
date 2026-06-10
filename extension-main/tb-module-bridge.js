@@ -1,23 +1,22 @@
 // ============================================================================
 // TB-MODULE-BRIDGE.JS
 //
-// Tiny content script injected on tb-module.vercel.app pages. The web app
-// can't talk to the extension service worker directly (no chrome.runtime in
-// page world), so it dispatches plain `window` CustomEvents and we forward
-// them to the SW.
+// Content script injected on tb-module.vercel.app pages. Two jobs:
 //
-// Carries two things today:
-//   • `tb-sync-poke` — web app fires after a sync_job is created so the SW
-//     opens /doctors/journal immediately instead of waiting up to 30 s for
-//     the next chrome.alarms tick.
-//   • device-id handshake — on bridge install we read the SW's stable
-//     device_id from chrome.storage.local (via SW because page world can't
-//     access extension storage), then push it onto the page as
-//     `window.__tbDeviceId` plus a `tb-device-id-ready` event. The web app
-//     then includes that id in {action:'start'} so the new sync_jobs row
-//     is pinned to THIS device from the outset. Without this, on a shared
-//     Wi-Fi the first extension to poll claims the job — meaning the
-//     doctor's click on his laptop can drive the nurse's MIS profile.
+// 1. Forward `tb-sync-poke` from the page to the SW so the SW wakes up
+//    immediately after the doctor creates a sync_job instead of waiting
+//    for the next chrome.alarms tick.
+//
+// 2. Hand the SW's stable device_id to the page so the doctor's click on
+//    "Sync" can pin the new sync_jobs row to THIS device (otherwise the
+//    nurse's laptop on the same Wi-Fi can claim the job).
+//
+// Important: content scripts run in an ISOLATED world from the page. A
+// content script's `window.foo = 'bar'` is NOT visible to React. Same for
+// CustomEvents dispatched against the content-script's window — they
+// dispatch in the wrong context. To deliver values to the page we have
+// to inject a <script> element into the DOM; the browser executes it in
+// the MAIN/page world, so its globals + events reach React.
 // ============================================================================
 
 (() => {
@@ -28,17 +27,30 @@
   window.addEventListener('tb-sync-poke', () => {
     try {
       chrome.runtime.sendMessage({ type: 'tb-sync-check' });
-    } catch (_) {
-      // Extension context might be invalidated mid-update — page reload will
-      // re-inject this script.
-    }
+    } catch (_) { /* extension context invalidated; page reload re-injects */ }
   });
 
-  // Fetch device_id from the SW and expose it to the page. The SW may be
-  // dormant when the bridge loads (Chrome aggressively suspends MV3 service
-  // workers after ~30s idle), in which case the first sendMessage races
-  // with the SW spin-up. Retry a few times with backoff so a cold start
-  // doesn't permanently strand the handshake.
+  // Inject a <script> tag into the page so the assignment + dispatch run
+  // in the MAIN world. JSON.stringify is enough for our values (string,
+  // pre-validated by SW) — but stripping `</script>` defensively keeps
+  // the inline script from being closed early by hostile content.
+  function injectIntoPage(deviceId, deviceLabel) {
+    const safeId = JSON.stringify(deviceId).replace(/<\/script>/gi, '');
+    const safeLabel = JSON.stringify(deviceLabel).replace(/<\/script>/gi, '');
+    const script = document.createElement('script');
+    script.textContent = `
+      window.__tbDeviceId = ${safeId};
+      window.__tbDeviceLabel = ${safeLabel};
+      window.dispatchEvent(new CustomEvent('tb-device-id-ready', {
+        detail: { device_id: ${safeId}, device_label: ${safeLabel} }
+      }));
+    `;
+    (document.head || document.documentElement).appendChild(script);
+    script.remove(); // text already executed; element no longer needed
+  }
+
+  // Bridge → SW handshake. SW may be dormant on cold start; retry with
+  // linear backoff so a slow wake doesn't strand the binding.
   let attempts = 0;
   function requestDeviceId() {
     attempts += 1;
@@ -54,16 +66,7 @@
           if (attempts < 5) setTimeout(requestDeviceId, 400 * attempts);
           return;
         }
-        window.__tbDeviceId = resp.device_id;
-        window.__tbDeviceLabel = resp.device_label || null;
-        window.dispatchEvent(
-          new CustomEvent('tb-device-id-ready', {
-            detail: {
-              device_id: resp.device_id,
-              device_label: resp.device_label || null,
-            },
-          }),
-        );
+        injectIntoPage(resp.device_id, resp.device_label || null);
         console.log('[TB Bridge] device-id ready:', resp.device_id, resp.device_label);
       });
     } catch (e) {
