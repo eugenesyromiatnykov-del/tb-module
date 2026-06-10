@@ -4,19 +4,26 @@
 // Content script injected on tb-module.vercel.app pages. Two jobs:
 //
 // 1. Forward `tb-sync-poke` from the page to the SW so the SW wakes up
-//    immediately after the doctor creates a sync_job instead of waiting
-//    for the next chrome.alarms tick.
+//    immediately after the doctor creates a sync_job.
 //
 // 2. Hand the SW's stable device_id to the page so the doctor's click on
-//    "Sync" can pin the new sync_jobs row to THIS device (otherwise the
-//    nurse's laptop on the same Wi-Fi can claim the job).
+//    "Sync" can pin the new sync_jobs row to THIS device.
 //
-// Important: content scripts run in an ISOLATED world from the page. A
-// content script's `window.foo = 'bar'` is NOT visible to React. Same for
-// CustomEvents dispatched against the content-script's window — they
-// dispatch in the wrong context. To deliver values to the page we have
-// to inject a <script> element into the DOM; the browser executes it in
-// the MAIN/page world, so its globals + events reach React.
+// Cross-world delivery: content scripts run in an ISOLATED world from the
+// page. Direct `window.foo = bar` and CustomEvents stay inside the
+// content-script world. Inline `<script>` tags would work but are
+// blocked by the tb-module deploy's CSP. The remaining clean channel is
+// `window.postMessage` — MessageEvents propagate across worlds because
+// they go through DOM-level event dispatch and the page's window object
+// is a shared event target.
+//
+// Protocol with the page-world React hook:
+//   bridge → page: { source: 'tb-bridge', type: 'device-id-ready',
+//                    device_id, device_label }
+//   page  → bridge: { type: 'tb-bridge-request-device-id' }   (poll)
+// The page sends a request on mount; if the bridge already has the value
+// cached it broadcasts immediately. Bridge ALSO broadcasts unsolicited
+// the first time it receives the value from the SW.
 // ============================================================================
 
 (() => {
@@ -30,24 +37,24 @@
     } catch (_) { /* extension context invalidated; page reload re-injects */ }
   });
 
-  // Inject a <script> tag into the page so the assignment + dispatch run
-  // in the MAIN world. JSON.stringify is enough for our values (string,
-  // pre-validated by SW) — but stripping `</script>` defensively keeps
-  // the inline script from being closed early by hostile content.
-  function injectIntoPage(deviceId, deviceLabel) {
-    const safeId = JSON.stringify(deviceId).replace(/<\/script>/gi, '');
-    const safeLabel = JSON.stringify(deviceLabel).replace(/<\/script>/gi, '');
-    const script = document.createElement('script');
-    script.textContent = `
-      window.__tbDeviceId = ${safeId};
-      window.__tbDeviceLabel = ${safeLabel};
-      window.dispatchEvent(new CustomEvent('tb-device-id-ready', {
-        detail: { device_id: ${safeId}, device_label: ${safeLabel} }
-      }));
-    `;
-    (document.head || document.documentElement).appendChild(script);
-    script.remove(); // text already executed; element no longer needed
+  let cached = null; // { device_id, device_label } | null
+
+  function broadcast() {
+    if (!cached) return;
+    window.postMessage(
+      { source: 'tb-bridge', type: 'device-id-ready', ...cached },
+      '*',
+    );
   }
+
+  // Respond to page-world requests. Filter on e.source === window to
+  // ignore messages from iframes / extensions / postMessage from elsewhere.
+  window.addEventListener('message', (e) => {
+    if (e.source !== window) return;
+    if (!e.data || typeof e.data !== 'object') return;
+    if (e.data.source === 'tb-bridge') return; // don't echo our own
+    if (e.data.type === 'tb-bridge-request-device-id') broadcast();
+  });
 
   // Bridge → SW handshake. SW may be dormant on cold start; retry with
   // linear backoff so a slow wake doesn't strand the binding.
@@ -66,7 +73,8 @@
           if (attempts < 5) setTimeout(requestDeviceId, 400 * attempts);
           return;
         }
-        injectIntoPage(resp.device_id, resp.device_label || null);
+        cached = { device_id: resp.device_id, device_label: resp.device_label || null };
+        broadcast(); // unsolicited initial publish
         console.log('[TB Bridge] device-id ready:', resp.device_id, resp.device_label);
       });
     } catch (e) {
