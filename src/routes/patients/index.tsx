@@ -8,7 +8,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Download, FileSpreadsheet, Search, Loader2, X } from 'lucide-react';
+import { ChevronDown, Download, FileSpreadsheet, Search, SlidersHorizontal, Loader2, X } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -70,6 +70,12 @@ export function PatientsPage() {
   const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
   const [syncFresh, setSyncFresh] = useState<SyncFreshFilter[]>([]);
   const [fluoroStatus, setFluoroStatus] = useState<FluoroStatusFilter[]>([]);
+  // Secondary filters live behind a toggle. Start expanded only if there's
+  // already a non-default value set on one of them so the doctor doesn't
+  // think their filter mysteriously stopped working after a refresh.
+  const [advancedOpen, setAdvancedOpen] = useState(
+    () => Boolean(status || group || external || syncFresh.length > 0 || archived),
+  );
   const search = useDebounced(searchInput, 300);
 
   const filters: PatientFilters = useMemo(
@@ -298,121 +304,165 @@ export function PatientsPage() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
-        <div className="min-w-[220px] flex-1">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Пошук</label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              placeholder="ПІБ або Medics ID"
-              className="pl-9"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+        {/* Primary row — always visible. */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[220px] flex-1">
+            <label className="mb-1 block text-xs font-medium text-slate-600">Пошук</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="ПІБ або Medics ID"
+                className="pl-9"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="w-44">
+            <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
+            <Select value={location} onChange={(e) => setLocation(e.target.value as '' | LocationId)}>
+              <option value="">Усі</option>
+              {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
+                <option key={id} value={id}>
+                  {LOCATION_LABELS[id]}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-56">
+            <label className="mb-1 block text-xs font-medium text-slate-600">Населений пункт</label>
+            <MultiSelect
+              options={villages.map((v) => ({ value: v, label: v }))}
+              selected={selectedVillages}
+              onChange={setSelectedVillages}
+              placeholder="Усі"
+              searchable
+              searchPlaceholder="Знайти село…"
+              groups={DISTRICTS.map((d) => ({
+                id: d.id,
+                label: d.label,
+                values: d.villages,
+              }))}
             />
           </div>
+          <div className="w-56">
+            <label className="mb-1 block text-xs font-medium text-slate-600">Статус флюоро</label>
+            <MultiSelect
+              options={(Object.keys(FLUORO_STATUS_LABELS) as FluoroStatusFilter[]).map((k) => ({
+                value: k,
+                label: FLUORO_STATUS_LABELS[k],
+              }))}
+              selected={fluoroStatus}
+              onChange={(next) => setFluoroStatus(next as FluoroStatusFilter[])}
+              placeholder="Усі"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className={cn(
+              'flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20',
+              advancedOpen && 'border-blue-300 bg-blue-50 text-blue-700',
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Розширений
+            <ChevronDown className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-180')} />
+          </button>
         </div>
-        <div className="w-44">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Амбулаторія</label>
-          <Select value={location} onChange={(e) => setLocation(e.target.value as '' | LocationId)}>
-            <option value="">Усі</option>
-            {(Object.keys(LOCATION_LABELS) as LocationId[]).map((id) => (
-              <option key={id} value={id}>
-                {LOCATION_LABELS[id]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="w-56">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Населений пункт</label>
-          <MultiSelect
-            options={villages.map((v) => ({ value: v, label: v }))}
-            selected={selectedVillages}
-            onChange={setSelectedVillages}
-            placeholder="Усі"
-            searchable
-            searchPlaceholder="Знайти село…"
-            groups={DISTRICTS.map((d) => ({
-              id: d.id,
-              label: d.label,
-              values: d.villages,
-            }))}
-          />
-        </div>
-        <div className="w-44">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Статус</label>
-          <Select value={status} onChange={(e) => setStatus(e.target.value as '' | TbStatus)}>
-            <option value="">Усі</option>
-            {(Object.keys(TB_STATUS_LABELS) as TbStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {TB_STATUS_LABELS[s]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="w-56">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Група ризику</label>
-          <Select value={group} onChange={(e) => setGroup(e.target.value)}>
-            <option value="">Усі</option>
-            <optgroup label="Медичні">
-              {RISK_GROUPS.filter((g) => g.category === 'medical').map((g) => (
-                <option key={g.key} value={g.key}>
-                  {g.label}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Соціальні">
-              {RISK_GROUPS.filter((g) => g.category === 'social').map((g) => (
-                <option key={g.key} value={g.key}>
-                  {g.label}
-                </option>
-              ))}
-            </optgroup>
-          </Select>
-        </div>
-        <div className="w-44">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Декларація</label>
-          <Select value={external} onChange={(e) => setExternal(e.target.value as '' | '1' | '0')}>
-            <option value="">Усі</option>
-            <option value="0">Декларанти</option>
-            <option value="1">Не декларанти</option>
-          </Select>
-        </div>
-        <div className="w-56">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Свіжість синку</label>
-          <MultiSelect
-            options={(Object.keys(SYNC_FILTER_LABELS) as SyncFreshFilter[]).map((k) => ({
-              value: k,
-              label: SYNC_FILTER_LABELS[k],
-            }))}
-            selected={syncFresh}
-            onChange={(next) => setSyncFresh(next as SyncFreshFilter[])}
-            placeholder="Усі"
-          />
-        </div>
-        <div className="w-56">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Статус флюоро</label>
-          <MultiSelect
-            options={(Object.keys(FLUORO_STATUS_LABELS) as FluoroStatusFilter[]).map((k) => ({
-              value: k,
-              label: FLUORO_STATUS_LABELS[k],
-            }))}
-            selected={fluoroStatus}
-            onChange={(next) => setFluoroStatus(next as FluoroStatusFilter[])}
-            placeholder="Усі"
-          />
-        </div>
-        <div className="flex items-center gap-2 pb-2">
-          <input
-            id="archived"
-            type="checkbox"
-            checked={archived}
-            onChange={(e) => setArchived(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300"
-          />
-          <label htmlFor="archived" className="text-sm text-slate-700">
-            Показувати архівних
-          </label>
-        </div>
+
+        {/* Secondary row — collapsible. */}
+        {advancedOpen && (
+          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
+            <div className="w-44">
+              <label className="mb-1 block text-xs font-medium text-slate-600">TB статус</label>
+              <Select value={status} onChange={(e) => setStatus(e.target.value as '' | TbStatus)}>
+                <option value="">Усі</option>
+                {(Object.keys(TB_STATUS_LABELS) as TbStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {TB_STATUS_LABELS[s]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="w-56">
+              <label className="mb-1 block text-xs font-medium text-slate-600">Група ризику</label>
+              <Select value={group} onChange={(e) => setGroup(e.target.value)}>
+                <option value="">Усі</option>
+                <optgroup label="Медичні">
+                  {RISK_GROUPS.filter((g) => g.category === 'medical').map((g) => (
+                    <option key={g.key} value={g.key}>
+                      {g.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Соціальні">
+                  {RISK_GROUPS.filter((g) => g.category === 'social').map((g) => (
+                    <option key={g.key} value={g.key}>
+                      {g.label}
+                    </option>
+                  ))}
+                </optgroup>
+              </Select>
+            </div>
+            <div className="w-44">
+              <label className="mb-1 block text-xs font-medium text-slate-600">Декларація</label>
+              <Select value={external} onChange={(e) => setExternal(e.target.value as '' | '1' | '0')}>
+                <option value="">Усі</option>
+                <option value="0">Декларанти</option>
+                <option value="1">Не декларанти</option>
+              </Select>
+            </div>
+            <div className="w-56">
+              <label className="mb-1 block text-xs font-medium text-slate-600">Свіжість синку</label>
+              <MultiSelect
+                options={(Object.keys(SYNC_FILTER_LABELS) as SyncFreshFilter[]).map((k) => ({
+                  value: k,
+                  label: SYNC_FILTER_LABELS[k],
+                }))}
+                selected={syncFresh}
+                onChange={(next) => setSyncFresh(next as SyncFreshFilter[])}
+                placeholder="Усі"
+              />
+            </div>
+            <div className="flex items-center gap-2 pb-2">
+              <input
+                id="archived"
+                type="checkbox"
+                checked={archived}
+                onChange={(e) => setArchived(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <label htmlFor="archived" className="text-sm text-slate-700">
+                Показувати архівних
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* Active-filter chips — visible regardless of advanced state so the
+            doctor sees what's filtering even when the row is collapsed. */}
+        <ActiveFilterChips
+          location={location} onLocationClear={() => setLocation('')}
+          villages={selectedVillages} onVillagesClear={() => setSelectedVillages([])}
+          fluoroStatus={fluoroStatus} onFluoroClear={() => setFluoroStatus([])}
+          status={status} onStatusClear={() => setStatus('')}
+          group={group} onGroupClear={() => setGroup('')}
+          external={external} onExternalClear={() => setExternal('')}
+          syncFresh={syncFresh} onSyncFreshClear={() => setSyncFresh([])}
+          archived={archived} onArchivedClear={() => setArchived(false)}
+          onClearAll={() => {
+            setLocation('');
+            setSelectedVillages([]);
+            setFluoroStatus([]);
+            setStatus('');
+            setGroup('');
+            setExternal('');
+            setSyncFresh([]);
+            setArchived(false);
+          }}
+        />
       </div>
 
       {error ? (
@@ -470,6 +520,117 @@ export function PatientsPage() {
             </table>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Strip of small removable badges showing every active filter. Lives
+// below the filter bar so the doctor sees what's filtering even when
+// the advanced section is collapsed. Each chip's X clears just that
+// filter; the trailing «Очистити все» wipes them in one click.
+function ActiveFilterChips(props: {
+  location: string;
+  villages: string[];
+  fluoroStatus: FluoroStatusFilter[];
+  status: string;
+  group: string;
+  external: string;
+  syncFresh: SyncFreshFilter[];
+  archived: boolean;
+  onLocationClear: () => void;
+  onVillagesClear: () => void;
+  onFluoroClear: () => void;
+  onStatusClear: () => void;
+  onGroupClear: () => void;
+  onExternalClear: () => void;
+  onSyncFreshClear: () => void;
+  onArchivedClear: () => void;
+  onClearAll: () => void;
+}) {
+  type Chip = { key: string; label: string; onClear: () => void };
+  const chips: Chip[] = [];
+  if (props.location) {
+    chips.push({
+      key: 'location',
+      label: `Амбулаторія: ${LOCATION_LABELS[props.location as LocationId] ?? props.location}`,
+      onClear: props.onLocationClear,
+    });
+  }
+  if (props.villages.length > 0) {
+    const label =
+      props.villages.length === 1
+        ? `Село: ${props.villages[0]}`
+        : `Села: ${props.villages.length}`;
+    chips.push({ key: 'villages', label, onClear: props.onVillagesClear });
+  }
+  if (props.fluoroStatus.length > 0) {
+    const label =
+      props.fluoroStatus.length === 1
+        ? `Флюоро: ${FLUORO_STATUS_LABELS[props.fluoroStatus[0]]}`
+        : `Флюоро: ${props.fluoroStatus.length}`;
+    chips.push({ key: 'fluoro', label, onClear: props.onFluoroClear });
+  }
+  if (props.status) {
+    chips.push({
+      key: 'status',
+      label: `TB: ${TB_STATUS_LABELS[props.status as TbStatus] ?? props.status}`,
+      onClear: props.onStatusClear,
+    });
+  }
+  if (props.group) {
+    chips.push({
+      key: 'group',
+      label: `Група: ${labelOf(props.group)}`,
+      onClear: props.onGroupClear,
+    });
+  }
+  if (props.external) {
+    chips.push({
+      key: 'external',
+      label: props.external === '1' ? 'Не декларанти' : 'Декларанти',
+      onClear: props.onExternalClear,
+    });
+  }
+  if (props.syncFresh.length > 0) {
+    const label =
+      props.syncFresh.length === 1
+        ? `Синк: ${SYNC_FILTER_LABELS[props.syncFresh[0]]}`
+        : `Синк: ${props.syncFresh.length}`;
+    chips.push({ key: 'sync', label, onClear: props.onSyncFreshClear });
+  }
+  if (props.archived) {
+    chips.push({ key: 'archived', label: 'З архівними', onClear: props.onArchivedClear });
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
+      {chips.map((c) => (
+        <span
+          key={c.key}
+          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
+        >
+          {c.label}
+          <button
+            type="button"
+            onClick={c.onClear}
+            className="rounded-full p-0.5 text-blue-600 hover:bg-blue-100 hover:text-blue-900"
+            aria-label={`Прибрати фільтр: ${c.label}`}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      {chips.length > 1 && (
+        <button
+          type="button"
+          onClick={props.onClearAll}
+          className="ml-1 text-xs text-slate-500 hover:text-slate-700"
+        >
+          Очистити все
+        </button>
       )}
     </div>
   );
