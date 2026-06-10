@@ -26,4 +26,39 @@ export const DISTRICTS: District[] = [
       'Дзвінки',
     ],
   },
+  {
+    id: 'okopska',
+    label: 'Окопська Дільниця',
+    villages: ['Окіп'],
+  },
+  {
+    id: 'kvitnevska',
+    label: 'Квітневська Дільниця',
+    villages: ['Квітневе', 'Весняне', 'Соснівочка'],
+  },
+  {
+    id: 'snosnivska',
+    label: 'Соснівська Дільниця',
+    villages: ['Соснівка'],
+  },
+  {
+    id: 'mokrovolianska',
+    label: 'Мокроволянська Дільниця',
+    villages: ['Мокроволя'],
+  },
+  {
+    id: 'zhemelinetska',
+    label: 'Жемелинецька Дільниця',
+    villages: ['Жемелинці'],
+  },
+  {
+    id: 'hulivetska',
+    label: 'Гулівецька Дільниця',
+    villages: ['Гулівці', 'Жижниківці', 'Синютки'],
+  },
+  {
+    id: 'danylivska',
+    label: 'Данилівська Дільниця',
+    villages: ['Денисівка', 'Данилівка', 'Калинівка'],
+  },
 ];
