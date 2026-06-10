@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Pause, Play, Square, Trash2 } from 'lucide-react';
+import { useExtensionDevice } from '@/hooks/useExtensionDevice';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -46,7 +47,9 @@ function useActiveSyncJob() {
   });
 }
 
-async function startJob(input: { location: LocationId; only_unsynced: boolean }) {
+type DeviceInfo = { device_id: string | null; device_label: string | null };
+
+async function startJob(input: { location: LocationId; only_unsynced: boolean } & DeviceInfo) {
   return apiFetch<{ job: SyncJob }>(`/api/patients?mode=sync_job`, {
     method: 'POST',
     json: { action: 'start', scope: 'location', ...input },
@@ -58,10 +61,10 @@ async function stopJob(jobId: string) {
     json: { action: 'stop', job_id: jobId },
   });
 }
-async function resumeJob(jobId: string) {
+async function resumeJob(jobId: string, device: DeviceInfo) {
   return apiFetch<{ job: SyncJob; reset: boolean }>(`/api/patients?mode=sync_job`, {
     method: 'POST',
-    json: { action: 'resume', job_id: jobId },
+    json: { action: 'resume', job_id: jobId, ...device },
   });
 }
 async function cancelJob(jobId: string) {
@@ -90,10 +93,16 @@ export function SyncPage() {
     try { window.dispatchEvent(new CustomEvent('tb-sync-poke')); } catch (_) {}
   };
 
+  const device = useExtensionDevice();
   const onStart = async () => {
     setBusy(true);
     try {
-      await startJob({ location, only_unsynced: onlyUnsynced });
+      await startJob({
+        location,
+        only_unsynced: onlyUnsynced,
+        device_id: device.id,
+        device_label: device.label,
+      });
       refreshNow();
       pokeSw();
     } catch (e) {
@@ -115,7 +124,7 @@ export function SyncPage() {
     if (!job) return;
     setBusy(true);
     try {
-      const r = await resumeJob(job.id);
+      const r = await resumeJob(job.id, { device_id: device.id, device_label: device.label });
       if (r.reset) {
         alert('Минуло більше 24 годин — черга побудована з нуля.');
       }
@@ -140,7 +149,7 @@ export function SyncPage() {
   const onResumePaused = async (id: string) => {
     setBusy(true);
     try {
-      const r = await resumeJob(id);
+      const r = await resumeJob(id, { device_id: device.id, device_label: device.label });
       if (r.reset) alert('Минуло більше 24 годин — черга побудована з нуля.');
       pokeSw();
       refreshNow();

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { useExtensionDevice } from '@/hooks/useExtensionDevice';
 
 type ActiveJob = {
   id: string;
@@ -89,12 +90,19 @@ export function useSinglePatientSync(medicsId: string | null | undefined) {
     return () => clearTimeout(t);
   }, [lastError]);
 
+  const device = useExtensionDevice();
   const mutation = useMutation({
     mutationFn: async () => {
       if (!medicsId) throw new Error('medics_id required');
       return apiFetch<{ job: ActiveJob }>(`/api/patients?mode=sync_job`, {
         method: 'POST',
-        json: { action: 'start', scope: 'subset', medics_id_list: [medicsId] },
+        json: {
+          action: 'start',
+          scope: 'subset',
+          medics_id_list: [medicsId],
+          device_id: device.id,
+          device_label: device.label,
+        },
       });
     },
     onMutate: () => {

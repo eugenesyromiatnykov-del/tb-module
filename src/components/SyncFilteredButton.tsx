@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
+import { useExtensionDevice } from '@/hooks/useExtensionDevice';
 import type { Patient } from '@/types/database';
 import type { SyncJob } from '@/routes/sync';
 
@@ -15,6 +16,7 @@ import type { SyncJob } from '@/routes/sync';
 export function SyncFilteredButton({ patients }: { patients: Patient[] }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const device = useExtensionDevice();
 
   // Surface whether something's already running, so we can tell the doctor
   // it'll be auto-paused (no longer a hard block).
@@ -43,7 +45,16 @@ export function SyncFilteredButton({ patients }: { patients: Patient[] }) {
       const ids = eligible.map((p) => p.medics_id!).filter(Boolean);
       await apiFetch(`/api/patients?mode=sync_job`, {
         method: 'POST',
-        json: { action: 'start', scope: 'subset', medics_id_list: ids },
+        json: {
+          action: 'start',
+          scope: 'subset',
+          medics_id_list: ids,
+          // Pin to THIS device so the nurse's laptop on the same Wi-Fi
+          // doesn't grab the job. Null when the extension isn't installed
+          // here yet — backend falls back to first-come-first-served.
+          device_id: device.id,
+          device_label: device.label,
+        },
       });
       // Wake the extension SW immediately (otherwise it idles up to 30 s
       // before the next chrome.alarms tick notices our new job). The

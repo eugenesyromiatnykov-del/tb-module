@@ -65,6 +65,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return false;
   }
+  if (msg && msg.type === 'tb-device-id-request') {
+    // The web-app bridge asks for our device_id so the doctor's click on
+    // "Sync" can pin the new sync_jobs row to THIS device. Without this,
+    // when several browsers on the same Wi-Fi (e.g. doctor + nurse) are
+    // both logged into the TB module and both have the extension, the
+    // first one to poll wins the CAS — meaning the wrong laptop drives
+    // medics.ua under the wrong MIS profile.
+    chrome.storage.local.get(['tb_device_id', 'tb_device_label'], (v) => {
+      sendResponse({
+        device_id: v.tb_device_id ?? null,
+        device_label: v.tb_device_label ?? null,
+      });
+    });
+    return true; // async response
+  }
   return false;
 });
 

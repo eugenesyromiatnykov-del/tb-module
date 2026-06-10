@@ -761,6 +761,15 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     const onlyUnsynced = body.only_unsynced !== false;
     const scope = (body.scope as string | undefined) ?? 'location';
     const medicsList = Array.isArray(body.medics_id_list) ? (body.medics_id_list as string[]) : null;
+    // device_id / device_label come from the extension bridge on the
+    // CALLER's browser. We stamp them on the row immediately so that the
+    // other extension polling the same shared backend (e.g. nurse's
+    // laptop on the same Wi-Fi) sees owner_device_id != theirs and stays
+    // idle. When the caller doesn't have the extension installed yet,
+    // these arrive as null and the old first-come-first-served claim
+    // logic in batch-runner takes over.
+    const deviceId = (body.device_id as string | undefined) ?? null;
+    const deviceLabel = (body.device_label as string | undefined) ?? null;
 
     // Build queue
     let queue: Array<{ medics_id: string; surname: string; location_id: string | null }> = [];
@@ -805,6 +814,8 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
         status: 'queued',
         started_at: new Date().toISOString(),
         last_heartbeat_at: new Date().toISOString(),
+        owner_device_id: deviceId,
+        owner_device_label: deviceLabel,
       })
       .select('*')
       .maybeSingle();
@@ -928,11 +939,21 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
     const beat = cur.last_heartbeat_at ? new Date(cur.last_heartbeat_at as string).getTime() : 0;
     const ageMs = Date.now() - beat;
     const TWENTY_FOUR_H = 24 * 60 * 60 * 1000;
+    // Rebind device on resume: doctor pauses on laptop A in the morning,
+    // resumes from laptop B that afternoon — owner_device_id needs to
+    // switch to B so A's extension (if still online) doesn't grab the
+    // job back. Null body values leave the existing owner intact.
+    const resumeDeviceId = (body.device_id as string | undefined) ?? null;
+    const resumeDeviceLabel = (body.device_label as string | undefined) ?? null;
     const patch: Record<string, unknown> = {
       status: 'running',
       stopped_at: null,
       last_heartbeat_at: new Date().toISOString(),
     };
+    if (resumeDeviceId) {
+      patch.owner_device_id = resumeDeviceId;
+      patch.owner_device_label = resumeDeviceLabel;
+    }
     if (ageMs > TWENTY_FOUR_H) {
       // Rebuild queue from scratch — patient set may have shifted.
       const scope = cur.scope as string;
