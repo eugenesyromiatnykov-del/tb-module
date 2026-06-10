@@ -12,8 +12,16 @@ export type ParseResult = {
 
 const SHEET_CANDIDATES = ['Активні', 'активні', 'Active'];
 
+// Multi-ambulatory doctors (Doctor 1) get string-based detection across
+// their two practices. Single-ambulatory doctors always fall back —
+// their xlsx may say "Білогірська" but it's THEIR Білогірська (a
+// separate location row tagged to their doctor_id), not Doctor 1's.
+// Without this guard, detectLocation would mis-route to Doctor 1's
+// location_id and the row would still belong to the right doctor by
+// doctor_id but reference a foreign location_id.
 function detectLocation(department: string | null, fallback: LocationId): LocationId {
   if (!department) return fallback;
+  if (fallback !== 'bilohirska' && fallback !== 'zaluzhe') return fallback;
   const s = department.toLowerCase();
   if (s.includes('білогір') || s.includes('biloh')) return 'bilohirska';
   if (s.includes('залуж') || s.includes('zaluzh')) return 'zaluzhe';

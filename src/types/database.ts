@@ -1,4 +1,9 @@
-export type LocationId = 'bilohirska' | 'zaluzhe';
+// Doctor 1's locations: bilohirska, zaluzhe.
+// Doctor 2 (Устінова Юлія) has her own bilohirska — keyed `yu_bilohirska`
+// because the `locations.id` PK must be globally unique even across
+// tenants. Friendly name in the UI ("Білогірська амбулаторія") is
+// identical to Doctor 1's; the id-suffix is invisible to the doctor.
+export type LocationId = 'bilohirska' | 'zaluzhe' | 'yu_bilohirska';
 
 export type DiagnosisDetail = {
   code: string;          // ICPC-2 or МКХ-10 (presence of '.' distinguishes)
@@ -121,6 +126,7 @@ export type DeclarantsDiff = {
 export const LOCATION_LABELS: Record<LocationId, string> = {
   bilohirska: 'Білогірська амбулаторія',
   zaluzhe: 'Залузька амбулаторія',
+  yu_bilohirska: 'Білогірська амбулаторія',
 };
 
 export const TB_STATUS_LABELS: Record<TbStatus, string> = {
