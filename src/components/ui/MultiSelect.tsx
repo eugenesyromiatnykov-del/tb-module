@@ -5,6 +5,14 @@ import { cn } from '@/lib/utils';
 
 export type MultiSelectOption = { value: string; label: string };
 
+// Quick-select group: a labelled bundle of option values. When the user
+// clicks it, all `values` are toggled together (selected if any is
+// missing; deselected if all are already in `selected`). Shown above the
+// regular option list, separated by a divider. Used on /patients to make
+// districts (дільниці) selectable as one chip instead of clicking 9
+// villages individually.
+export type MultiSelectGroup = { id: string; label: string; values: string[] };
+
 // Generic multi-select with a checkbox popover and click-outside dismissal.
 // Native <select multiple> is unusable for filter UI, and we don't want a
 // combobox dependency just for a few filter fields.
@@ -15,6 +23,7 @@ export function MultiSelect({
   placeholder = 'Усі',
   searchable = false,
   searchPlaceholder = 'Знайти…',
+  groups,
 }: {
   options: MultiSelectOption[];
   selected: string[];
@@ -22,6 +31,7 @@ export function MultiSelect({
   placeholder?: string;
   searchable?: boolean;
   searchPlaceholder?: string;
+  groups?: MultiSelectGroup[];
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -85,6 +95,49 @@ export function MultiSelect({
             >
               <X className="h-3 w-3" /> Очистити вибір ({selected.length})
             </button>
+          )}
+          {groups && groups.length > 0 && !query.trim() && (
+            <div className="border-b border-slate-100 bg-slate-50/60 py-1">
+              {groups.map((g) => {
+                const allSelected = g.values.every((v) => selected.includes(v));
+                const someSelected = !allSelected && g.values.some((v) => selected.includes(v));
+                return (
+                  <button
+                    type="button"
+                    key={g.id}
+                    onClick={() => {
+                      if (allSelected) {
+                        onChange(selected.filter((s) => !g.values.includes(s)));
+                      } else {
+                        const next = new Set(selected);
+                        for (const v of g.values) next.add(v);
+                        onChange(Array.from(next));
+                      }
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium text-slate-700 hover:bg-white"
+                  >
+                    <span
+                      className={cn(
+                        'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+                        allSelected
+                          ? 'border-blue-600 bg-blue-600 text-white'
+                          : someSelected
+                            ? 'border-blue-600 bg-blue-100 text-blue-700'
+                            : 'border-slate-300',
+                      )}
+                    >
+                      {allSelected ? (
+                        <Check className="h-3 w-3" />
+                      ) : someSelected ? (
+                        <span className="h-1.5 w-1.5 rounded-sm bg-blue-600" />
+                      ) : null}
+                    </span>
+                    <span className="flex-1 truncate">{g.label}</span>
+                    <span className="text-xs text-slate-400">{g.values.length}</span>
+                  </button>
+                );
+              })}
+            </div>
           )}
           <div className="max-h-64 overflow-y-auto py-1">
             {filtered.length === 0 ? (

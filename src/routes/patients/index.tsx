@@ -19,11 +19,14 @@ import {
   fetchReportRows,
   FILTER_LABELS,
   SYNC_FILTER_LABELS,
+  FLUORO_STATUS_LABELS,
   type PatientFilters,
   type PatientFilter,
   type SyncFreshFilter,
+  type FluoroStatusFilter,
 } from '@/hooks/usePatients';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { DISTRICTS } from '@/lib/districts';
 import { MedicsIdCell } from '@/components/MedicsIdCell';
 import { SyncFreshness } from '@/components/SyncFreshness';
 import { SyncCell } from '@/components/SyncCell';
@@ -66,6 +69,7 @@ export function PatientsPage() {
   const [archived, setArchived] = useState(false);
   const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
   const [syncFresh, setSyncFresh] = useState<SyncFreshFilter[]>([]);
+  const [fluoroStatus, setFluoroStatus] = useState<FluoroStatusFilter[]>([]);
   const search = useDebounced(searchInput, 300);
 
   const filters: PatientFilters = useMemo(
@@ -77,10 +81,11 @@ export function PatientsPage() {
       search: search || undefined,
       villages: selectedVillages.length > 0 ? selectedVillages : undefined,
       sync: syncFresh.length > 0 ? syncFresh : undefined,
+      fluoroStatus: fluoroStatus.length > 0 ? fluoroStatus : undefined,
       archived,
       filter,
     }),
-    [location, status, group, external, search, selectedVillages, syncFresh, archived, filter],
+    [location, status, group, external, search, selectedVillages, syncFresh, fluoroStatus, archived, filter],
   );
 
   const { data, isLoading, isFetching, error } = usePatients(filters);
@@ -326,6 +331,11 @@ export function PatientsPage() {
             placeholder="Усі"
             searchable
             searchPlaceholder="Знайти село…"
+            groups={DISTRICTS.map((d) => ({
+              id: d.id,
+              label: d.label,
+              values: d.villages,
+            }))}
           />
         </div>
         <div className="w-44">
@@ -376,6 +386,18 @@ export function PatientsPage() {
             }))}
             selected={syncFresh}
             onChange={(next) => setSyncFresh(next as SyncFreshFilter[])}
+            placeholder="Усі"
+          />
+        </div>
+        <div className="w-56">
+          <label className="mb-1 block text-xs font-medium text-slate-600">Статус флюоро</label>
+          <MultiSelect
+            options={(Object.keys(FLUORO_STATUS_LABELS) as FluoroStatusFilter[]).map((k) => ({
+              value: k,
+              label: FLUORO_STATUS_LABELS[k],
+            }))}
+            selected={fluoroStatus}
+            onChange={(next) => setFluoroStatus(next as FluoroStatusFilter[])}
             placeholder="Усі"
           />
         </div>

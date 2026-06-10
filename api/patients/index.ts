@@ -186,6 +186,8 @@ export default async function handler(req: Req, res: Res) {
     const adpmValues = adpmRaw ? adpmRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
     const syncRaw = (asString(q.sync) ?? '').trim();
     const syncValues = syncRaw ? syncRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    const fluoroRaw = (asString(q.fluoro_status) ?? '').trim();
+    const fluoroValues = fluoroRaw ? fluoroRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
     const address = (asString(q.address) ?? '').trim();
     const villageParam = (asString(q.village) ?? '').trim();
     const villages = villageParam ? villageParam.split(',').map((v) => v.trim()).filter(Boolean) : [];
@@ -229,6 +231,19 @@ export default async function handler(req: Req, res: Res) {
         else if (v === '30to90') parts.push(`and(diagnoses_synced_at.gt.${d90},diagnoses_synced_at.lte.${d30})`);
         else if (v === '7to30') parts.push(`and(diagnoses_synced_at.gt.${d30},diagnoses_synced_at.lte.${d7})`);
         else if (v === 'lt7') parts.push(`diagnoses_synced_at.gt.${d7}`);
+      }
+      if (parts.length > 0) pQuery = pQuery.or(parts.join(','));
+    }
+    if (fluoroValues.length > 0) {
+      const today = todayIso();
+      const in3m = daysFromNow(90);
+      const in6m = daysFromNow(180);
+      const parts: string[] = [];
+      for (const v of fluoroValues) {
+        if (v === 'missing') parts.push('last_fluoro_date.is.null');
+        else if (v === 'overdue') parts.push(`and(next_planned_date.not.is.null,next_planned_date.lt.${today})`);
+        else if (v === 'under_3m') parts.push(`and(next_planned_date.gte.${today},next_planned_date.lt.${in3m})`);
+        else if (v === 'under_6m') parts.push(`and(next_planned_date.gte.${today},next_planned_date.lt.${in6m})`);
       }
       if (parts.length > 0) pQuery = pQuery.or(parts.join(','));
     }

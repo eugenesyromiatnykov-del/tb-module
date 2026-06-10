@@ -35,6 +35,23 @@ export const SYNC_FILTER_LABELS: Record<SyncFreshFilter, string> = {
   lt7: 'Менше 7 днів',
 };
 
+// Fluoro snapshot status bins. OR-combined when multi-selected — the
+// ranges intentionally overlap (under_6m includes under_3m) so the
+// doctor can pick "everyone whose next is within half a year" as one
+// bucket without having to also tick the 3-month one.
+export type FluoroStatusFilter =
+  | 'missing'   // last_fluoro_date IS NULL
+  | 'overdue'   // next_planned_date IS NOT NULL AND next_planned_date < today
+  | 'under_3m'  // today <= next_planned_date < today + ~90 days
+  | 'under_6m'; // today <= next_planned_date < today + ~180 days
+
+export const FLUORO_STATUS_LABELS: Record<FluoroStatusFilter, string> = {
+  missing: 'Нема знімка',
+  overdue: 'Прострочено',
+  under_3m: 'Менш як 3 міс. до планового',
+  under_6m: 'Менш як 6 міс. до планового',
+};
+
 export type PatientFilters = {
   location?: string;
   status?: string;
@@ -45,6 +62,7 @@ export type PatientFilters = {
   filter?: PatientFilter;
   adpm?: AdpmFilter[];  // OR-combined statuses
   sync?: SyncFreshFilter[]; // OR-combined freshness bins
+  fluoroStatus?: FluoroStatusFilter[]; // OR-combined fluoro status bins
   address?: string;     // ILIKE on address (street/house substring)
   villages?: string[];  // exact match on derived `village` column
   cleared?: 'include' | 'only'; // default: exclude tb_status='cleared'
@@ -73,6 +91,9 @@ function buildQuery(filters: PatientFilters): string {
   }
   if (filters.sync && filters.sync.length > 0) {
     params.set('sync', filters.sync.join(','));
+  }
+  if (filters.fluoroStatus && filters.fluoroStatus.length > 0) {
+    params.set('fluoro_status', filters.fluoroStatus.join(','));
   }
   if (filters.address) params.set('address', filters.address);
   if (filters.villages && filters.villages.length > 0) {
