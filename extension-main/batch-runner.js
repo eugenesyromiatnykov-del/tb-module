@@ -306,6 +306,129 @@
   // again.
   function setBanner(_text, _tone) { /* no-op */ }
 
+  // ─── Blocking sync overlay (on medics.ua) ───────────────────────────────
+  // Shown on every medics.ua page WHILE this device is the active driver of
+  // a multi-patient sync job. Tells anyone looking at the screen "don't
+  // touch — the extension is driving" and gives them a Pause button that
+  // hits the same /api/sync_job stop endpoint as the in-app overlay.
+  //
+  // Visibility rules mirror the tb-module React overlay:
+  //   • job exists with status running or queued
+  //   • we (this DEVICE_ID) are the owner OR the row is unclaimed and we'd
+  //     claim it on the next heartbeat
+  //   • NOT an ad-hoc single-patient run (medics_id_list.length === 1) —
+  //     those finish in 30-90s and a full-screen block is overkill.
+  //
+  // Built as a single DOM node attached to <html> so it's outside MedicsCard
+  // SPA renderings (which mutate <body> heavily and would otherwise wipe
+  // our overlay on route changes).
+  const OVERLAY_ID = 'tb-medics-sync-overlay';
+  function isAdHocJob(job) {
+    return job && job.scope === 'subset' && Array.isArray(job.medics_id_list) && job.medics_id_list.length === 1;
+  }
+  function shouldShowOverlay(job) {
+    if (!job) return false;
+    if (job.status !== 'running' && job.status !== 'queued') return false;
+    if (isAdHocJob(job)) return false;
+    // Owned by another device → that device's tab shows the overlay, not ours.
+    if (job.owner_device_id && job.owner_device_id !== DEVICE_ID) return false;
+    return true;
+  }
+  function buildOverlay() {
+    const root = document.createElement('div');
+    root.id = OVERLAY_ID;
+    root.setAttribute('style', [
+      'position:fixed', 'inset:0',
+      'background:rgba(15,23,42,0.65)', 'backdrop-filter:blur(2px)',
+      'z-index:2147483647',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+    ].join(';'));
+    root.innerHTML = `
+      <div style="background:white;border-radius:12px;padding:24px;max-width:480px;width:90%;box-shadow:0 25px 50px rgba(0,0,0,0.3);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <div data-spinner style="width:24px;height:24px;border:3px solid #dbeafe;border-top-color:#3b82f6;border-radius:50%;animation:tb-spin 1s linear infinite;"></div>
+          <h2 data-title style="margin:0;font-size:18px;color:#0f172a;">Триває синхронізація</h2>
+        </div>
+        <p data-subtitle style="margin:0 0 16px 0;color:#475569;font-size:14px;line-height:1.5;">Розширення керує цією сторінкою МІС. Не натискай нічого до завершення.</p>
+        <div data-progress-wrap style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:4px;">
+            <span>Прогрес</span>
+            <span data-progress-text>0 / 0 (0%)</span>
+          </div>
+          <div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+            <div data-progress-bar style="height:100%;background:#3b82f6;width:0%;transition:width 0.3s;"></div>
+          </div>
+        </div>
+        <div data-current style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:13px;color:#334155;margin-bottom:16px;display:none;">
+          <span style="color:#64748b;">Зараз: </span><span data-current-name style="font-weight:500;"></span>
+        </div>
+        <button data-pause style="border:1px solid #cbd5e1;background:white;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:14px;color:#0f172a;display:inline-flex;align-items:center;gap:6px;">
+          ⏸ Призупинити
+        </button>
+      </div>
+      <style>@keyframes tb-spin{to{transform:rotate(360deg);}}</style>
+    `;
+    const pauseBtn = root.querySelector('[data-pause]');
+    pauseBtn.addEventListener('click', async () => {
+      pauseBtn.disabled = true;
+      pauseBtn.textContent = 'Зачекайте…';
+      try {
+        const cfg = await loadCfg();
+        await fetch(`${cfg.url}/api/patients?mode=sync_job`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfg.pin}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'stop', job_id: root.dataset.jobId }),
+        });
+        const titleEl = root.querySelector('[data-title]');
+        const subEl = root.querySelector('[data-subtitle]');
+        if (titleEl) titleEl.textContent = 'Зупиняємо синхронізацію…';
+        if (subEl) subEl.textContent = 'Дочікуємось завершення поточного пацієнта. Вкладки МІС закриються автоматично.';
+      } catch (e) {
+        pauseBtn.disabled = false;
+        pauseBtn.textContent = '⏸ Призупинити';
+        alert(`Не вдалось зупинити: ${e?.message ?? e}`);
+      }
+    });
+    return root;
+  }
+  function renderOverlay(job) {
+    if (!shouldShowOverlay(job)) {
+      removeOverlay();
+      return;
+    }
+    let root = document.getElementById(OVERLAY_ID);
+    if (!root) {
+      root = buildOverlay();
+      (document.documentElement || document.body).appendChild(root);
+    }
+    root.dataset.jobId = job.id;
+    const total = (job.queue || []).length;
+    const done = Math.min(job.cursor || 0, total);
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const txt = root.querySelector('[data-progress-text]');
+    if (txt) txt.textContent = `${done} / ${total} (${pct}%)`;
+    const bar = root.querySelector('[data-progress-bar]');
+    if (bar) bar.style.width = `${pct}%`;
+    const currentBox = root.querySelector('[data-current]');
+    const currentName = root.querySelector('[data-current-name]');
+    if (job.current_medics_id) {
+      const entry = (job.queue || []).find((q) => q.medics_id === job.current_medics_id);
+      const label = entry?.surname ? `${entry.surname} (${job.current_medics_id})` : job.current_medics_id;
+      if (currentName) currentName.textContent = label;
+      if (currentBox) currentBox.style.display = 'block';
+    } else if (currentBox) {
+      currentBox.style.display = 'none';
+    }
+  }
+  function removeOverlay() {
+    const root = document.getElementById(OVERLAY_ID);
+    if (root) root.remove();
+  }
+
   // ─── Tab keep-alive: defeat Chrome's background-tab throttling ──────────
   // When the doctor switches away from the medics.ua tab Chrome aggressively
   // throttles setTimeout (and may suspend execution entirely after 5 min in
@@ -405,6 +528,7 @@
       }
       lastSeenJobId = null;
       stopKeepAlive();
+      removeOverlay();
       setBanner(`idle — no active job\nstatus: ${job?.status ?? 'null'}`);
       schedule(TIMING.pollIntervalMs);
       return;
@@ -424,12 +548,16 @@
       const isStale = Date.now() - lastBeat > OWNER_STALE_MS;
       if (!isStale) {
         stopKeepAlive();
+        removeOverlay();
         setBanner(`idle — sync owned by other device\n(${job.owner_device_label || job.owner_device_id.slice(0, 8)})`);
         schedule(TIMING.pollIntervalMs);
         return;
       }
       console.log('[TB Batch] owner stale, taking over');
     }
+
+    // We own (or will own) the job — render/update the overlay every poll.
+    renderOverlay(job);
 
     // If queued, first heartbeat will flip it to running.
     const ourJob = job;
