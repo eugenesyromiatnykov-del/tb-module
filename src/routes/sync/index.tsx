@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Pause, Play, Square, Trash2 } from 'lucide-react';
 import { useExtensionDevice } from '@/hooks/useExtensionDevice';
+import { useDoctor } from '@/hooks/useDoctor';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -76,9 +77,11 @@ async function cancelJob(jobId: string) {
 
 export function SyncPage() {
   const { data, isLoading } = useActiveSyncJob();
+  const { data: doctor } = useDoctor();
   const job = data?.job ?? null;
   const pausedJobs = data?.paused ?? [];
   const qc = useQueryClient();
+  const canRunSync = doctor?.can_run_sync ?? false;
 
   const [location, setLocation] = useState<LocationId>('bilohirska');
   const [onlyUnsynced, setOnlyUnsynced] = useState(true);
@@ -198,6 +201,8 @@ export function SyncPage() {
         <div className="flex h-32 items-center justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
         </div>
+      ) : !canRunSync && !job ? (
+        <SyncDisabledCard />
       ) : !job ? (
         <StartCard
           location={location}
@@ -208,7 +213,7 @@ export function SyncPage() {
           onStart={onStart}
         />
       ) : (
-        <ActiveJobCard job={job} busy={busy} onStop={onStop} onResume={onResume} onCancel={onCancel} />
+        <ActiveJobCard job={job} busy={busy} onStop={onStop} onResume={onResume} onCancel={onCancel} canRunSync={canRunSync} />
       )}
 
       {pausedJobs.length > 0 && (
@@ -218,13 +223,14 @@ export function SyncPage() {
           onResume={onResumePaused}
           onCancel={onCancelPaused}
           activeJobId={job?.id ?? null}
+          canRunSync={canRunSync}
         />
       )}
 
       {/* Show the "start new" form below the active card, so the doctor
           can launch a quick subset run while the big one is mid-flight.
           Server auto-pauses the running job — see action=start in api. */}
-      {job && (
+      {job && canRunSync && (
         <details className="mt-4 rounded-xl border border-slate-200 bg-white">
           <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
             + Запустити паралельну синхронізацію (поточну поставимо на паузу)
@@ -315,14 +321,34 @@ function StartCard({
   );
 }
 
+function SyncDisabledCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Автосинхронізація вимкнена</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-2 text-sm text-slate-600">
+        <p>
+          Для цього облікового запису запуск автоматичного обходу МІС наразі недоступний.
+          Перегляд пацієнтів та робота з картками працюють як зазвичай.
+        </p>
+        <p className="text-slate-500">
+          Щоб увімкнути — зверніться до адміністратора.
+        </p>
+      </CardBody>
+    </Card>
+  );
+}
+
 function PausedJobsList({
-  jobs, busy, onResume, onCancel,
+  jobs, busy, onResume, onCancel, canRunSync,
 }: {
   jobs: SyncJob[];
   busy: boolean;
   onResume: (id: string) => void;
   onCancel: (id: string) => void;
   activeJobId: string | null;
+  canRunSync: boolean;
 }) {
   return (
     <Card className="mt-4">
@@ -359,9 +385,11 @@ function PausedJobsList({
                   <div className="h-full bg-slate-400" style={{ width: `${pct}%` }} />
                 </div>
               </div>
-              <Button variant="primary" onClick={() => onResume(j.id)} disabled={busy}>
-                <Play className="h-3.5 w-3.5" /> Продовжити
-              </Button>
+              {canRunSync && (
+                <Button variant="primary" onClick={() => onResume(j.id)} disabled={busy}>
+                  <Play className="h-3.5 w-3.5" /> Продовжити
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 onClick={() => onCancel(j.id)}
@@ -379,13 +407,14 @@ function PausedJobsList({
 }
 
 function ActiveJobCard({
-  job, busy, onStop, onResume, onCancel,
+  job, busy, onStop, onResume, onCancel, canRunSync,
 }: {
   job: SyncJob;
   busy: boolean;
   onStop: () => void;
   onResume: () => void;
   onCancel: () => void;
+  canRunSync: boolean;
 }) {
   const total = job.queue.length;
   const done = job.cursor;
@@ -406,7 +435,7 @@ function ActiveJobCard({
                 <Square className="h-4 w-4" /> Зупинити
               </Button>
             )}
-            {job.status === 'stopped' && (
+            {job.status === 'stopped' && canRunSync && (
               <Button onClick={onResume} disabled={busy}>
                 <Play className="h-4 w-4" /> Продовжити
               </Button>

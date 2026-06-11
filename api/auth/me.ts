@@ -1,4 +1,5 @@
 import { issueSupabaseRealtimeToken, verifySessionFromHeader } from '../_lib/jwt.js';
+import { getSupabaseAdmin } from '../_lib/supabase-server.js';
 
 type VercelRequest = {
   headers: Record<string, string | string[] | undefined>;
@@ -23,9 +24,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Optional: mint a Supabase JWT for Realtime subscriptions. Frontend asks
   // for this via ?supabase=1 once the cookie is established.
   const wantSupabase = (Array.isArray(req.query?.supabase) ? req.query?.supabase[0] : req.query?.supabase) === '1';
+  const doctorId = typeof session.doctor_id === 'string' ? session.doctor_id : null;
+
+  // Pull the per-doctor permission flag so the UI can disable the sync
+  // start button (kept server-authoritative — UI hint, not the gate).
+  let canRunSync = false;
+  if (doctorId) {
+    const { data } = await getSupabaseAdmin()
+      .from('doctors')
+      .select('can_run_sync')
+      .eq('id', doctorId)
+      .maybeSingle();
+    canRunSync = data?.can_run_sync === true;
+  }
+
   const doctor = {
-    id: typeof session.doctor_id === 'string' ? session.doctor_id : null,
+    id: doctorId,
     name: typeof session.doctor_name === 'string' ? session.doctor_name : null,
+    can_run_sync: canRunSync,
   };
 
   if (wantSupabase) {

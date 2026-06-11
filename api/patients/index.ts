@@ -68,6 +68,18 @@ function normalizeQueueLocations<
   );
 }
 
+async function doctorCanRunSync(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  doctorId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('doctors')
+    .select('can_run_sync')
+    .eq('id', doctorId)
+    .maybeSingle();
+  return data?.can_run_sync === true;
+}
+
 function applyFilter<Q extends { eq: Function; neq: Function; lt: Function; gt: Function; gte: Function; lte: Function; is: Function; not: Function; contains: Function }>(
   q: Q,
   filter: Filter | undefined,
@@ -765,6 +777,14 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
   const action = body.action as string | undefined;
 
   if (action === 'start') {
+    // Per-doctor gate: free-tier Vercel CPU was burned through in 11 days
+    // by an unsupervised batch run, so new doctors are off by default
+    // (see 0020_doctor_sync_permission.sql). Flip can_run_sync=true in
+    // the doctors table to grant.
+    if (!(await doctorCanRunSync(supabase, doctorId))) {
+      res.status(403).json({ error: 'Автосинхронізація для цього лікаря наразі вимкнена. Зверніться до адміністратора.' });
+      return;
+    }
     // Auto-pause any currently running/queued job so the new one becomes
     // the active driver. Doctor's workflow: big overnight sync paused,
     // run a quick 10-20 patient subset (or single ad-hoc), then manually
@@ -949,6 +969,10 @@ async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof get
   }
 
   if (action === 'resume') {
+    if (!(await doctorCanRunSync(supabase, doctorId))) {
+      res.status(403).json({ error: 'Автосинхронізація для цього лікаря наразі вимкнена. Зверніться до адміністратора.' });
+      return;
+    }
     const { data: cur, error: curErr } = await supabase
       .from('sync_jobs').select('*').eq('id', jobId).eq('doctor_id', doctorId).maybeSingle();
     if (curErr || !cur) { res.status(404).json({ error: 'job not found' }); return; }

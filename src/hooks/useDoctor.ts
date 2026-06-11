@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 
-export type Doctor = { id: string; name: string };
+export type Doctor = { id: string; name: string; can_run_sync: boolean };
 
 // Fetch the logged-in doctor from /api/auth/me. Surfaces id + name so
 // the Sidebar can show "Лікар: Doctor 1" and so future per-doctor UI
