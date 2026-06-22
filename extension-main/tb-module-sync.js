@@ -21,6 +21,7 @@
     lastBannerName: '',  // for SPA navigation detection
     overlayTimeout: null,
     lastAdpM: null,      // { date: 'YYYY-MM-DD', vaccine_name } | null — parsed from page, not from TB module backend yet
+    backendDegraded: false, // sticky: set when apiGet/apiUpsert fail so subsequent renders show the "локально" pill
   };
 
   // ─── Config (chrome.storage.sync) ─────────────────────────────────────
@@ -59,6 +60,42 @@
       const m = v.tbManualMedics || {}; delete m[key];
       chrome.storage.sync.set({ tbManualMedics: m }, r);
     }));
+  }
+
+  // ─── Risk group key → Ukrainian label ─────────────────────────────────
+  // Mirrors src/lib/risk-groups.ts. Duplicated (not imported) because the
+  // content script can't import ESM out of the box and we want zero
+  // build steps for the extension. Keep the two in sync when adding keys.
+  const RISK_GROUP_LABELS_UK = {
+    // medical
+    hiv: 'ВІЛ / СНІД',
+    oncology: 'Онкологія',
+    diabetes: 'Цукровий діабет',
+    previously_treated: 'Раніше лікувались від ТБ',
+    chronic_respiratory: 'Хронічні респіраторні',
+    pneumonia_history: 'Пневмонія в анамнезі',
+    pleurisy: 'Плеврит',
+    peptic_ulcer: 'Виразкова хвороба',
+    psychiatric: 'Психіатрія',
+    tobacco_use: 'Зловживання тютюном',
+    alcohol_abuse: 'Зловживання алкоголем',
+    drug_abuse: 'Вживання наркотиків',
+    weight_loss: 'Втрата ваги',
+    nutrition_problem: 'Проблема з харчуванням',
+    urology_disorder: 'Урологічна патологія',
+    pregnancy: 'Вагітність',
+    // social
+    close_contact: 'Близький контакт',
+    medical_worker: 'Медичний працівник',
+    prisoners: 'Позбавлені волі',
+    displaced: 'Переселенці',
+    low_income: 'Малозабезпечені',
+    shelters: 'Притулки',
+    elderly_60: 'Особи старші 60 років',
+    social_distress: 'Соц. неблагополуччя',
+  };
+  function riskLabel(key) {
+    return RISK_GROUP_LABELS_UK[key] || key;
   }
 
   // ─── Code → medical_risk_groups ───────────────────────────────────────
@@ -834,7 +871,8 @@
   // Indicator chips removed in v5.0.0 per user request — the doctor uses
   // the TODO list, not per-indicator state. Full breakdown still available
   // via the «Деталі індикаторів» toggle in the widget body.
-  function renderExisting(p, _source, _indicators) {
+  function renderExisting(p, _source, _indicators, opts = {}) {
+    const offline = opts.offline === true;
     const inRiskGroup =
       p.tb_status === 'risk' ||
       p.tb_status === 'detected' ||
@@ -860,19 +898,105 @@
     else if (adpm.tone === 'warn') state = 'warn';
 
     const lastSync = relativeLabel(p.last_indicators_synced_at);
+    const offlinePill = offline
+      ? `<span class="tb-head__meta" style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:6px;" title="Реєстр ТБ тимчасово недоступний. Дані рахуються локально з цієї картки МІС.">локально</span>`
+      : '';
+    const registryLink = p.id
+      ? `<a class="tb-head__link" href="${STATE.config.url}/patients/${p.id}" target="_blank" title="Картка в реєстрі">↗</a>`
+      : '';
+
+    // Risk group labels: medical first (auto-derived from diagnoses), then
+    // social. Drives both the hover tooltip and the click-to-copy payload.
+    const allRiskKeys = [
+      ...(p.medical_risk_groups || []),
+      ...(p.social_risk_groups || []),
+    ];
+    const riskLabels = allRiskKeys.map(riskLabel);
+    const hasRisks = riskLabels.length > 0;
+    const pillTitle = hasRisks
+      ? `Групи ризику:\n• ${riskLabels.join('\n• ')}\n\nКлік — скопіювати у буфер`
+      : 'Без груп ризику';
+    const pillCursor = hasRisks ? 'cursor:pointer;' : '';
 
     setSection(state, `
       <div class="tb-head">
-        <span class="tb-status-pill" style="background:${sm.bg};color:${sm.fg};">${sm.label}</span>
+        <span id="tb-status-pill" class="tb-status-pill"
+              style="background:${sm.bg};color:${sm.fg};${pillCursor}"
+              title="${escHtml(pillTitle)}">${sm.label}</span>
         <span class="tb-head__spacer"></span>
+        ${offlinePill}
         ${lastSync ? `<span class="tb-head__meta">${lastSync}</span>` : ''}
-        <a class="tb-head__link" href="${STATE.config.url}/patients/${p.id}" target="_blank" title="Картка в реєстрі">↗</a>
+        ${registryLink}
       </div>
       <div class="tb-tiles">
         ${renderTile('Флюоро', flu)}
         ${renderTile('АДП-М', adpm)}
       </div>
     `);
+
+    if (hasRisks) {
+      const pill = document.getElementById('tb-status-pill');
+      pill?.addEventListener('click', () => copyRiskLabels(pill, riskLabels));
+    }
+  }
+
+  // Copy risk-group labels to clipboard, one per line, and briefly flash
+  // the pill text so the doctor knows it worked. Falls back to a hidden
+  // textarea + execCommand for older Chrome versions / non-secure pages.
+  async function copyRiskLabels(pillEl, labels) {
+    const text = labels.join('\n');
+    let ok = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      }
+    } catch (_) { /* fall through */ }
+    if (!ok) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (_) { /* give up */ }
+    }
+    if (!pillEl) return;
+    const orig = pillEl.textContent;
+    pillEl.textContent = ok ? 'Скопійовано ✓' : 'Не вдалось скопіювати';
+    setTimeout(() => { pillEl.textContent = orig; }, 1200);
+  }
+
+  // Synthesize a patient-like object from page-local data so renderExisting
+  // can paint the fluoro/АДП-М tiles + risk pill even when the registry
+  // backend is unreachable (Vercel paused, network down, etc). Mirrors the
+  // shape /api/extension-sync GET returns.
+  function buildLocalPatient(ctx, analyzedData, medicalGroups, socialGroups) {
+    const flu = analyzedData?.patient?.lastFluoro ?? null;
+    const adpmRaw = analyzedData?.patient?.lastAdpM ?? null;
+    const lastAdpmIso = adpmRaw?.date instanceof Date ? toLocalIso(adpmRaw.date) : null;
+    const hasAnyRisk = (medicalGroups?.length || 0) > 0 || (socialGroups?.length || 0) > 0;
+    return {
+      id: null,
+      surname: ctx.surname,
+      first_name: ctx.first_name,
+      patronymic: ctx.patronymic,
+      birth_date: ctx.birth_date,
+      gender: ctx.gender,
+      tb_status: hasAnyRisk ? 'risk' : 'cleared',
+      medical_risk_groups: medicalGroups || [],
+      social_risk_groups: socialGroups || [],
+      last_fluoro_date: flu?.date || null,
+      next_planned_date: flu?.next_planned_date || null,
+      last_result_code: flu?.result_code || null,
+      last_adpm_date: lastAdpmIso,
+      next_adpm_date: lastAdpmIso ? addYearsIso(lastAdpmIso, 10) : null,
+      adpm_contraindication: false,
+      adpm_refused: false,
+      last_indicators_synced_at: null,
+    };
   }
 
   // ─── Main flow ────────────────────────────────────────────────────────
@@ -884,6 +1008,7 @@
     STATE.currentMedicsId = r.id;
     try {
       const res = await apiGet(r.id);
+      STATE.backendDegraded = false;
       if (!res.found) return renderEmpty(r.id, r.source);
       renderExisting(res.patient, r.source, res.indicators ?? []);
       // Paint the cached full analysis (TODO list + indicator cards) into
@@ -894,7 +1019,15 @@
       return;
     } catch (e) {
       console.error('[TB Module] apiGet:', e);
-      return renderError(`Помилка запиту: ${e.message}`);
+      // Graceful offline fallback: do NOT block the widget with a red error.
+      // The local analyze flow (МІС "Аналізувати" → displayResults → doSync)
+      // will paint fluoro/АДП-М/risk-group tiles from page DOM via
+      // buildLocalPatient(). We only need a polite placeholder until then.
+      STATE.backendDegraded = true;
+      setSection('warn', `
+        <div>Реєстр ТБ тимчасово недоступний. Модуль працює локально — щойно МІС закінчить аналіз цієї картки, з'являться дата флюоро, АДП-М та групи ризику з поточної сторінки.</div>
+      `);
+      return;
     }
   }
 
@@ -1093,13 +1226,25 @@
       vaccine_name: adpm.vaccine_name || null,
     } : null;
 
-    setSection('info', '<div>Синхронізуємо…</div>');
     // Age-based social group: 60+ auto-tagged on creation. (The server
     // /api/extension-sync only appends to medical_risk_groups, so we
     // attach a separate social_risk_groups field — server merges it too.)
     const autoSocial = [];
     const age = ageFromBirth(ctx.birth_date);
     if (age != null && age >= 60) autoSocial.push('elderly_60');
+
+    // Paint the tile section IMMEDIATELY from page-local data — fluoro
+    // date, АДП-М date, risk groups — so the doctor sees usable info
+    // independently of the backend. If apiUpsert succeeds, refresh() will
+    // overwrite this with the server-side render; if it fails, this local
+    // render stays. Done BEFORE the network call so a slow / dead backend
+    // never hides the data we already have on the page.
+    renderExisting(
+      buildLocalPatient(ctx, analyzedData, diag.groups, autoSocial),
+      'local',
+      Array.isArray(analyzedResults) ? analyzedResults : [],
+      { offline: STATE.backendDegraded === true },
+    );
 
     const payload = {
       medics_id: medicsId,
@@ -1148,6 +1293,7 @@
     try {
       const result = await apiUpsert(payload);
       STATE.lastSyncedAt = Date.now();
+      STATE.backendDegraded = false;
       console.log('[TB Module] sync OK:', result);
       await refresh();
       // Signal for batch-runner — fires after the patient is fully synced.
@@ -1156,7 +1302,17 @@
       }));
     } catch (e) {
       console.error('[TB Module] sync FAILED:', e);
-      renderError(`Помилка синхронізації: ${e.message}`);
+      // Keep the local renderExisting view intact — do NOT replace it with
+      // a red error. The doctor still sees fluoro / АДП-М / risk groups
+      // from the page, just without the persistent registry copy. Re-paint
+      // with the offline pill so it's clear nothing reached the registry.
+      STATE.backendDegraded = true;
+      renderExisting(
+        buildLocalPatient(ctx, analyzedData, diag.groups, autoSocial),
+        'local',
+        Array.isArray(analyzedResults) ? analyzedResults : [],
+        { offline: true },
+      );
       window.dispatchEvent(new CustomEvent('tb-sync-failed', {
         detail: { medics_id: medicsId, error: e?.message ?? String(e) },
       }));
@@ -1328,5 +1484,5 @@
     setTimeout(boot, 600);
   }
 
-  console.log('[TB Module] tb-module-sync.js loaded — build 2026-05-29 (diagnoses_detail)');
+  console.log('[TB Module] tb-module-sync.js loaded — build 2026-06-16 (risk-tooltip + local-fallback)');
 })();
