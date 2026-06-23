@@ -1484,5 +1484,5 @@
     setTimeout(boot, 600);
   }
 
-  console.log('[TB Module] tb-module-sync.js loaded — build 2026-06-16 (risk-tooltip + local-fallback)');
+  console.log('[TB Module] tb-module-sync.js loaded — build 2026-06-23 (idle-polling-cut + sync_disabled cache)');
 })();

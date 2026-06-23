@@ -18,12 +18,16 @@ export function SyncFilteredButton({ patients }: { patients: Patient[] }) {
   const [busy, setBusy] = useState(false);
   const device = useExtensionDevice();
 
-  // Surface whether something's already running, so we can tell the doctor
-  // it'll be auto-paused (no longer a hard block).
+  // Reuse the shared ['sync-job-active'] cache that SyncBlockingOverlay
+  // already manages. Don't open a second polling loop here — previously
+  // this fired every 5s on every patients-list view, racking up CPU on
+  // Vercel while the button was just sitting there. The shared cache
+  // (idle TTL = 5 min) is enough to show the "будет приостановлено"
+  // hint correctly when the doctor lands on the page.
   const { data: activeJob } = useQuery({
     queryKey: ['sync-job-active'],
     queryFn: () => apiFetch<{ job: SyncJob | null }>(`/api/patients?mode=sync_job`),
-    refetchInterval: 5000,
+    staleTime: 60_000,
   });
   const willInterrupt = !!activeJob?.job;
 

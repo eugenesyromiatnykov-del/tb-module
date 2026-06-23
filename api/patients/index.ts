@@ -740,6 +740,17 @@ export default async function handler(req: Req, res: Res) {
 
 async function handleSyncJob(req: Req, res: Res, supabase: ReturnType<typeof getSupabaseAdmin>, doctorId: string) {
   if (req.method === 'GET') {
+    // Fast path for doctors who can't launch sync: skip BOTH sync_jobs
+    // SELECTs and signal sync_disabled so the web app + extension SW
+    // can cache the verdict and stop hammering this endpoint. Without
+    // this, Doctor 2's polling (every 15 s from SyncBlockingOverlay,
+    // every 30 s from SW) costs as much CPU as Doctor 1's despite
+    // never being able to start anything.
+    if (!(await doctorCanRunSync(supabase, doctorId))) {
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      res.status(200).json({ job: null, paused: [], sync_disabled: true });
+      return;
+    }
     // Truly active (running / queued) — the extension polls this and
     // starts driving the moment it sees a non-null. Only one at a time:
     // start/resume below auto-pause any others to keep that invariant.

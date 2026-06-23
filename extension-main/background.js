@@ -19,6 +19,26 @@ const POLL_ALARM = 'tb-sync-poll';
 const POLL_PERIOD_MIN = 0.5; // 30 seconds (Chrome's minimum for unpacked is 30s)
 const JOURNAL_URL = 'https://medics.ua/doctors/journal';
 
+// Server flags accounts that can't launch sync (can_run_sync = false) by
+// returning { sync_disabled: true } on the sync_job GET. Caching that
+// verdict for 1 h lets us skip the 30-s alarm entirely for those doctors
+// — otherwise the SW pays full bcrypt auth twice a minute for nothing.
+const SYNC_DISABLED_KEY = 'tb_sync_disabled_until';
+const SYNC_DISABLED_TTL_MS = 60 * 60_000;
+function readSyncDisabledUntil() {
+  return new Promise((r) =>
+    chrome.storage.local.get([SYNC_DISABLED_KEY], (v) => r(v[SYNC_DISABLED_KEY] || 0)),
+  );
+}
+function markSyncDisabled() {
+  return new Promise((r) =>
+    chrome.storage.local.set({ [SYNC_DISABLED_KEY]: Date.now() + SYNC_DISABLED_TTL_MS }, r),
+  );
+}
+function clearSyncDisabled() {
+  return new Promise((r) => chrome.storage.local.remove([SYNC_DISABLED_KEY], r));
+}
+
 function ensureAlarm() {
   chrome.alarms.get(POLL_ALARM, (existing) => {
     if (existing) return;
@@ -29,7 +49,7 @@ function ensureAlarm() {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[TB SW] installed');
   ensureAlarm();
-  checkAndEnsureTab().catch((e) => console.warn('[TB SW] initial check failed', e));
+  checkAndEnsureTab(true).catch((e) => console.warn('[TB SW] initial check failed', e));
 });
 chrome.runtime.onStartup.addListener(() => {
   console.log('[TB SW] startup');
@@ -37,12 +57,16 @@ chrome.runtime.onStartup.addListener(() => {
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== POLL_ALARM) return;
-  checkAndEnsureTab().catch((e) => console.warn('[TB SW] poll failed', e));
+  checkAndEnsureTab(false).catch((e) => console.warn('[TB SW] poll failed', e));
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'tb-sync-check') {
-    checkAndEnsureTab().then(() => sendResponse({ ok: true })).catch((e) => sendResponse({ ok: false, error: e?.message }));
+    // force=true → bypass sync_disabled cache. Web app sends this on
+    // login (auth state changed) and after action='start', so a
+    // freshly-enabled doctor wakes us instantly without waiting for
+    // the 1-h TTL.
+    checkAndEnsureTab(true).then(() => sendResponse({ ok: true })).catch((e) => sendResponse({ ok: false, error: e?.message }));
     return true; // async response
   }
   if (msg && msg.type === 'tb-close-tab') {
@@ -123,6 +147,11 @@ async function getActiveJob() {
     });
     if (!r.ok) return null;
     const j = await r.json();
+    if (j && j.sync_disabled === true) {
+      await markSyncDisabled();
+    } else if (j && j.sync_disabled === false) {
+      await clearSyncDisabled();
+    }
     return j.job ?? null;
   } catch (e) {
     console.warn('[TB SW] getActiveJob failed', e);
@@ -136,7 +165,15 @@ async function getMyDeviceId() {
   });
 }
 
-async function checkAndEnsureTab() {
+async function checkAndEnsureTab(force) {
+  // Alarm-fired polls (force=false) honor the sync_disabled cache so
+  // we stop hammering the endpoint when the doctor's account can't
+  // sync. Message-driven calls (force=true) bypass: they're triggered
+  // by an explicit user action and need to cut through stale cache.
+  if (!force) {
+    const disabledUntil = await readSyncDisabledUntil();
+    if (disabledUntil && disabledUntil > Date.now()) return;
+  }
   const job = await getActiveJob();
   if (!job) return;
   if (job.status !== 'running' && job.status !== 'queued') return;

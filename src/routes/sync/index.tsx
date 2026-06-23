@@ -44,7 +44,15 @@ function useActiveSyncJob() {
       apiFetch<{ job: SyncJob | null; paused: SyncJob[] }>(
         `/api/patients?mode=sync_job`,
       ),
-    refetchInterval: 3000, // belt-and-suspenders alongside Realtime
+    // 3s when a job is actively running (the doctor is watching progress);
+    // 5 min otherwise. Without the gate this endpoint was hit 1200×/hour on
+    // an idle /sync tab, eating Vercel Active CPU for no reason — Realtime
+    // already pushes job state changes.
+    refetchInterval: (q) => {
+      const j = q.state.data?.job;
+      if (j && (j.status === 'queued' || j.status === 'running')) return 3000;
+      return 5 * 60_000;
+    },
   });
 }
 

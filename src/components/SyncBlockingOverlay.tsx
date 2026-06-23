@@ -5,6 +5,7 @@ import { Loader2, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
 import { SyncJobDetails, type SyncJobLike } from '@/components/SyncJobDetails';
+import { useDoctor } from '@/hooks/useDoctor';
 
 // Blocking full-screen overlay shown while a multi-patient sync is active.
 // Stops the doctor from navigating the registry while МІС tabs are still
@@ -35,15 +36,25 @@ export function SyncBlockingOverlay() {
 
   const onSyncPage = location.pathname === '/sync' || location.pathname.startsWith('/sync/');
 
+  // Skip polling entirely for doctors who can't launch sync (server short-
+  // circuits the same way via sync_disabled, but disabling the query here
+  // also avoids the network round-trip + auth bcrypt on every interval).
+  const { data: doctor } = useDoctor();
+  const canRunSync = doctor?.can_run_sync ?? true;
+
   const { data } = useQuery({
     queryKey: ['sync-job-active'],
     queryFn: () => apiFetch<{ job: SyncJobLike | null }>(`/api/patients?mode=sync_job`),
+    enabled: canRunSync,
+    // Idle: 5 min (Realtime is the primary signal; this is a backstop).
+    // Active: 2 s (the overlay drives the "is the sync finished?" redirect,
+    // a longer interval would feel sluggish to the doctor).
     refetchInterval: (q) => {
       const j = q.state.data?.job;
       if (j && (j.status === 'queued' || j.status === 'running')) return 2000;
-      return 15000;
+      return 5 * 60_000;
     },
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
   const job = data?.job ?? null;
 

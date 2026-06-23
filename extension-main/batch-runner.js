@@ -39,11 +39,33 @@
     afterModalOpen: 400,          // was 800
     syncTimeoutMs: 90_000,
     betweenPatientsMs: 1500,      // was 5000 — once sync event fires, no reason to linger
-    pollIntervalMs: 4000,
+    pollIntervalMs: 4000,         // when a job IS active — fast loop driving the queue
+    pollIntervalIdleMs: 5 * 60_000, // when no job — 5 min backstop; SW poke wakes us instantly on real activity
     pollIntervalFastMs: 1000,
     medCardBootDelay: 600,        // was 1500 — widget mounts faster than that
     pageBootDelay: 1500,          // was 2500 in initOnLoad
   };
+
+  // Server-side sync_disabled cache. When the doctor's account can't
+  // launch sync (e.g. Doctor 2 with can_run_sync=false), the backend
+  // returns { sync_disabled: true } and we skip polling entirely for
+  // SYNC_DISABLED_TTL_MS. SW pokes still wake us early — this just
+  // suppresses the periodic backstop fetches.
+  const SYNC_DISABLED_KEY = 'tb_sync_disabled_until';
+  const SYNC_DISABLED_TTL_MS = 60 * 60_000; // 1 h
+  function readSyncDisabledUntil() {
+    return new Promise((r) =>
+      chrome.storage.local.get([SYNC_DISABLED_KEY], (v) => r(v[SYNC_DISABLED_KEY] || 0)),
+    );
+  }
+  function markSyncDisabled() {
+    return new Promise((r) =>
+      chrome.storage.local.set({ [SYNC_DISABLED_KEY]: Date.now() + SYNC_DISABLED_TTL_MS }, r),
+    );
+  }
+  function clearSyncDisabled() {
+    return new Promise((r) => chrome.storage.local.remove([SYNC_DISABLED_KEY], r));
+  }
 
   // ─── Config / auth ───────────────────────────────────────────────────────
   function loadCfg() {
@@ -106,8 +128,17 @@
     }
     return r.json();
   }
-  function getActiveJob() {
-    return api('/api/patients?mode=sync_job', { method: 'GET' }).then((j) => j.job ?? null);
+  async function getActiveJob() {
+    const j = await api('/api/patients?mode=sync_job', { method: 'GET' });
+    // Server flags accounts that can't launch sync — cache it locally so
+    // we stop hammering this endpoint from the 4-second loop. SW pokes
+    // and a 1-hour TTL keep the cache fresh enough.
+    if (j && j.sync_disabled === true) {
+      await markSyncDisabled();
+    } else if (j && j.sync_disabled === false) {
+      await clearSyncDisabled();
+    }
+    return j.job ?? null;
   }
   async function heartbeat(jobId, patch) {
     await ensureDeviceId();
@@ -501,13 +532,25 @@
 
   // ─── Main poll loop ─────────────────────────────────────────────────────
   async function poll() {
+    // Suppress periodic polling while sync_disabled cache is active. SW
+    // poke (tb-poke-poll / tb-batch-wake) still fires poll() through and
+    // bypasses this — that's how a freshly-enabled doctor wakes us up
+    // mid-cache. Without this gate, Doctor 2's idle MIS tab hits this
+    // endpoint every 4 s forever, paying full bcrypt auth on each call.
+    const disabledUntil = await readSyncDisabledUntil();
+    if (disabledUntil && disabledUntil > Date.now()) {
+      setBanner('idle — sync disabled for this account');
+      schedule(TIMING.pollIntervalIdleMs);
+      return;
+    }
+
     let job;
     try {
       job = await getActiveJob();
     } catch (e) {
       console.warn('[TB Batch] poll failed:', e?.message);
       setBanner(`poll failed: ${e?.message ?? e}`, 'err');
-      schedule(TIMING.pollIntervalMs);
+      schedule(TIMING.pollIntervalIdleMs);
       return;
     }
 
@@ -530,7 +573,10 @@
       stopKeepAlive();
       removeOverlay();
       setBanner(`idle — no active job\nstatus: ${job?.status ?? 'null'}`);
-      schedule(TIMING.pollIntervalMs);
+      // No active job → drop to the 5-min backstop. SW poke wakes us
+      // instantly when the doctor clicks "Sync" in the web app, so we
+      // don't need 4-second polling just to discover an absent job.
+      schedule(TIMING.pollIntervalIdleMs);
       return;
     }
 
@@ -550,7 +596,10 @@
         stopKeepAlive();
         removeOverlay();
         setBanner(`idle — sync owned by other device\n(${job.owner_device_label || job.owner_device_id.slice(0, 8)})`);
-        schedule(TIMING.pollIntervalMs);
+        // Other device is heart-beating — we're a passive observer here,
+        // no need to refetch every 4 s. Idle backstop catches the
+        // hand-off if their device drops; SW poke wakes us sooner.
+        schedule(TIMING.pollIntervalIdleMs);
         return;
       }
       console.log('[TB Batch] owner stale, taking over');
@@ -583,7 +632,9 @@
           adhoc: ourJob.scope === 'subset' && ourJob.queue.length === 1,
         });
       } catch (_) {}
-      schedule(TIMING.pollIntervalMs);
+      // Job done — drop to idle backstop. A new job will arrive via SW
+      // poke when the doctor next clicks "Sync".
+      schedule(TIMING.pollIntervalIdleMs);
       return;
     }
 

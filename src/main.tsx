@@ -9,10 +9,12 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      // Backstop for Realtime: if the WebSocket missed an event (sleep, network
-      // blip, JWT expiry between refresh cycles), a tab focus still pulls
-      // fresh data. Realtime + focus together cover the rare gap.
-      refetchOnWindowFocus: true,
+      // Default off: every tab-switch refetching all mounted queries hammers
+      // Vercel Active CPU (a doctor tabbing between МІС and the registry
+      // 200×/day × N queries adds up fast). Realtime is the primary
+      // freshness mechanism; the few queries that really need a focus
+      // refetch (auth/me to catch a forced logout) opt back in per-hook.
+      refetchOnWindowFocus: false,
     },
   },
 });
